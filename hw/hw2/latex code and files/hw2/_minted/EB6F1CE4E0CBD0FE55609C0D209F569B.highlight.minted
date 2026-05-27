@@ -1,0 +1,267 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+
+\PYG{c+c1}{\PYGZsh{} In[2]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{DiceBoxLoss}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Computes the Soft Dice Loss for YOLO bounding boxes:}
+
+\PYG{l+s+sd}{        L = 1 \PYGZhy{} (2I + eps) / (A\PYGZus{}gt + A\PYGZus{}pred + eps)}
+
+\PYG{l+s+sd}{    where boxes are in format (x\PYGZus{}center, y\PYGZus{}center, w, h).}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{eps}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{):}
+        \PYG{n+nb}{super}\PYG{p}{()}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{eps} \PYG{o}{=} \PYG{n}{eps}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{,} \PYG{n}{gt\PYGZus{}boxes}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        pred\PYGZus{}boxes: (batch, S, S, B, 4)}
+\PYG{l+s+sd}{        gt\PYGZus{}boxes:   (batch, S, S, B, 4)}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+        \PYG{c+c1}{\PYGZsh{} Unpack}
+        \PYG{n}{x\PYGZus{}p}\PYG{p}{,} \PYG{n}{y\PYGZus{}p}\PYG{p}{,} \PYG{n}{w\PYGZus{}p}\PYG{p}{,} \PYG{n}{h\PYGZus{}p} \PYG{o}{=} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{]}
+        \PYG{n}{x\PYGZus{}g}\PYG{p}{,} \PYG{n}{y\PYGZus{}g}\PYG{p}{,} \PYG{n}{w\PYGZus{}g}\PYG{p}{,} \PYG{n}{h\PYGZus{}g} \PYG{o}{=}  \PYG{n}{gt\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],}  \PYG{n}{gt\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],}  \PYG{n}{gt\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{],}  \PYG{n}{gt\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{]}
+
+        \PYG{c+c1}{\PYGZsh{} Convert center format → corner format}
+        \PYG{n}{x1\PYGZus{}p} \PYG{o}{=} \PYG{n}{x\PYGZus{}p} \PYG{o}{\PYGZhy{}} \PYG{n}{w\PYGZus{}p} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{y1\PYGZus{}p} \PYG{o}{=} \PYG{n}{y\PYGZus{}p} \PYG{o}{\PYGZhy{}} \PYG{n}{h\PYGZus{}p} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{x2\PYGZus{}p} \PYG{o}{=} \PYG{n}{x\PYGZus{}p} \PYG{o}{+} \PYG{n}{w\PYGZus{}p} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{y2\PYGZus{}p} \PYG{o}{=} \PYG{n}{y\PYGZus{}p} \PYG{o}{+} \PYG{n}{h\PYGZus{}p} \PYG{o}{/} \PYG{l+m+mi}{2}
+
+        \PYG{n}{x1\PYGZus{}g} \PYG{o}{=} \PYG{n}{x\PYGZus{}g} \PYG{o}{\PYGZhy{}} \PYG{n}{w\PYGZus{}g} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{y1\PYGZus{}g} \PYG{o}{=} \PYG{n}{y\PYGZus{}g} \PYG{o}{\PYGZhy{}} \PYG{n}{h\PYGZus{}g} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{x2\PYGZus{}g} \PYG{o}{=} \PYG{n}{x\PYGZus{}g} \PYG{o}{+} \PYG{n}{w\PYGZus{}g} \PYG{o}{/} \PYG{l+m+mi}{2}
+        \PYG{n}{y2\PYGZus{}g} \PYG{o}{=} \PYG{n}{y\PYGZus{}g} \PYG{o}{+} \PYG{n}{h\PYGZus{}g} \PYG{o}{/} \PYG{l+m+mi}{2}
+
+        \PYG{c+c1}{\PYGZsh{} Intersection area}
+        \PYG{n}{x1\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{x1\PYGZus{}p}\PYG{p}{,} \PYG{n}{x1\PYGZus{}g}\PYG{p}{)}
+        \PYG{n}{y1\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{y1\PYGZus{}p}\PYG{p}{,} \PYG{n}{y1\PYGZus{}g}\PYG{p}{)}
+        \PYG{n}{x2\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{n}{x2\PYGZus{}p}\PYG{p}{,} \PYG{n}{x2\PYGZus{}g}\PYG{p}{)}
+        \PYG{n}{y2\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{min}\PYG{p}{(}\PYG{n}{y2\PYGZus{}p}\PYG{p}{,} \PYG{n}{y2\PYGZus{}g}\PYG{p}{)}
+
+        \PYG{n}{w\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{clamp}\PYG{p}{(}\PYG{n}{x2\PYGZus{}int} \PYG{o}{\PYGZhy{}} \PYG{n}{x1\PYGZus{}int}\PYG{p}{,} \PYG{n+nb}{min}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+        \PYG{n}{h\PYGZus{}int} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{clamp}\PYG{p}{(}\PYG{n}{y2\PYGZus{}int} \PYG{o}{\PYGZhy{}} \PYG{n}{y1\PYGZus{}int}\PYG{p}{,} \PYG{n+nb}{min}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+        \PYG{n}{I} \PYG{o}{=} \PYG{n}{w\PYGZus{}int} \PYG{o}{*} \PYG{n}{h\PYGZus{}int}
+
+        \PYG{c+c1}{\PYGZsh{} Areas}
+        \PYG{n}{A\PYGZus{}p} \PYG{o}{=} \PYG{n}{w\PYGZus{}p} \PYG{o}{*} \PYG{n}{h\PYGZus{}p}
+        \PYG{n}{A\PYGZus{}g} \PYG{o}{=} \PYG{n}{w\PYGZus{}g} \PYG{o}{*} \PYG{n}{h\PYGZus{}g}
+
+        \PYG{c+c1}{\PYGZsh{} Dice box loss}
+        \PYG{n}{dice} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{I} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{eps}\PYG{p}{)} \PYG{o}{/} \PYG{p}{(}\PYG{n}{A\PYGZus{}g} \PYG{o}{+} \PYG{n}{A\PYGZus{}p} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{eps}\PYG{p}{)}
+        \PYG{n}{loss} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{dice}
+
+        \PYG{k}{return} \PYG{n}{loss}   \PYG{c+c1}{\PYGZsh{} shape: (batch, S, S, B)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[3]:}
+
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{YOLODiceLoss}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{S}\PYG{o}{=}\PYG{l+m+mi}{7}\PYG{p}{,} \PYG{n}{B}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{num\PYGZus{}classes}\PYG{o}{=}\PYG{l+m+mi}{20}\PYG{p}{,} \PYG{n}{lambda\PYGZus{}noobj}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{n}{eps}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{):}
+        \PYG{n+nb}{super}\PYG{p}{()}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{S} \PYG{o}{=} \PYG{n}{S}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{B} \PYG{o}{=} \PYG{n}{B}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{num\PYGZus{}classes} \PYG{o}{=} \PYG{n}{num\PYGZus{}classes}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lambda\PYGZus{}noobj} \PYG{o}{=} \PYG{n}{lambda\PYGZus{}noobj}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{dice\PYGZus{}loss} \PYG{o}{=} \PYG{n}{DiceBoxLoss}\PYG{p}{(}\PYG{n}{eps}\PYG{o}{=}\PYG{n}{eps}\PYG{p}{)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{mse} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{MSELoss}\PYG{p}{(}\PYG{n}{reduction}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}none\PYGZsq{}}\PYG{p}{)}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{pred}\PYG{p}{,} \PYG{n}{target}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        pred, target shapes:}
+\PYG{l+s+sd}{            (batch, S, S, B*5 + C)}
+
+\PYG{l+s+sd}{        box format: [x, y, w, h, conf]  (per box)}
+\PYG{l+s+sd}{        class probabilities: C numbers}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+        \PYG{n}{batch} \PYG{o}{=} \PYG{n}{pred}\PYG{o}{.}\PYG{n}{size}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{)}
+        \PYG{n}{S}\PYG{p}{,} \PYG{n}{B}\PYG{p}{,} \PYG{n}{C} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{S}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{B}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{num\PYGZus{}classes}
+
+        \PYG{c+c1}{\PYGZsh{} Split predictions}
+        \PYG{n}{pred\PYGZus{}boxes} \PYG{o}{=} \PYG{n}{pred}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{p}{:}\PYG{n}{B}\PYG{o}{*}\PYG{l+m+mi}{5}\PYG{p}{]}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{n}{batch}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{B}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{)}
+        \PYG{n}{pred\PYGZus{}cls} \PYG{o}{=} \PYG{n}{pred}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{n}{B}\PYG{o}{*}\PYG{l+m+mi}{5}\PYG{p}{:]}  \PYG{c+c1}{\PYGZsh{} (batch, S, S, C)}
+
+        \PYG{c+c1}{\PYGZsh{} Split targets}
+        \PYG{n}{target\PYGZus{}boxes} \PYG{o}{=} \PYG{n}{target}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{p}{:}\PYG{n}{B}\PYG{o}{*}\PYG{l+m+mi}{5}\PYG{p}{]}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{n}{batch}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{B}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{)}
+        \PYG{n}{target\PYGZus{}cls} \PYG{o}{=} \PYG{n}{target}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{n}{B}\PYG{o}{*}\PYG{l+m+mi}{5}\PYG{p}{:]}  \PYG{c+c1}{\PYGZsh{} (batch, S, S, C)}
+
+        \PYG{c+c1}{\PYGZsh{} Object mask}
+        \PYG{n}{obj\PYGZus{}mask} \PYG{o}{=} \PYG{n}{target\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} shape: (batch, S, S, B)}
+        \PYG{n}{noobj\PYGZus{}mask} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{obj\PYGZus{}mask}
+
+        \PYG{c+c1}{\PYGZsh{} 1) Localization loss using DiceBox}
+        \PYG{n}{pred\PYGZus{}xywh} \PYG{o}{=} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{:}\PYG{l+m+mi}{4}\PYG{p}{]}
+        \PYG{n}{gt\PYGZus{}xywh}   \PYG{o}{=} \PYG{n}{target\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{:}\PYG{l+m+mi}{4}\PYG{p}{]}
+
+        \PYG{n}{dice\PYGZus{}loss} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{dice\PYGZus{}loss}\PYG{p}{(}\PYG{n}{pred\PYGZus{}xywh}\PYG{p}{,} \PYG{n}{gt\PYGZus{}xywh}\PYG{p}{)}
+        \PYG{n}{dice\PYGZus{}loss} \PYG{o}{=} \PYG{n}{dice\PYGZus{}loss} \PYG{o}{*} \PYG{n}{obj\PYGZus{}mask}
+        \PYG{n}{dice\PYGZus{}loss} \PYG{o}{=} \PYG{n}{dice\PYGZus{}loss}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{()} \PYG{o}{/} \PYG{n}{batch}
+
+        \PYG{c+c1}{\PYGZsh{} 2) Confidence loss}
+        \PYG{n}{pred\PYGZus{}conf} \PYG{o}{=} \PYG{n}{pred\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{]}
+        \PYG{n}{gt\PYGZus{}conf} \PYG{o}{=} \PYG{n}{target\PYGZus{}boxes}\PYG{p}{[}\PYG{o}{...}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{]}
+
+        \PYG{n}{conf\PYGZus{}loss\PYGZus{}obj} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{mse}\PYG{p}{(}\PYG{n}{pred\PYGZus{}conf}\PYG{p}{,} \PYG{n}{gt\PYGZus{}conf}\PYG{p}{)} \PYG{o}{*} \PYG{n}{obj\PYGZus{}mask}
+        \PYG{n}{conf\PYGZus{}loss\PYGZus{}noobj} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{mse}\PYG{p}{(}\PYG{n}{pred\PYGZus{}conf}\PYG{p}{,} \PYG{n}{gt\PYGZus{}conf}\PYG{p}{)} \PYG{o}{*} \PYG{n}{noobj\PYGZus{}mask}
+
+        \PYG{n}{conf\PYGZus{}loss} \PYG{o}{=} \PYG{n}{conf\PYGZus{}loss\PYGZus{}obj}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{()} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lambda\PYGZus{}noobj} \PYG{o}{*} \PYG{n}{conf\PYGZus{}loss\PYGZus{}noobj}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{()}
+        \PYG{n}{conf\PYGZus{}loss} \PYG{o}{/=} \PYG{n}{batch}
+
+        \PYG{c+c1}{\PYGZsh{} 3) Classification loss}
+        \PYG{c+c1}{\PYGZsh{} mask per cell (not per box)}
+        \PYG{c+c1}{\PYGZsh{} cell has object if ANY box has object}
+        \PYG{n}{cell\PYGZus{}obj\PYGZus{}mask} \PYG{o}{=} \PYG{p}{(}\PYG{n}{obj\PYGZus{}mask}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{)} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{)}\PYG{o}{.}\PYG{n}{float}\PYG{p}{()}\PYG{o}{.}\PYG{n}{unsqueeze}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} (batch,S,S,1)}
+
+        \PYG{n}{cls\PYGZus{}loss} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{mse}\PYG{p}{(}\PYG{n}{pred\PYGZus{}cls}\PYG{p}{,} \PYG{n}{target\PYGZus{}cls}\PYG{p}{)} \PYG{o}{*} \PYG{n}{cell\PYGZus{}obj\PYGZus{}mask}
+        \PYG{n}{cls\PYGZus{}loss} \PYG{o}{=} \PYG{n}{cls\PYGZus{}loss}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{()} \PYG{o}{/} \PYG{n}{batch}
+
+        \PYG{n}{total\PYGZus{}loss} \PYG{o}{=} \PYG{n}{dice\PYGZus{}loss} \PYG{o}{+} \PYG{n}{conf\PYGZus{}loss} \PYG{o}{+} \PYG{n}{cls\PYGZus{}loss}
+
+        \PYG{k}{return} \PYG{n}{total\PYGZus{}loss}\PYG{p}{,} \PYG{n}{dice\PYGZus{}loss}\PYG{p}{,} \PYG{n}{conf\PYGZus{}loss}\PYG{p}{,} \PYG{n}{cls\PYGZus{}loss}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Calculating Dice Loss, Classification Loss, Confidence Loss, and Total Loss}
+
+\PYG{c+c1}{\PYGZsh{} In[7]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+
+\PYG{c+c1}{\PYGZsh{} Test Setting}
+\PYG{n}{S} \PYG{o}{=} \PYG{l+m+mi}{2}
+\PYG{n}{B} \PYG{o}{=} \PYG{l+m+mi}{1}
+\PYG{n}{C} \PYG{o}{=} \PYG{l+m+mi}{1}
+\PYG{n}{batch} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+\PYG{n}{loss\PYGZus{}fn} \PYG{o}{=} \PYG{n}{YOLODiceLoss}\PYG{p}{(}\PYG{n}{S}\PYG{o}{=}\PYG{n}{S}\PYG{p}{,} \PYG{n}{B}\PYG{o}{=}\PYG{n}{B}\PYG{p}{,} \PYG{n}{num\PYGZus{}classes}\PYG{o}{=}\PYG{n}{C}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}}
+\PYG{c+c1}{\PYGZsh{} with overlap}
+\PYG{c+c1}{\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}}
+
+\PYG{n}{target} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{batch}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{S}\PYG{p}{,} \PYG{n}{B}\PYG{o}{*}\PYG{l+m+mi}{5} \PYG{o}{+} \PYG{n}{C}\PYG{p}{))}
+
+\PYG{c+c1}{\PYGZsh{} Building Target}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.5}  \PYG{c+c1}{\PYGZsh{} x}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.5}  \PYG{c+c1}{\PYGZsh{} y}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.4}  \PYG{c+c1}{\PYGZsh{} w}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.4}  \PYG{c+c1}{\PYGZsh{} h}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{4}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{1.0}  \PYG{c+c1}{\PYGZsh{} confidence}
+\PYG{n}{target}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{5}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{1.0}  \PYG{c+c1}{\PYGZsh{} class}
+
+\PYG{c+c1}{\PYGZsh{} prediction = target}
+\PYG{n}{pred\PYGZus{}perfect} \PYG{o}{=} \PYG{n}{target}\PYG{o}{.}\PYG{n}{clone}\PYG{p}{()}
+
+\PYG{n}{total}\PYG{p}{,} \PYG{n}{dice}\PYG{p}{,} \PYG{n}{conf}\PYG{p}{,} \PYG{n+nb+bp}{cls} \PYG{o}{=} \PYG{n}{loss\PYGZus{}fn}\PYG{p}{(}\PYG{n}{pred\PYGZus{}perfect}\PYG{p}{,} \PYG{n}{target}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}CASE A: Perfect Prediction\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Total Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{total}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Dice Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{dice}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Conf Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{conf}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Cls Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n+nb+bp}{cls}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+
+
+\PYG{c+c1}{\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}}
+\PYG{c+c1}{\PYGZsh{} With out overlap}
+\PYG{c+c1}{\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}\PYGZsh{}}
+
+\PYG{n}{pred\PYGZus{}bad} \PYG{o}{=} \PYG{n}{target}\PYG{o}{.}\PYG{n}{clone}\PYG{p}{()}
+
+\PYG{c+c1}{\PYGZsh{} Moving box}
+\PYG{n}{pred\PYGZus{}bad}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.1}  \PYG{c+c1}{\PYGZsh{} x}
+\PYG{n}{pred\PYGZus{}bad}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.1}  \PYG{c+c1}{\PYGZsh{} y}
+
+\PYG{n}{total}\PYG{p}{,} \PYG{n}{dice}\PYG{p}{,} \PYG{n}{conf}\PYG{p}{,} \PYG{n+nb+bp}{cls} \PYG{o}{=} \PYG{n}{loss\PYGZus{}fn}\PYG{p}{(}\PYG{n}{pred\PYGZus{}bad}\PYG{p}{,} \PYG{n}{target}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{CASE B: No Overlap\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Total Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{total}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Dice Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{dice}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Conf Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n}{conf}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Cls Loss:\PYGZdq{}}\PYG{p}{,} \PYG{n+nb+bp}{cls}\PYG{o}{.}\PYG{n}{item}\PYG{p}{())}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Visualization}
+
+\PYG{c+c1}{\PYGZsh{} In[19]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.patches}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{patches}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{draw\PYGZus{}boxes}\PYG{p}{(}\PYG{n}{gt}\PYG{p}{,} \PYG{n}{pred}\PYG{p}{):}
+
+    \PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,}\PYG{l+m+mi}{5}\PYG{p}{))}
+
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlim}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylim}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Converting tensor to float}
+    \PYG{n}{xg} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{gt}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{])}
+    \PYG{n}{yg} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{gt}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{])}
+    \PYG{n}{wg} \PYG{o}{=} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{gt}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{2}\PYG{p}{]))}
+    \PYG{n}{hg} \PYG{o}{=} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{gt}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{3}\PYG{p}{]))}
+
+    \PYG{n}{xp} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{pred}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{])}
+    \PYG{n}{yp} \PYG{o}{=} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{pred}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{])}
+    \PYG{n}{wp} \PYG{o}{=} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{pred}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{2}\PYG{p}{]))}
+    \PYG{n}{hp} \PYG{o}{=} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{pred}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{,}\PYG{l+m+mi}{3}\PYG{p}{]))}
+
+    \PYG{c+c1}{\PYGZsh{} center → corner}
+    \PYG{n}{xg1} \PYG{o}{=} \PYG{n}{xg} \PYG{o}{\PYGZhy{}} \PYG{n}{wg}\PYG{o}{/}\PYG{l+m+mi}{2}
+    \PYG{n}{yg1} \PYG{o}{=} \PYG{n}{yg} \PYG{o}{\PYGZhy{}} \PYG{n}{hg}\PYG{o}{/}\PYG{l+m+mi}{2}
+    \PYG{n}{xp1} \PYG{o}{=} \PYG{n}{xp} \PYG{o}{\PYGZhy{}} \PYG{n}{wp}\PYG{o}{/}\PYG{l+m+mi}{2}
+    \PYG{n}{yp1} \PYG{o}{=} \PYG{n}{yp} \PYG{o}{\PYGZhy{}} \PYG{n}{hp}\PYG{o}{/}\PYG{l+m+mi}{2}
+
+    \PYG{c+c1}{\PYGZsh{} GT box}
+    \PYG{n}{gt\PYGZus{}box} \PYG{o}{=} \PYG{n}{patches}\PYG{o}{.}\PYG{n}{Rectangle}\PYG{p}{(}
+        \PYG{p}{(}\PYG{n}{xg1}\PYG{p}{,}\PYG{n}{yg1}\PYG{p}{),}\PYG{n}{wg}\PYG{p}{,}\PYG{n}{hg}\PYG{p}{,}
+        \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{,}
+        \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}green\PYGZsq{}}\PYG{p}{,}
+        \PYG{n}{facecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}green\PYGZsq{}}\PYG{p}{,}
+        \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.2}\PYG{p}{,}
+        \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Ground Truth\PYGZdq{}}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Pred box}
+    \PYG{n}{pred\PYGZus{}box} \PYG{o}{=} \PYG{n}{patches}\PYG{o}{.}\PYG{n}{Rectangle}\PYG{p}{(}
+        \PYG{p}{(}\PYG{n}{xp1}\PYG{p}{,}\PYG{n}{yp1}\PYG{p}{),}\PYG{n}{wp}\PYG{p}{,}\PYG{n}{hp}\PYG{p}{,}
+        \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{,}
+        \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,}
+        \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}\PYGZhy{}\PYGZhy{}\PYGZsq{}}\PYG{p}{,}
+        \PYG{n}{facecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}none\PYGZsq{}}\PYG{p}{,}
+        \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Prediction\PYGZdq{}}
+    \PYG{p}{)}
+
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{add\PYGZus{}patch}\PYG{p}{(}\PYG{n}{gt\PYGZus{}box}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{add\PYGZus{}patch}\PYG{p}{(}\PYG{n}{pred\PYGZus{}box}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Plotting the center of the box}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{xg}\PYG{p}{,} \PYG{n}{yg}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}green\PYGZsq{}}\PYG{p}{,} \PYG{n}{s}\PYG{o}{=}\PYG{l+m+mi}{80}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{xp}\PYG{p}{,} \PYG{n}{yp}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,} \PYG{n}{s}\PYG{o}{=}\PYG{l+m+mi}{80}\PYG{p}{)}
+
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Bounding Box Visualization\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}aspect}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}equal\PYGZsq{}}\PYG{p}{)}
+
+    \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} In[20]:}
+
+
+\PYG{n}{draw\PYGZus{}boxes}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{pred\PYGZus{}perfect}\PYG{p}{)}
+\PYG{n}{draw\PYGZus{}boxes}\PYG{p}{(}\PYG{n}{target}\PYG{p}{,} \PYG{n}{pred\PYGZus{}bad}\PYG{p}{)}
+
+\end{MintedVerbatim}

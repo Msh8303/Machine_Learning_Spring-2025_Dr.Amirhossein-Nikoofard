@@ -1,0 +1,30 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn.functional}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{F}
+
+\PYG{n}{torch}\PYG{o}{.}\PYG{n}{manual\PYGZus{}seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)}
+\PYG{n}{input\PYGZus{}tensor} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{,} \PYG{n}{requires\PYGZus{}grad}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} (Batch, Channel, H, W)}
+\PYG{n}{target} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{)}
+\PYG{n}{kernel\PYGZus{}size} \PYG{o}{=} \PYG{l+m+mi}{3}
+
+\PYG{n}{W} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Parameter}\PYG{p}{(}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{kernel\PYGZus{}size}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{p}{))}
+\PYG{n}{M} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Parameter}\PYG{p}{(}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{kernel\PYGZus{}size}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{p}{))}
+
+\PYG{n}{W\PYGZus{}final} \PYG{o}{=} \PYG{n}{W} \PYG{o}{*} \PYG{n}{M} 
+
+\PYG{n}{patches} \PYG{o}{=} \PYG{n}{F}\PYG{o}{.}\PYG{n}{unfold}\PYG{p}{(}\PYG{n}{input\PYGZus{}tensor}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{o}{=}\PYG{p}{(}\PYG{n}{kernel\PYGZus{}size}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{p}{))}
+\PYG{n}{flat\PYGZus{}weight} \PYG{o}{=} \PYG{n}{W\PYGZus{}final}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{output\PYGZus{}flat} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{matmul}\PYG{p}{(}\PYG{n}{flat\PYGZus{}weight}\PYG{p}{,} \PYG{n}{patches}\PYG{p}{)}
+\PYG{n}{output} \PYG{o}{=} \PYG{n}{output\PYGZus{}flat}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{)}
+
+\PYG{n}{criterion} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{MSELoss}\PYG{p}{()}
+\PYG{n}{loss} \PYG{o}{=} \PYG{n}{criterion}\PYG{p}{(}\PYG{n}{output}\PYG{p}{,} \PYG{n}{target}\PYG{p}{)}
+\PYG{n}{loss}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{()}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Loss: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss}\PYG{o}{.}\PYG{n}{item}\PYG{p}{()}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Gradients for W:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{W}\PYG{o}{.}\PYG{n}{grad}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Gradients for M:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{M}\PYG{o}{.}\PYG{n}{grad}\PYG{p}{)}
+\end{MintedVerbatim}

@@ -1,0 +1,46 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{backward\PYGZus{}and\PYGZus{}adam\PYGZus{}update}\PYG{p}{(}\PYG{n}{X} \PYG{p}{,}\PYG{n}{A1}\PYG{p}{,} \PYG{n}{W2}\PYG{p}{,} \PYG{n}{dZ2}\PYG{p}{,} \PYG{n}{W1}\PYG{p}{,}\PYG{n}{b1}\PYG{p}{,}\PYG{n}{m}\PYG{p}{,}\PYG{n}{t}\PYG{p}{,}\PYG{n}{m\PYGZus{}t}\PYG{p}{,}\PYG{n}{v\PYGZus{}t}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}\PYGZus{}summary\PYGZus{}}
+
+\PYG{l+s+sd}{    Args:}
+\PYG{l+s+sd}{    }
+\PYG{l+s+sd}{        X (n\PYGZus{}x, m): input matrix}
+\PYG{l+s+sd}{        A1 (n\PYGZus{}h, m): the output of the first hidden layer passed from ReLU}
+\PYG{l+s+sd}{        W2 (n\PYGZus{}y, n\PYGZus{}h): weights of the second layer}
+\PYG{l+s+sd}{        dZ2 (n\PYGZus{}y, m): The gradient of the loss function with respect to z2 }
+\PYG{l+s+sd}{        W1 (n\PYGZus{}h, n\PYGZus{}x): weights of the first layer}
+\PYG{l+s+sd}{        b1 (n\PYGZus{}h, 1): the bias of the first layer}
+\PYG{l+s+sd}{        m (scaler): the size of mini\PYGZhy{}batch}
+\PYG{l+s+sd}{        t : current timestamp for adam}
+\PYG{l+s+sd}{        m\PYGZus{}t (n\PYGZus{}h, n\PYGZus{}x): 1st moment for W1}
+\PYG{l+s+sd}{        v\PYGZus{}t (n\PYGZus{}h, n\PYGZus{}x): 2nd moment }
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    
+    \PYG{c+c1}{\PYGZsh{} dZ1 \PYGZhy{} ReLU derivative}
+    \PYG{n}{dA1} \PYG{o}{=} \PYG{n}{W2}\PYG{o}{.}\PYG{n}{T} \PYG{o}{@} \PYG{n}{dZ2}
+    \PYG{n}{dZ1} \PYG{o}{=} \PYG{n}{dA1} \PYG{o}{*} \PYG{p}{(}\PYG{n}{A1} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{)}
+    
+    \PYG{c+c1}{\PYGZsh{}dW1 , db1}
+    \PYG{n}{dW1} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{m}\PYG{p}{)} \PYG{o}{*} \PYG{p}{(}\PYG{n}{dZ1} \PYG{o}{@} \PYG{n}{X}\PYG{o}{.}\PYG{n}{T}\PYG{p}{)}
+    \PYG{n}{db1} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{m}\PYG{p}{)} \PYG{o}{*} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{dZ1}\PYG{p}{,} \PYG{n}{axis} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{keepdims} \PYG{o}{=} \PYG{k+kc}{True}\PYG{p}{)}
+    
+    
+    \PYG{c+c1}{\PYGZsh{}adam parameters}
+    \PYG{n}{beta1} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+    \PYG{n}{beta2} \PYG{o}{=} \PYG{l+m+mf}{0.999}
+    \PYG{n}{lr} \PYG{o}{=} \PYG{l+m+mf}{0.1}
+    \PYG{n}{epsilon} \PYG{o}{=} \PYG{l+m+mf}{1e\PYGZhy{}8}
+    
+    \PYG{c+c1}{\PYGZsh{}1st moment and 2nd moment updated}
+    \PYG{n}{m\PYGZus{}t\PYGZus{}new} \PYG{o}{=} \PYG{n}{beta1} \PYG{o}{*} \PYG{n}{m\PYGZus{}t} \PYG{o}{+} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{beta1}\PYG{p}{)} \PYG{o}{*} \PYG{n}{dW1}
+    \PYG{n}{v\PYGZus{}t\PYGZus{}new} \PYG{o}{=} \PYG{n}{beta2} \PYG{o}{*} \PYG{n}{v\PYGZus{}t} \PYG{o}{+} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{beta2} \PYG{p}{)} \PYG{o}{*} \PYG{p}{(}\PYG{n}{dW1} \PYG{o}{*} \PYG{n}{dW1}\PYG{p}{)}
+    
+    \PYG{n}{m\PYGZus{}hat} \PYG{o}{=} \PYG{n}{m\PYGZus{}t\PYGZus{}new} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{beta1} \PYG{o}{**} \PYG{n}{t}\PYG{p}{)}
+    \PYG{n}{v\PYGZus{}hat} \PYG{o}{=} \PYG{n}{v\PYGZus{}t\PYGZus{}new} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{beta2} \PYG{o}{**} \PYG{n}{t}\PYG{p}{)} 
+    
+    \PYG{n}{w1\PYGZus{}updated} \PYG{o}{=} \PYG{n}{W1} \PYG{o}{\PYGZhy{}} \PYG{n}{lr} \PYG{o}{*} \PYG{p}{(}\PYG{n}{m\PYGZus{}hat} \PYG{o}{/} \PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{v\PYGZus{}hat}\PYG{p}{)} \PYG{o}{+} \PYG{n}{epsilon}\PYG{p}{))}    
+    
+    \PYG{k}{return} \PYG{n}{w1\PYGZus{}updated}\PYG{p}{,} \PYG{n}{m\PYGZus{}t\PYGZus{}new}\PYG{p}{,} \PYG{n}{v\PYGZus{}t\PYGZus{}new}
+    
+\end{MintedVerbatim}

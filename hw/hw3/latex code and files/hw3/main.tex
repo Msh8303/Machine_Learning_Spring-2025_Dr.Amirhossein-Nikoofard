@@ -1,0 +1,2736 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage[sorting=none]{biblatex}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+%\usepackage{subfigure}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{lmodern} % فونت بهتر برای لاتین
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage{fvextra}
+
+\setminted{
+	linenos,
+	breaklines=true,
+	breakanywhere=true,
+	encoding=utf8,
+	autogobble=true,
+	fontsize=\small,
+	frame=single,
+	tabsize=4,
+	obeytabs=true,
+	mathescape=false,
+	texcomments=false
+}
+\usepackage{amssymb}
+\usepackage{longtable} % برای جداول طولانی
+\usepackage{enumitem} % برای کنترل لیست‌ها
+\usepackage{booktabs} % برای جداول حرفه‌ای
+\hypersetup{
+	colorlinks=true,
+	linkcolor=teal,
+	filecolor=magenta,      
+	urlcolor=teal,
+	citecolor=teal
+}
+\usepackage{xepersian}
+
+
+
+
+\setlength\headheight{28pt} 
+\addbibresource{bibliography.bib}
+\settextfont[Path={./font/}, Scale=1.3]{IRLotus}
+\setlatintextfont[Scale=1]{Times New Roman}
+\renewcommand{\baselinestretch}{1.5}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{تمرین سری سوم یادگیری ماشین}
+\chead{\includegraphics[width=1cm]{img/Logo.png}}
+\rhead{\thepage}
+
+\rfoot{محمدامین محمدیون شبستری}
+\cfoot{آرین خوشنویس}
+\lfoot{محمدسبحان سخایی}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+\AtBeginDocument{
+	\def\chapterautorefname{فصل}%
+	\def\sectionautorefname{پاسخ سوال}%
+	\def\subsectionautorefname{بخش}%
+	\def\subsubsectionautorefname{بخش}%
+	\def\equationautorefname{رابطهٔ}%
+    \def\lstlistingautorefname{برنامۀ}%
+}
+\renewcommand{\lstlistingname}{Code}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},   
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=5pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=2
+}
+
+
+
+\lstset{style=mystyle}
+
+\begin{document}
+\input{titlepage}
+
+\tableofcontents \clearpage
+\listoffigures \clearpage
+\newpage
+
+\section {سوال 1: تحلیل ریاضیاتی محو شدگی گرادیان و نقش \lr{Cell State} در \lr{LSTM}}
+\subsection{الف) تحلیل محوشدگی گرادیان در \lr{RNN} استاندارد}
+
+پدیده \lr{vanishing gradient} یا محوشدگی گرادیان یکی از مشکلات اصلی آموزش شبکه‌های عصبی بازگشتی (\lr{RNN}) است. این پدیده باعث می‌شود که گرادیان‌ها هنگام \lr{backpropagation through time (BPTT)} در لایه‌های عمیق زمانی، به سرعت به صفر میل کنند و یادگیری وابستگی‌های بلندمدت در توالی‌های طولانی سخت شود.
+
+\medskip
+
+\noindent ابتدا معادله حالت یک \lr{RNN} استاندارد را به صورت زیر می‌نویسیم:
+\begin{equation}
+	s_t = \tanh\left(U x_t + W s_{t-1}\right)
+\end{equation}
+که در آن:
+\begin{itemize}
+	\item \(s_t \in \mathbb{R}^n\) حالت مخفی در زمان \(t\)
+	\item \(x_t \in \mathbb{R}^m\) ورودی در زمان \(t\)
+	\item \(U \in \mathbb{R}^{n \times m}\) ماتریس وزن ورودی
+	\item \(W \in \mathbb{R}^{n \times n}\) ماتریس وزن بازگشتی (از حالت قبلی)
+	\item \(\tanh(\cdot)\) تابع فعال‌سازی تانژانت هیپربولیک که المان‌به‌المان اعمال می‌شود
+\end{itemize}
+
+هدف تحلیل: محاسبه مشتق جزئی حالت فعلی نسبت به حالت \(d\) گام زمانی قبل، یعنی \(\frac{\partial s_t}{\partial s_{t-d}}\)، و بررسی رفتار آن با افزایش \(d\).
+
+\bigskip
+
+\paragraph{اعمال قاعده زنجیره‌ای (Chain Rule)}
+
+با توجه به این که حالت در زمان \(t\) با حالت قبلی \(s_{t-1}\) مرتبط است، مشتق \(\frac{\partial s_t}{\partial s_{t-d}}\) برابر است با ضرب زنجیره‌ای مشتقات میان‌گام‌ها:
+\begin{equation}
+	\frac{\partial s_t}{\partial s_{t-d}} = \prod_{k=t-d+1}^{t} \frac{\partial s_k}{\partial s_{k-1}} = \frac{\partial s_t}{\partial s_{t-1}} \times \frac{\partial s_{t-1}}{\partial s_{t-2}} \times \cdots \times \frac{\partial s_{t-d+1}}{\partial s_{t-d}}
+	\label{eq:chain_rule}
+\end{equation}
+
+هر عامل \(\frac{\partial s_k}{\partial s_{k-1}}\) در این ضرب، یک ماتریس \lr{Jacobian} است که مشتق بردار \(s_k\) نسبت به بردار \(s_{k-1}\) را نشان می‌دهد.
+
+\medskip
+
+\paragraph{محاسبه ماتریس ژاکوبین \(\frac{\partial s_k}{\partial s_{k-1}}\)}
+
+فرض کنید:
+\begin{equation}
+a_k = U x_k + W s_{k-1}
+\end{equation}
+و
+\begin{equation}
+s_k = \tanh(a_k)
+\end{equation}
+طبق قاعده زنجیره‌ای داریم:
+\begin{equation}
+	\frac{\partial s_k}{\partial s_{k-1}} = \frac{\partial s_k}{\partial a_k} \cdot \frac{\partial a_k}{\partial s_{k-1}}
+\end{equation}
+
+تابع \(\tanh(x)\) یک تابع المان به المان است که مشتق آن به شکل زیر است:
+\begin{equation}
+\frac{d}{dx} \tanh(x) = 1 - \tanh^2(x)
+\end{equation}
+
+پس:
+\begin{equation}
+	\frac{\partial s_k}{\partial a_k} = \operatorname{diag}\left(1 - s_k^2\right)
+	\label{eq:jacobian_diag}
+\end{equation}
+که \(\operatorname{diag}(\cdot)\) ماتریس قطری با ورودی‌های قطری است.
+
+مشتق \(\frac{\partial a_k}{\partial s_{k-1}}\) برابر ماتریس وزن بازگشتی است:
+\begin{equation}
+\frac{\partial a_k}{\partial s_{k-1}} = W
+\end{equation}
+
+بنابراین:
+\begin{equation}
+	\frac{\partial s_k}{\partial s_{k-1}} = \operatorname{diag}\left(1 - s_k^2\right) W
+	\label{eq:jacobian_single_step}
+\end{equation}
+
+\medskip
+
+\paragraph{رابطه کلی مشتق نسبت به \(s_{t-d}\)}
+
+طبق \eqref{eq:chain_rule} و \eqref{eq:jacobian_single_step} داریم:
+\begin{equation}
+	\frac{\partial s_t}{\partial s_{t-d}} = \prod_{k=t-d+1}^t \operatorname{diag}\left(1 - s_k^2\right) W
+	\label{eq:jacobian_product}
+\end{equation}
+
+---
+
+\paragraph{تحلیل رفتاری و محو شدگی گرادیان}
+
+برای بررسی این که گرادیان با افزایش \(d\) چه رفتاری دارد، نُرم ماتریسی آن را می‌سنجیم.
+
+با استفاده از خاصیت نُرم‌های ماتریسی داریم:
+\begin{equation}
+	\left\| \frac{\partial s_t}{\partial s_{t-d}} \right\| \leq \prod_{k=t-d+1}^t \left\| \operatorname{diag}\left(1 - s_k^2\right) W \right\|
+\end{equation}
+
+اگر مقدار ثابت
+\begin{equation}
+y = \sup_{k} \left\| \operatorname{diag}(1-s_k^2) W \right\|
+\end{equation}
+
+باشد، آنگاه:
+\begin{equation}
+\left\| \frac{\partial s_t}{\partial s_{t-d}} \right\| \leq y^d
+\end{equation}
+---
+
+\paragraph{بررسی نُرم ماتریس قطری \(\operatorname{diag}(1 - s_k^2)\)}
+
+مقادیر هر مولفه از \(s_k\) در بازه \(\left(-1, 1\right)\) قرار دارد چون تابع \(\tanh\) روی \(\mathbb{R}\) تصویرش این محدوده است.
+
+بنابراین:
+\begin{equation}
+0 < 1 - s_k^2 \leq 1
+\end{equation}
+
+بنابراین:
+\begin{equation}
+\left\| \operatorname{diag}(1 - s_k^2) \right\| \leq 1
+\end{equation}
+
+---
+
+\paragraph{بررسی نُرم ماتریس وزن بازگشتی \(W\)}
+
+نُرم ماتریس \(W\) به مقدار ویژه بزرگترین مقدار قدر مطلق (\(\lambda_{\max}(W)\)) وابسته است.
+
+اگر مقادیر ویژه \(W\) کوچک باشند، یعنی:
+\begin{equation}
+\left\| W \right\| = \lambda_{\max}(W) < 1
+\end{equation}
+
+که این حالت معمولاً هنگام مقداردهی وزن‌ها به صورت تصادفی کوچک رخ می‌دهد.
+
+---
+
+\paragraph{نتیجه نهایی}
+
+اگر \(y < 1\) باشد، رابطه زیر برقرار است:
+\begin{equation}
+\lim_{d \to \infty} y^d = 0
+\end{equation}
+
+که به معنی آن است که \(\frac{\partial s_t}{\partial s_{t-d}}\) به صورت نمایی به صفر میل می‌کند. این همان مسئله معروف \lr{vanishing gradient} یا محوشدگی گرادیان در \lr{RNN} است.
+
+
+\subsection{ب) حل مشکل محو شدگی گرادیان در \lr{LSTM}}
+
+شبکه‌های \lr{Long Short-Term Memory (LSTM)} با معرفی ساختار حافظه سلولی (\lr{Cell State}) و گیت‌های کنترلی، مشکل محوشدگی گرادیان در شبکه‌های عصبی بازگشتی استاندارد را به‌طور موثری حل کرده‌اند.
+
+\medskip
+
+\paragraph{ساختار حافظه سلولی و معادله به‌روزرسانی} 
+
+حافظه سلولی در \lr{LSTM} به صورت زیر به‌روزرسانی می‌شود:
+\begin{equation}
+	C_t = f_t \odot C_{t-1} + i_t \odot \widetilde{C}_t
+	\label{eq:lstm_cell_state}
+\end{equation}
+که در آن:
+\begin{itemize}
+	\item \(C_t\): بردار وضعیت حافظه در زمان \(t\).
+	\item \(f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f) \in (0,1)^n\): گیت فراموشی (\lr{forget gate}), تصمیم می‌گیرد چه مقدار از حافظه قدیمی حفظ شود.
+	\item \(i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i) \in (0,1)^n\): گیت ورودی (\lr{input gate}), مقدار به‌روزرسانی حافظه.
+	\item \(\widetilde{C}_t = \tanh(W_c x_t + U_c h_{t-1} + b_c)\): وضعیت کاندید جدید حافظه.
+	\item \(\odot\): ضرب المان به المان.
+\end{itemize}
+
+\bigskip
+
+\paragraph{محاسبه مشتق \(\frac{\partial C_t}{\partial C_{t-1}}\)}
+
+انتقال گرادیان از \(C_t\) به \(C_{t-1}\) کلید فهم نحوه جلوگیری از محوشدگی گرادیان در \lr{LSTM} است. مشتق کامل عبارت \eqref{eq:lstm_cell_state} نسبت به \(C_{t-1}\) را با قاعده مشتق گیری موسوم به \lr{product rule} ‌و \lr{sum rule} محاسبه می‌کنیم:
+
+\begin{align}
+	\frac{\partial C_t}{\partial C_{t-1}} 
+	&= \frac{\partial}{\partial C_{t-1}} \left( f_t \odot C_{t-1} + i_t \odot \widetilde{C}_t \right) \\
+	&= \underbrace{\frac{\partial f_t}{\partial C_{t-1}} \odot C_{t-1}}_{\text{I}} + \underbrace{f_t \odot \frac{\partial C_{t-1}}{\partial C_{t-1}}}_{\text{II}} + \underbrace{\frac{\partial i_t}{\partial C_{t-1}} \odot \widetilde{C}_t}_{\text{III}} + \underbrace{i_t \odot \frac{\partial \widetilde{C}_t}{\partial C_{t-1}}}_{\text{IV}} 
+	\label{eq:full_derivative}
+\end{align}
+
+که در آن:
+
+- عبارت \(\text{II} = f_t \odot \mathbf{I}\) زیرا \(\frac{\partial C_{t-1}}{\partial C_{t-1}} = \mathbf{I}\) ماتریس همانی است.
+
+- عبارات \(\text{I}, \text{III}, \text{IV}\) معرف وابستگی غیرمستقیم گیت‌ها و کاندید \(i_t, f_t, \widetilde{C}_t\) به \(C_{t-1}\) از طریق حالت مخفی \(h_{t-1}\) هستند.
+
+
+
+\paragraph{تقریب حذف مشتقات غیرمستقیم}
+
+توجه داشته باشید که معمولاً، مقادیر مشتقات \(\frac{\partial f_t}{\partial C_{t-1}}, \frac{\partial i_t}{\partial C_{t-1}}, \frac{\partial \widetilde{C}_t}{\partial C_{t-1}}\) کوچک هستند یا در برخی تحلیل‌ها قابل چشم‌پوشی. به‌خصوص در مسیر انتقال اصلی حافظه (مسیر خطی)، این مشتقات به عنوان نویز تلقی می‌شوند.
+
+پس تقریب می‌زنیم:
+\begin{equation}
+	\frac{\partial C_t}{\partial C_{t-1}} \approx f_t
+	\label{eq:approx_derivative}
+\end{equation}
+
+به عبارت ساده‌تر، نرخ تغییر حافظه جدید نسبت به حافظه قبلی توسط گیت فراموشی کنترل می‌شود.
+
+
+
+\paragraph{انتقال گرادیان در مسیر حافظه سلولی}
+
+براساس قاعده زنجیره‌ای در انتقال گرادیان در زمان، مشتق حافظه در زمان \(t\) نسبت به \(t-d\) برابر است با ضرب زنجیره‌ای مشتقات میانی:
+\begin{equation}
+	\frac{\partial C_t}{\partial C_{t-d}} = \prod_{k=t-d+1}^t \frac{\partial C_k}{\partial C_{k-1}} \approx \prod_{k=t-d+1}^t f_k
+	\label{eq:grad_product}
+\end{equation}
+
+
+
+\paragraph{بررسی رفتار طولانی مدت گرادیان}
+
+
+
+\textbf{مقایسه با \lr{RNN} استاندارد:}
+
+- در \lr{RNN} معمولی، این مسیر مشتق به شکل ضرب متوالی ماتریس وزن بازگشتی \(W\) است، که چون 
+\(\|W\| < 1\)، مقدار گرادیان به سرعت \(\to 0\) می‌رود و باعث محوشدگی می‌شود.
+
+- در \lr{LSTM}، مسیر خطی حافظه در قالب ضرب‌های المان‌به‌المان گیت فراموشی \(f_k\) وجود دارد که بین 0 و 1 است.
+
+
+
+\paragraph{ایده کلیدی: حفظ گرادیان با تنظیم گیت فراموشی}
+
+تابع \(\sigma(\cdot)\) که سیگموید است، مقدار گیت فراموشی را در بازه \((0,1)\) نگه می‌دارد.
+
+- در صورتی که اطلاعات گذشته اهمیت بالایی داشته باشد، شبکه گیت \(f_k\) را یاد می‌گیرد که مقدار آن نزدیک 1 باشد:
+\begin{equation}
+f_k \approx 1 \implies \prod_{k=t-d+1}^t f_k \approx 1
+\end{equation}
+در نتیجه گرادیان به صورت پویا و بدون کاهش شدید حفظ می‌شود.
+
+- اگر اطلاعات قدیمی اهمیت نداشته باشند، مقدار \(f_k\) به عددی نزدیک صفر می‌رسد و حافظه قبلی فراموش می‌شود.
+
+
+\paragraph{نکته ریاضی: علت کاهش سریع محوشدگی}
+
+ساختار ضرب المان به المان بر خلاف ضرب ماتریسی، اجازه می‌دهد گرادیان مستقیماً از گام‌های زمانی دور بدون تبدیل پیچیده عبور کند.
+
+در واقع، ماتریس وزن \(W\) در \lr{RNN} نقش فیلتر قوی روی گرادیان دارد (که اغلب منجر به کاهش شدت گرادیان می‌شود)، ولی در \lr{LSTM}، مسیر خطی حافظه باعث می‌شود که کاهی‌ها کمتر شود.
+
+
+\paragraph{تشریح مشتقات غیرمستقیم (جزئی‌تر)} 
+
+اگر دقیق‌تر بررسی کنیم:
+
+\begin{equation}
+f_t = \sigma\left(W_f x_t + U_f h_{t-1} + b_f\right), \quad h_{t-1} = o_{t-1} \odot \tanh(C_{t-1})
+\end{equation}
+
+بنابراین:
+
+\begin{equation}
+\frac{\partial f_t}{\partial C_{t-1}} = \frac{\partial f_t}{\partial h_{t-1}} \cdot \frac{\partial h_{t-1}}{\partial C_{t-1}} = \sigma'(a_{f_t}) \cdot U_f \cdot \operatorname{diag}\left(o_{t-1} \odot (1 - \tanh^2(C_{t-1}))\right)
+\end{equation}
+
+که این مقدار معمولاً کوچک است زیرا:
+
+- \(\sigma'(\cdot)\) مشتق سیگموید است که حداکثر 0.25 دارد.
+
+- \(\tanh^2(\cdot)\) که باعث کاهش شیب می‌شود.
+
+- همچنین \(U_f\) وزن‌هایی است که معمولاً مقدار متوسط دارند.
+
+برای همین تأثیر کل این مشتق نسبت به \(f_t\) اصلی کوچک است.
+
+
+\paragraph{نتیجه‌گیری کلی}
+
+- مسیر خطی و ضرب المان به المان حافظه سلولی همراه با گیت فراموشی، امکان انتقال گرادیان با دامنه مناسب در گام‌های زمانی طولانی را فراهم می‌کند.
+
+- این ویژگی، \lr{LSTM} را قادر می‌سازد وابستگی‌های بلندمدت را یاد بگیرد و همزمان بتواند اطلاعات نا مربوط را فراموش کند.
+
+- این مزیت اصلی \lr{LSTM} نسبت به \lr{RNN}های معمولی است و توضیح می‌دهد چرا \lr{LSTM} در مسائل کاربردی با توالی‌های طولانی عملکرد بهتری دارد.
+
+
+
+\section {سوال 2: استخراج معادلات پس انتشار \lr{Backward Pass} برای گیت \lr{Reset} در \lr{GRU}}
+
+در این سوال هدف، استخراج رابطه دقیق گرادیان ماتریس وزن‌های گیت \lr{Reset} یعنی
+$\delta W_r = \frac{\partial E}{\partial W_r}$
+بر حسب متغیرهای میانی و با استفاده از معادلات حاکم بر \lr{GRU} است.  
+برای این منظور باید مسیر اثرگذاری $W_r$ بر تابع خطا $E$ را مشخص کرده و سپس با استفاده از قاعده زنجیره‌ای (\lr{Chain Rule})، گرادیان نهایی را مرحله‌به‌مرحله به دست آوریم.
+
+\vspace{0.3cm}
+
+ابتدا معادلات اصلی مربوط به این بخش از \lr{GRU} را یادآوری می‌کنیم. گیت \lr{Reset} از رابطه زیر محاسبه می‌شود:
+\begin{equation}
+	r_t=\sigma\left(W_r \cdot [h_{t-1},x_t]\right)
+\end{equation}
+
+خروجی پنهان کاندید نیز از رابطه زیر به دست می‌آید:
+\begin{equation}
+	\widetilde{h}_t=\tanh\left(W\cdot[r_t\odot h_{t-1},x_t]\right)
+\end{equation}
+
+همچنین خروجی پنهان نهایی در زمان $t$ برابر است با:
+\begin{equation}
+	h_t=(1-z_t)\odot h_{t-1}+z_t\odot \widetilde{h}_t
+\end{equation}
+
+در روابط بالا:
+\begin{itemize}
+	\item $\sigma(\cdot)$ تابع سیگموید است،
+	\item $\tanh(\cdot)$ تابع تانژانت هیپربولیک است،
+	\item $\odot$ نشان‌دهنده ضرب درایه‌به‌درایه است،
+	\item $[\cdot,\cdot]$ الحاق (\lr{concatenation}) دو بردار را نشان می‌دهد.
+\end{itemize}
+
+\subsection{2-1- قاعده \lr{Chain Rule} بر اساس معادلات حاکم}
+
+برای نوشتن رابطه زنجیره‌ای مناسب، ابتدا باید مسیر وابستگی $W_r$ تا تابع خطا $E$ را مشخص کنیم.  
+با توجه به معادلات بالا، ماتریس وزن $W_r$ ابتدا بر $r_t$ اثر می‌گذارد، سپس $r_t$ در محاسبه $\widetilde{h}_t$ ظاهر می‌شود، $\widetilde{h}_t$ بر $h_t$ اثر می‌گذارد و در نهایت $h_t$ در تابع خطا $E$ وارد می‌شود. بنابراین مسیر وابستگی به صورت زیر است:
+
+\begin{equation}
+	W_r \rightarrow r_t \rightarrow \widetilde{h}_t \rightarrow h_t \rightarrow E
+\end{equation}
+
+در نتیجه، طبق قاعده زنجیره‌ای داریم:
+\begin{equation}
+	\delta W_r=\frac{\partial E}{\partial W_r}
+	=
+	\frac{\partial E}{\partial h_t}
+	\cdot
+	\frac{\partial h_t}{\partial \widetilde{h}_t}
+	\cdot
+	\frac{\partial \widetilde{h}_t}{\partial r_t}
+	\cdot
+	\frac{\partial r_t}{\partial W_r}
+\end{equation}
+
+البته در عمل، برای جلوگیری از ابهام در ابعاد و نوع ضرب‌ها، این رابطه را به صورت مرحله‌ای و با تعریف متغیرهای میانی بازنویسی می‌کنیم تا محاسبه گرادیان‌ها شفاف‌تر و دقیق‌تر شود.
+
+\subsection{2-2- گرادیان خطا نسبت به حالت پنهان}
+
+همان‌طور که در صورت سوال بیان شده است، گرادیان تابع خطا نسبت به حالت پنهان در زمان $t$ در اختیار ما قرار دارد. بنابراین داریم:
+\begin{equation}
+	\delta h_t=\frac{\partial E}{\partial h_t}
+\end{equation}
+
+این کمیت نقطه شروع پس‌انتشار برای این بخش از شبکه است.
+
+\subsection{2-3- گرادیان خطا نسبت به خروجی پنهان کاندید}
+
+برای محاسبه گرادیان نسبت به $\widetilde{h}_t$، از معادله خروجی پنهان نهایی استفاده می‌کنیم:
+\begin{equation}
+	h_t=(1-z_t)\odot h_{t-1}+z_t\odot \widetilde{h}_t
+\end{equation}
+
+در این رابطه، تنها جمله‌ای که به $\widetilde{h}_t$ وابسته است، جمله دوم یعنی $z_t\odot \widetilde{h}_t$ است.  
+بنابراین مشتق $h_t$ نسبت به $\widetilde{h}_t$ برابر خواهد بود با:
+\begin{equation}
+	\frac{\partial h_t}{\partial \widetilde{h}_t}=z_t
+\end{equation}
+
+از آنجا که این وابستگی به صورت درایه‌به‌درایه است، گرادیان خطا نسبت به $\widetilde{h}_t$ از ضرب درایه‌به‌درایه $\delta h_t$ در $z_t$ به دست می‌آید:
+\begin{equation}
+	\delta \widetilde{h}_t
+	=
+	\frac{\partial E}{\partial \widetilde{h}_t}
+	=
+	\frac{\partial E}{\partial h_t}
+	\odot
+	\frac{\partial h_t}{\partial \widetilde{h}_t}
+	=
+	\delta h_t\odot z_t
+\end{equation}
+
+این رابطه نشان می‌دهد که سهم خطا که از طریق $\widetilde{h}_t$ عبور می‌کند، به وسیله گیت \lr{Update} یعنی $z_t$ وزن‌دهی می‌شود.
+
+\subsection{2-4- گرادیان خطا نسبت به گیت \lr{Reset}}
+
+اکنون باید گرادیان را از $\widetilde{h}_t$ به $r_t$ منتقل کنیم.  
+برای این منظور، معادله حالت پنهان کاندید را در نظر می‌گیریم:
+\begin{equation}
+	\widetilde{h}_t=\tanh\left(W\cdot[r_t\odot h_{t-1},x_t]\right)
+\end{equation}
+
+برای ساده‌تر شدن محاسبات، ابتدا ورودی تابع $\tanh$ را با یک متغیر میانی نمایش می‌دهیم:
+\begin{equation}
+	a_t=W\cdot[r_t\odot h_{t-1},x_t]
+\end{equation}
+
+در این صورت:
+\begin{equation}
+	\widetilde{h}_t=\tanh(a_t)
+\end{equation}
+
+پس برای محاسبه گرادیان نسبت به $r_t$، ابتدا گرادیان را نسبت به $a_t$ به دست می‌آوریم و سپس از $a_t$ به $r_t$ منتقل می‌کنیم. بنابراین:
+\begin{equation}
+	\frac{\partial \widetilde{h}_t}{\partial r_t}
+	=
+	\frac{\partial \widetilde{h}_t}{\partial a_t}
+	\cdot
+	\frac{\partial a_t}{\partial r_t}
+\end{equation}
+
+\subsubsection{2-4-1- گرادیان خروجی پنهان کاندید نسبت به $a_t$}
+
+از آنجا که:
+\begin{equation}
+	\widetilde{h}_t=\tanh(a_t)
+\end{equation}
+
+و می‌دانیم مشتق تابع تانژانت هیپربولیک برابر است با:
+\begin{equation}
+	\frac{d}{dx}\tanh(x)=1-\tanh^2(x)
+\end{equation}
+
+در نتیجه خواهیم داشت:
+\begin{equation}
+	\frac{\partial \widetilde{h}_t}{\partial a_t}
+	=
+	1-\widetilde{h}_t^2
+\end{equation}
+
+بنابراین گرادیان خطا نسبت به $a_t$ برابر می‌شود با:
+\begin{equation}
+	\delta a_t
+	=
+	\frac{\partial E}{\partial a_t}
+	=
+	\frac{\partial E}{\partial \widetilde{h}_t}
+	\odot
+	\frac{\partial \widetilde{h}_t}{\partial a_t}
+	=
+	\delta \widetilde{h}_t\odot(1-\widetilde{h}_t^2)
+\end{equation}
+
+حال با جایگذاری رابطه $\delta \widetilde{h}_t$ از مرحله قبل، خواهیم داشت:
+\begin{equation}
+	\delta a_t
+	=
+	\delta h_t\odot z_t\odot(1-\widetilde{h}_t^2)
+\end{equation}
+
+این کمیت، گرادیان خطا نسبت به ورودی غیرخطیِ تولیدکننده خروجی کاندید است.
+
+\subsubsection{2-4-2- گرادیان $a_t$ نسبت به گیت \lr{Reset}}
+اکنون باید تاثیر $r_t$ بر $a_t$ را بررسی کنیم.  
+برای این منظور، ماتریس وزن $W$ را به دو بخش متناظر با ورودی‌های الحاق‌شده تقسیم می‌کنیم:
+\begin{equation}
+	W=[W_h \quad W_x]
+\end{equation}
+
+در این صورت رابطه $a_t$ را می‌توان به شکل زیر بازنویسی کرد:
+\begin{equation}
+	a_t=W_h\cdot(r_t\odot h_{t-1})+W_x\cdot x_t
+\end{equation}
+
+برای ساده‌تر شدن مشتق‌گیری، عبارت زیر را تعریف می‌کنیم:
+\begin{equation}
+	b_t=r_t\odot h_{t-1}
+\end{equation}
+
+بنابراین:
+\begin{equation}
+	a_t=W_h\cdot b_t+W_x\cdot x_t
+\end{equation}
+
+از آنجا که جمله $W_x\cdot x_t$ به $r_t$ وابسته نیست، در مشتق‌گیری نسبت به $r_t$ حذف می‌شود.  
+پس برای مشتق‌گیری از $a_t$ نسبت به $r_t$ داریم:
+\begin{equation}
+	\frac{\partial a_t}{\partial r_t}
+	=
+	\frac{\partial a_t}{\partial b_t}
+	\cdot
+	\frac{\partial b_t}{\partial r_t}
+\end{equation}
+
+حال هر کدام از این مشتق‌ها را جداگانه محاسبه می‌کنیم.
+
+از رابطه
+\begin{equation}
+	a_t=W_h\cdot b_t+W_x\cdot x_t
+\end{equation}
+نتیجه می‌شود:
+\begin{equation}
+	\frac{\partial a_t}{\partial b_t}=W_h
+\end{equation}
+
+اما در پس‌انتشار، وقتی گرادیان از $a_t$ به $b_t$ منتقل می‌شود، باید ترانهاده ماتریس وزن ظاهر شود. بنابراین:
+\begin{equation}
+	\delta b_t=W_h^T\cdot \delta a_t
+\end{equation}
+
+از طرف دیگر، چون
+\begin{equation}
+	b_t=r_t\odot h_{t-1}
+\end{equation}
+و $h_{t-1}$ نسبت به $r_t$ ثابت در نظر گرفته می‌شود، مشتق $b_t$ نسبت به $r_t$ برابر است با:
+\begin{equation}
+	\frac{\partial b_t}{\partial r_t}=h_{t-1}
+\end{equation}
+
+بنابراین گرادیان خطا نسبت به $r_t$ از رابطه زیر به دست می‌آید:
+\begin{equation}
+	\delta r_t
+	=
+	\frac{\partial E}{\partial r_t}
+	=
+	\delta b_t\odot h_{t-1}
+\end{equation}
+
+اکنون با جایگذاری $\delta b_t$ خواهیم داشت:
+\begin{equation}
+	\delta r_t
+	=
+	(W_h^T\cdot \delta a_t)\odot h_{t-1}
+\end{equation}
+
+و با جایگذاری $\delta a_t$ از مرحله قبل:
+\begin{equation}
+	\delta r_t
+	=
+	\left(W_h^T\cdot\left(\delta h_t\odot z_t\odot(1-\widetilde{h}_t^2)\right)\right)\odot h_{t-1}
+\end{equation}
+
+در اینجا باید توجه کرد که:
+\begin{itemize}
+	\item عبارت $W_h^T\cdot \delta a_t$ یک ضرب ماتریسی است،
+	\item سپس حاصل آن به صورت درایه‌به‌درایه در $h_{t-1}$ ضرب می‌شود.
+\end{itemize}
+
+\subsection{2-5- آخرین عبارت \lr{Chain Rule}: گرادیان خطا نسبت به وزن‌های گیت \lr{Reset}}
+
+اکنون به آخرین بخش زنجیره می‌رسیم.  
+رابطه گیت \lr{Reset} برابر است با:
+\begin{equation}
+	r_t=\sigma\left(W_r\cdot[h_{t-1},x_t]\right)
+\end{equation}
+
+برای ساده‌سازی، ورودی تابع سیگموید را با یک متغیر میانی نمایش می‌دهیم:
+\begin{equation}
+	c_t=W_r\cdot[h_{t-1},x_t]
+\end{equation}
+
+در نتیجه:
+\begin{equation}
+	r_t=\sigma(c_t)
+\end{equation}
+
+بنابراین برای رسیدن از $r_t$ به $W_r$، ابتدا گرادیان نسبت به $c_t$ را محاسبه کرده و سپس آن را نسبت به $W_r$ گسترش می‌دهیم:
+\begin{equation}
+	\frac{\partial r_t}{\partial W_r}
+	=
+	\frac{\partial r_t}{\partial c_t}
+	\cdot
+	\frac{\partial c_t}{\partial W_r}
+\end{equation}
+
+\subsubsection{2-5-1- گرادیان گیت \lr{Reset} نسبت به $c_t$ (مشتق تابع سیگموید)}
+از آنجا که:
+\begin{equation}
+	r_t=\sigma(c_t)
+\end{equation}
+
+و مشتق تابع سیگموید برابر است با:
+\begin{equation}
+	\frac{d}{dx}\sigma(x)=\sigma(x)\left(1-\sigma(x)\right)
+\end{equation}
+
+پس داریم:
+\begin{equation}
+	\frac{\partial r_t}{\partial c_t}=r_t\odot(1-r_t)
+\end{equation}
+
+بنابراین گرادیان خطا نسبت به $c_t$ از رابطه زیر به دست می‌آید:
+\begin{equation}
+	\delta c_t
+	=
+	\frac{\partial E}{\partial c_t}
+	=
+	\delta r_t\odot\frac{\partial r_t}{\partial c_t}
+	=
+	\delta r_t\odot r_t\odot(1-r_t)
+\end{equation}
+
+اکنون اگر رابطه $\delta r_t$ را جایگذاری کنیم، خواهیم داشت:
+\begin{equation}
+	\delta c_t
+	=
+	\left(\left(W_h^T\cdot\left(\delta h_t\odot z_t\odot(1-\widetilde{h}_t^2)\right)\right)\odot h_{t-1}\right)\odot r_t\odot(1-r_t)
+\end{equation}
+
+\subsubsection{2-5-2- گام آخر: گرادیان $c_t$ نسبت به $W_r$}
+
+از تعریف $c_t$ داریم:
+\begin{equation}
+	c_t=W_r\cdot[h_{t-1},x_t]
+\end{equation}
+
+اگر بردار ورودی الحاق‌شده را به صورت زیر تعریف کنیم:
+\begin{equation}
+	u_t=[h_{t-1},x_t]
+\end{equation}
+
+آنگاه خواهیم داشت:
+\begin{equation}
+	c_t=W_r\cdot u_t
+\end{equation}
+
+در این حالت، گرادیان نسبت به ماتریس وزن از قاعده استاندارد مشتق‌گیری در یک لایه خطی به دست می‌آید و برابر است با حاصل‌ضرب خارجی (\lr{outer product}) گرادیان ورودی لایه در بردار ورودی آن:
+\begin{equation}
+	\frac{\partial E}{\partial W_r}=\delta c_t\cdot u_t^T
+\end{equation}
+
+با جایگذاری $u_t=[h_{t-1},x_t]$، نتیجه نهایی این مرحله به صورت زیر خواهد بود:
+\begin{equation}
+	\delta W_r=\frac{\partial E}{\partial W_r}=\delta c_t\cdot [h_{t-1},x_t]^T
+\end{equation}
+
+این رابطه نشان می‌دهد که چون $c_t$ از یک تبدیل خطی نسبت به $W_r$ به دست آمده است، گرادیان نسبت به $W_r$ باید به صورت ضرب ماتریسی نوشته شود، نه ضرب درایه‌به‌درایه.
+
+\subsection{2-6- جمع‌بندی روابط و فرمول نهایی}
+
+اکنون تمامی گرادیان‌های میانی لازم برای زنجیره مشتق‌گیری به دست آمده‌اند.  
+برای شفافیت بیشتر، ابتدا روابط میانی را یک‌بار دیگر به صورت خلاصه می‌نویسیم:
+
+\begin{equation}
+	\delta \widetilde{h}_t=\delta h_t\odot z_t
+\end{equation}
+
+\begin{equation}
+	\delta a_t=\delta \widetilde{h}_t\odot(1-\widetilde{h}_t^2)
+	=
+	\delta h_t\odot z_t\odot(1-\widetilde{h}_t^2)
+\end{equation}
+
+\begin{equation}
+	\delta r_t=(W_h^T\cdot \delta a_t)\odot h_{t-1}
+\end{equation}
+
+\begin{equation}
+	\delta c_t=\delta r_t\odot r_t\odot(1-r_t)
+\end{equation}
+
+\begin{equation}
+	\delta W_r=\delta c_t\cdot[h_{t-1},x_t]^T
+\end{equation}
+
+در نهایت، با جایگذاری همه روابط بالا در یکدیگر، فرمول نهایی گرادیان نسبت به وزن‌های گیت \lr{Reset} به دست می‌آید:
+\begin{equation}
+	\delta W_r
+	=
+	\frac{\partial E}{\partial W_r}
+	=
+	\left(
+	\left(
+	W_h^T\cdot
+	\left(
+	\delta h_t\odot z_t\odot(1-\widetilde{h}_t^2)
+	\right)
+	\right)
+	\odot h_{t-1}
+	\odot r_t
+	\odot (1-r_t)
+	\right)
+	\cdot
+	[h_{t-1},x_t]^T
+\end{equation}
+
+بنابراین، رابطه نهایی نشان می‌دهد که گرادیان وزن‌های $W_r$ از ترکیب چهار بخش اصلی تشکیل شده است:
+\begin{enumerate}
+	\item گرادیان خطا نسبت به خروجی پنهان یعنی $\delta h_t$،
+	\item اثر گیت \lr{Update} از طریق $z_t$،
+	\item مشتق غیرخطی تابع $\tanh$ از طریق جمله $(1-\widetilde{h}_t^2)$،
+	\item مشتق تابع سیگموید گیت \lr{Reset} از طریق جمله $r_t\odot(1-r_t)$.
+\end{enumerate}
+
+همچنین نقش $h_{t-1}$ در دو بخش ظاهر می‌شود:
+\begin{itemize}
+	\item یک‌بار در مسیر $r_t\odot h_{t-1}$ که نشان می‌دهد گیت \lr{Reset} چگونه بر اطلاعات گذشته اثر می‌گذارد،
+	\item و یک‌بار در بردار ورودی نهایی $[h_{t-1},x_t]^T$ که در محاسبه گرادیان نسبت به $W_r$ ظاهر می‌شود.
+\end{itemize}
+
+در نتیجه، این فرمول بیان دقیق پس‌انتشار خطا برای ماتریس وزن‌های گیت \lr{Reset} در واحد \lr{GRU} است.
+
+\section{سوال 3: پیاده سازی \lr{Coupled Input-Forget Gate LSTM} از پایه با \lr{Numpy}}
+\subsection{\lr{Optimized Coupled Input‑Forget Gate LSTM Implementation}}
+
+در نسخه‌ای از شبکۀ \lr{LSTM}، گیت‌های ورودی و فراموشی به یکدیگر متصل (Coupled) هستند. در LSTM استاندارد این دو گیت به صورت مستقل محاسبه می‌شوند اما در این معماری فرض می‌شود که ورود اطلاعات جدید و فراموشی اطلاعات قبلی به یکدیگر وابسته هستند. به همین دلیل رابطۀ زیر برقرار است:
+
+\[
+f_t = 1 - i_t
+\]
+
+در نتیجه معادلۀ به‌روزرسانی حافظه نیز به صورت زیر نوشته می‌شود:
+
+\[
+C_t = (1 - i_t) \odot C_{t-1} + i_t \odot \tilde{C}_t
+\]
+
+که در آن $\odot$ نشان‌دهنده ضرب درایه‌به‌درایه\lr{ (Hadamard Product)} است. با حذف گیت فراموشی مستقل، پارامترهای مربوط به آن نیز حذف می‌شوند و در نتیجه تعداد پارامترهای مدل کاهش می‌یابد. این موضوع می‌تواند باعث ساده‌تر شدن مدل، افزایش سرعت آموزش و کاهش احتمال بیش‌برازش شود.
+
+\subsubsection{معادلات مدل}
+
+در این معماری، محاسبات در هر گام زمانی $t$ به صورت زیر انجام می‌شود.
+
+\paragraph{گیت ورودی}
+این گیت مشخص می‌کند چه مقدار از اطلاعات جدید وارد حافظه شود.
+
+\[
+i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)
+\]
+
+\paragraph{حافظه کاندید}
+در این مرحله، برداری از اطلاعات جدید که قابلیت اضافه شدن به حافظه را دارند تولید می‌شود.
+
+\[
+\tilde{C}_t = \tanh(W_c x_t + U_c h_{t-1} + b_c)
+\]
+
+\paragraph{به‌روزرسانی وضعیت سلول}
+حافظۀ قبلی با اطلاعات جدید ترکیب شده و حافظۀ جدید ساخته می‌شود.
+
+\[
+C_t = (1 - i_t) \odot C_{t-1} + i_t \odot \tilde{C}_t
+\]
+
+\paragraph{گیت خروجی}
+این گیت تعیین می‌کند چه مقدار از حافظۀ فعلی به عنوان خروجی شبکه استفاده شود.
+
+\[
+o_t = \sigma(W_o x_t + U_o h_{t-1} + b_o)
+\]
+
+\paragraph{حالت پنهان}
+در نهایت حالت پنهان شبکه که خروجی این گام زمانی است محاسبه می‌شود.
+
+\[
+h_t = o_t \odot \tanh(C_t)
+\]
+
+در روابط فوق، $x_t$ ورودی در گام زمانی $t$، $h_{t-1}$ حالت پنهان مرحلۀ قبل و $C_{t-1}$ وضعیت حافظۀ قبلی شبکه هستند. ماتریس‌های $W$ و $U$ وزن‌های قابل یادگیری و $b$ بردار بایاس هستند. تابع $\sigma$ (تابع سیگموید) با خروجی بین $0$ و $1$ و $\tanh$ (تابع تانژانت هیپربولیک) با خروجی بین $-1$ و $1$ است.
+
+در این بخش دو رویکرد برای پیاده‌سازی کلاس پایتونی اتخاذ شده است. در رویکرد نخست، تمامی محاسبات ریاضی به صورت گام‌به‌گام و مجزا پیاده‌سازی شدند که در آن، سادگی و وضوحِ روند محاسباتی بر بهینه‌سازی عملکرد اولویت داشت. در رویکرد دوم، با استفاده از تکنیک الحاق ماتریس‌ها (\lr{Concatenation})، سعی بر کاهش بار محاسباتی مدل شد؛ به‌طوری‌که به جای اجرای چندین عمل ضرب ماتریسی در خطوط مجزا، محاسبات مربوط به گیت‌های مختلف در قالب یک ضرب ماتریسی واحد ادغام گردید تا بازدهی محاسباتی افزایش یابد. 
+
+در فایل کد، بخش مربوط به پیاده‌سازی با محاسبات ماتریسی مجزا با هدر 
+\lr{Coupled Input‑Forget Gate LSTM Implementation} 
+مشخص شده است. در این قسمت، عملیات مربوط به هر گیت به صورت جداگانه و در چند مرحله انجام می‌شود.
+
+همچنین بخش دارای هدر 
+\lr{Optimized Coupled Input‑Forget Gate LSTM Implementation} 
+به پیاده‌سازی بهینه کلاس اختصاص دارد که در آن با ترکیب محاسبات و استفاده از ساختارهای ماتریسی کارآمدتر، تلاش شده است تا هزینه محاسباتی مدل کاهش یابد.
+
+
+در زیر کدهای زده شده به صورت کامل آورده شده است:
+\subsubsection{کد}
+\begin{LTR}
+	\inputminted{python}{code/ML-Hw3-Q3.py}
+\end{LTR}
+\subsubsection{پیاده‌سازی مبتنی بر محاسبات ماتریسی مجزا}
+
+\paragraph{ایده اصلی پیاده‌سازی}
+در رویکرد اول، پیاده‌سازی مدل \lr{CIFG-LSTM} به صورت مستقیم و مطابق با معادلات ریاضی انجام شد. در این روش، برای هر گیت شبکه (گیت ورودی، حافظه کاندید و گیت خروجی) محاسبات ماتریسی به صورت مستقل انجام می‌شود. به عبارت دیگر، برای هر گیت دو ضرب ماتریسی جداگانه در نظر گرفته می‌شود: یکی برای بردار ورودی $x_t$ و دیگری برای حالت پنهان قبلی $h_{t-1}$، سپس بردار بایاس به آن اضافه می‌شود.  
+
+پس از محاسبه گیت ورودی $i_t$، گیت فراموشی به صورت ضمنی و با استفاده از رابطه زیر به دست می‌آید:
+
+\[
+f_t = 1 - i_t
+\]
+
+سپس حافظه کاندید $\tilde{C}_t$ تولید شده و وضعیت حافظه شبکه مطابق رابطه زیر به‌روزرسانی می‌شود:
+
+\[
+C_t = (1 - i_t) \odot C_{t-1} + i_t \odot \tilde{C}_t
+\]
+
+در ادامه گیت خروجی $o_t$ محاسبه شده و حالت پنهان جدید $h_t$ به شکل زیر به دست می‌آید:
+
+\[
+h_t = o_t \odot \tanh(C_t)
+\]
+
+این فرآیند برای تمامی گام‌های زمانی دنبالۀ ورودی تکرار شده و در هر مرحله در بردار حالت پنهان ذخیره می‌شود.
+
+\paragraph{ساختار داده و بررسی ابعاد ماتریس‌ها}
+برای ارزیابی عملکرد مدل، یک سری زمانی مصنوعی با طول 50 گام زمانی و بعد ورودی 10 تولید شد. اندازۀ حالت پنهان شبکه نیز برابر با 16 در نظر گرفته شد. در نتیجه انتظار می‌رود خروجی مدل ماتریسی با ابعاد زیر باشد:
+
+\[
+(50, 16)
+\]
+
+یعنی برای هر یک از 50 گام زمانی، یک بردار حالت پنهان با بعد 16 تولید می‌شود. خروجی برنامه نیز این موضوع را به طور کامل تأیید می‌کند:
+
+\begin{LTR}
+	\begin{verbatim}
+		=== Matrix Dimensions Verification ===
+		Input time series shape: (50, 10) -> (Seq_len=50, Input_size=10)
+		Total output matrix shape: (50, 16) -> (Seq_len=50, Hidden_size=16)
+		Matrix dimensions verified successfully.
+	\end{verbatim}
+\end{LTR}
+
+
+این نتیجه نشان می‌دهد که ابعاد ماتریس‌های ورودی و خروجی کاملاً با طراحی مدل مطابقت دارند و هیچ ناسازگاری در ابعاد داده‌ها وجود ندارد.
+
+\paragraph{تحلیل خروجی‌های تولید شده}
+پس از اجرای مدل، بردار حالت پنهان $h_t$ در هر گام زمانی استخراج شد. مطابق انتظار، حالت اولیۀ شبکه به صورت بردار صفر مقداردهی شده است:
+\begin{LTR}
+	\begin{verbatim}
+		Time Step 00 (Initial h_0) | Shape: (16,)
+		Values: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+	\end{verbatim}
+\end{LTR}
+در گام‌های بعدی، شبکه با دریافت ورودی‌های جدید به تدریج وضعیت حافظه و حالت پنهان خود را به‌روزرسانی می‌کند. برای مثال در گام زمانی اول خروجی به صورت زیر است:
+\begin{LTR}
+	\texttt{Time Step 01 | Shape: (16,)\\
+		Values: \lr{[-0.031 -0.074 -0.025 -0.012 0.069 -0.064 -0.053 0.009
+			0.008 0.037 0.037 0.039 0.081 0.092 0.002 -0.059]}
+	}
+\end{LTR}
+
+و در گام زمانی بعد:
+
+\begin{LTR}
+	\texttt{Time Step 02 | Shape: (16,)\\
+		Values: \lr{[-0.053 -0.008  0.071  0.024 -0.122  0.055 -0.007  0.031
+			-0.081 -0.094 -0.024  0.048 -0.046  0.042   0.034 -0.065]}
+	}
+\end{LTR}
+
+این مقادیر نشان می‌دهند که خروجی شبکه در بازه‌ای نزدیک به $[-1,1]$ قرار دارد که ناشی از استفاده از تابع فعال‌سازی $\tanh$ در معماری LSTM است. در طول پردازش دنباله زمانی، شبکه اطلاعات را در حافظه داخلی خود ذخیره کرده و به تدریج وضعیت پنهان را تغییر می‌دهد.
+
+در آخرین گام زمانی نیز خروجی به شکل زیر گزارش شده است:
+
+\begin{LTR}
+	\texttt{Time Step 50 (Last Step) | Shape: (16,)\\
+		Values: \lr{[ 0.126  0.04  -0.021 -0.006 -0.064  0.064  0.023  0.061
+			0.058  0.003  0.    -0.073 -0.013 -0.101  0.09   0.034]}
+	}
+\end{LTR}
+
+
+تمامی بردارهای حالت پنهان دارای بعد 16 هستند که نشان‌دهنده تطابق کامل با اندازه حالت پنهان تعریف شده در مدل است.
+
+\subsubsection{پیاده‌سازی بهینه با ترکیب ماتریس‌ها}
+
+\paragraph{ایدۀ بهینه‌سازی}
+در رویکرد دوم، هدف کاهش هزینۀ محاسباتی مدل بود. در پیاده‌سازی اولیه، برای هر گیت شبکه چندین ضرب ماتریسی مجزا انجام می‌شد. با توجه به اینکه این عملیات در هر گام زمانی تکرار می‌شود، تعداد ضرب‌های ماتریسی افزایش پیدا کرده و بار محاسباتی مدل بالا می‌رود.
+
+برای رفع این مسئله، بردار ورودی $x_t$ و حالت پنهان قبلی $h_{t-1}$ با یکدیگر الحاق (\lr{Concatenate}) شدند و یک ماتریس وزن بزرگ ساخته شد که شامل وزن‌های مربوط به هر سه گیت شبکه است. در نتیجه، به جای انجام چند ضرب ماتریسی جداگانه، تنها یک ضرب ماتریسی انجام می‌شود و سپس خروجی حاصل به سه بخش تقسیم می‌شود تا مقادیر مربوط به گیت‌های مختلف استخراج شوند.
+
+\paragraph{ساختار ماتریس وزن ترکیبی}
+در این پیاده‌سازی یک ماتریس وزن بزرگ با ابعاد زیر ساخته شد:
+
+\[
+(Input\_size + Hidden\_size) \times (3 \times Hidden\_size)
+\]
+
+با توجه به مقادیر مسئله داریم:
+
+\[
+(10 + 16) \times (3 \times 16) = 26 \times 48
+\]
+
+این ماتریس شامل وزن‌های مربوط به سه بخش اصلی شبکه یعنی گیت ورودی، حافظه کاندید و گیت خروجی است. به این ترتیب تمام محاسبات گیت‌ها در قالب یک عملیات ضرب ماتریسی واحد انجام می‌شود.
+
+\paragraph{بررسی ابعاد و خروجی مدل}
+پس از اجرای نسخۀ بهینۀ مدل، بررسی ابعاد ماتریس‌ها نشان داد که تمامی ابعاد با طراحی شبکه مطابقت دارند:
+\begin{LTR}
+	\begin{verbatim}
+		=== Matrix Dimensions Verification ===
+		Input Time Series Shape: (50, 10) -> (Seq_len=50, Input_size=10)
+		Optimized Weight Matrix Shape: (26, 48) -> (Input+Hidden, 3*Hidden)
+		Output Hidden States Shape: (50, 16) -> (Seq_len=50, Hidden_size=16)
+		Dimensions verified successfully.
+	\end{verbatim}
+\end{LTR}
+
+همچنین خروجی بردارهای حالت پنهان در هر گام زمانی دقیقاً با خروجی نسخه غیر بهینه یکسان بود. برای مثال:
+
+\begin{LTR}
+	\texttt{Time Step 01 | Shape: (16,)\\
+		Values: \lr{[-0.031 -0.074 -0.025 -0.012  0.069 -0.064 -0.053  0.009
+			0.008  0.037  0.037  0.039  0.081  0.092  0.002 -0.059]}
+	}
+\end{LTR}
+و در گام نهایی:
+
+\begin{LTR}
+	\texttt{Time Step 50 (Last Step) | Shape: (16,)\\
+		Values: \lr{[ 0.126  0.04  -0.021 -0.006 -0.064  0.064  0.023  0.061
+			0.058  0.003  0.    -0.073 -0.013 -0.101  0.09   0.034]}
+	}
+\end{LTR}
+
+این تطابق کامل نشان می‌دهد که نسخۀ بهینه دقیقاً همان محاسبات مدل اصلی را انجام می‌دهد اما ساختار محاسباتی آن کارآمدتر است.
+
+\paragraph{تحلیل کاهش بار محاسباتی}
+در پیاده‌سازی اولیه، برای هر گیت شبکه چندین ضرب ماتریسی مستقل انجام می‌شد. در مقابل، در پیاده‌سازی بهینه تمامی این عملیات در قالب یک ضرب ماتریسی واحد انجام می‌شود و سپس خروجی آن به بخش‌های مختلف تقسیم می‌شود.
+
+این تغییر باعث می‌شود:
+\begin{itemize}
+	\item تعداد عملیات ماتریسی کاهش یابد،
+	\item استفاده از حافظه و کش پردازنده بهینه‌تر شود،
+	\item سرعت اجرای مدل افزایش پیدا کند.
+\end{itemize}
+
+بنابراین پیاده‌سازی دوم از نظر محاسباتی کارآمدتر است، در حالی که از نظر خروجی دقیقاً معادل پیاده‌سازی اولیه عمل می‌کند. این موضوع نشان می‌دهد که با طراحی مناسب ساختار ماتریس‌ها می‌توان بدون تغییر در رفتار مدل، کارایی محاسباتی آن را به شکل قابل توجهی بهبود داد.
+\subsubsection{نتایج تحلیل کاهش زمان اجرا}
+
+به منظور ارزیابی میزان کاهش بار محاسباتی، زمان اجرای 1000 بار \lr{forward pass} برای هر دو پیاده‌سازی اندازه‌گیری شد.
+
+نتایج مربوط به پیاده‌سازی غیر بهینه (بدون ماتریس الحاقی) به صورت زیر است:
+
+\begin{LTR}
+	\begin{verbatim}
+		=== Performance Benchmarking ===
+		Total time for 1000 forward passes: 3.6622 seconds
+		Average time per forward pass: 3.6622 milliseconds
+		========================================
+	\end{verbatim}
+\end{LTR}
+
+نتایج مربوط به پیاده‌سازی بهینه (با استفاده از ماتریس وزن الحاقی) به صورت زیر به دست آمد:
+
+\begin{LTR}
+	\begin{verbatim}
+		=== Performance Benchmarking ===
+		Total time for 1000 forward passes: 3.4251 seconds
+		Average time per forward pass: 3.4251 milliseconds
+		========================================
+	\end{verbatim}
+\end{LTR}
+
+با مقایسه دو مقدار زمان کل اجرا داریم:
+
+\[
+\Delta T = 3.6622 - 3.4251 = 0.2371 \ \text{seconds}
+\]
+
+که تقریباً برابر با:
+
+\[
+0.2371 \approx 0.2 \ \text{seconds} = 200 \ \text{milliseconds}
+\]
+
+کاهش زمان برای هر 1000 بار اجرای \lr{forward pass} است.
+
+همچنین در مقیاس هر اجرای منفرد داریم:
+
+\[
+3.6622 - 3.4251 = 0.2371 \ \text{milliseconds}
+\]
+
+کاهش زمان در هر بار اجرا مشاهده می‌شود.
+
+این نتایج نشان می‌دهد که استفاده از ماتریس وزن الحاقی و انجام یک ضرب ماتریسی واحد به جای چند ضرب ماتریسی مجزا، منجر به کاهش حدود 200 میلی‌ثانیه در اجرای 1000 بار محاسبه شده است. این موضوع بیانگر کاهش بار محاسباتی روی \lr{CPU} و بهبود کارایی پردازشی مدل است، بدون آنکه تغییری در خروجی یا رفتار شبکه ایجاد شود.
+
+\newpage
+\section{سوال 4: پیاده سازی برداری پردازش دسته ای\lr{(Batched Processing)} و پس انتشار در زمان\lr{(BPTT)} با ترفندهای بهینه سازی}
+\subsection{پیاده‌سازی برداری شبکه \lr{Vanilla RNN} با قابلیت پردازش دسته‌ای \lr{(Batched Processing)}}
+
+\subsubsection{مروری بر سازوکار شبکه‌های \lr{RNN} و مدل \lr{Vanilla RNN}}
+
+شبکه‌های عصبی بازگشتی (\lr{Recurrent Neural Networks - RNN}) برای مدل‌سازی داده‌های ترتیبی طراحی شده‌اند. در این شبکه‌ها برخلاف شبکه‌های پیشخور، وابستگی زمانی بین نمونه‌ها حفظ می‌شود. این کار از طریق یک متغیر حالت پنهان (\lr{Hidden State}) انجام می‌شود که در هر گام زمانی به‌روزرسانی شده و به گام بعد منتقل می‌گردد.
+
+در ساده‌ترین نوع این شبکه‌ها یعنی \lr{Vanilla RNN}، در هر گام زمانی $t$، بردار ورودی $x_t$ و حالت پنهان قبلی $h_{t-1}$ ترکیب شده و حالت پنهان جدید تولید می‌شود:
+
+\[
+h_t = \tanh(W_x x_t + W_h h_{t-1} + b_h)
+\]
+
+سپس خروجی شبکه به صورت زیر محاسبه می‌شود:
+
+\[
+y_t = W_y h_t + b_y
+\]
+
+در این ساختار، تابع $\tanh$ نقش غیرخطی‌سازی را بر عهده دارد و باعث می‌شود شبکه قادر به مدل‌سازی روابط غیرخطی در داده‌های ترتیبی باشد.
+
+\subsubsection{طراحی کلاس شبکه با پشتیبانی از پردازش دسته‌ای}
+
+در این پیاده‌سازی، یک کلاس با نام \lr{BatchedVanillaRNN} طراحی شده است که برخلاف حالت ساده، قابلیت پردازش دسته‌ای (\lr{Mini-Batch Processing}) را دارد.
+
+ورودی شبکه به صورت یک تنسور سه‌بعدی با ابعاد زیر در نظر گرفته شده است:
+
+\[
+(\text{Batch Size},\ \text{Sequence Length},\ \text{Features})
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \lr{Batch Size}: تعداد نمونه‌های پردازش‌شونده به صورت همزمان
+	\item \lr{Sequence Length}: طول دنباله زمانی
+	\item \lr{Features}: تعداد ویژگی‌های هر گام زمانی
+\end{itemize}
+
+در متد \lr{forward} ابتدا حالت پنهان اولیه برای تمام اعضای دسته برابر صفر در نظر گرفته شده است. سپس برای هر گام زمانی، محاسبات مربوط به تولید حالت پنهان و خروجی انجام می‌شود.
+
+\subsubsection{بهینه‌سازی با ترفند الحاق ماتریسی (\lr{Matrix Concatenation})}
+
+به جای انجام دو ضرب ماتریسی مجزا برای:
+
+\[
+W_x x_t \quad \text{و} \quad W_h h_{t-1}
+\]
+
+در این پیاده‌سازی از ترفند الحاق ماتریسی استفاده شده است. بدین صورت که ابتدا بردار ورودی و حالت پنهان قبلی با یکدیگر ترکیب می‌شوند:
+
+\[
+[x_t \ ; \ h_{t-1}]
+\]
+
+سپس یک ماتریس وزن ترکیبی به صورت زیر تعریف می‌شود:
+
+\[
+W_{\text{combined}} \in \mathbb{R}^{(Features + Hidden)\times Hidden}
+\]
+
+و کل عملیات خطی تنها با یک ضرب ماتریسی انجام می‌شود:
+
+\[
+h_t = \tanh\left([x_t, h_{t-1}] \cdot W_{\text{combined}} + b_h \right)
+\]
+
+این کار باعث می‌شود:
+
+\begin{itemize}
+	\item تعداد عملیات ضرب ماتریسی کاهش یابد،
+	\item سربار محاسباتی کم شود،
+	\item بهره‌وری کش پردازنده افزایش یابد،
+	\item سرعت اجرای مدل به شکل محسوسی بیشتر شود.
+\end{itemize}
+
+در کد پیاده‌سازی‌شده، این کار با استفاده از تابع \lr{np.concatenate} برای اتصال $x_t$ و $h_{t-1}$ و سپس یک \lr{np.dot} واحد انجام شده است.
+
+\paragraph{ذخیره‌سازی مقادیر برای پس‌انتشار}
+
+برای اجرای صحیح الگوریتم \lr{BPTT} در مرحله آموزش، مقادیر موردنیاز هر گام زمانی (شامل ورودی الحاق‌شده و حالت پنهان تولیدشده) در یک ساختار \lr{cache} ذخیره شده‌اند تا در مرحله پس‌انتشار مورد استفاده قرار گیرند.
+
+\vspace{1em}
+
+\subsection{پیاده‌سازی پس‌انتشار در زمان (BPTT) و کنترل انفجار گرادیان}
+
+\subsubsection{مروری بر الگوریتم \lr{Backpropagation Through Time}}
+
+در شبکه‌های بازگشتی، به دلیل وجود وابستگی زمانی، گرادیان خطا باید در طول تمامی گام‌های زمانی منتشر شود. این فرآیند با نام \lr{Backpropagation Through Time (BPTT)} شناخته می‌شود.
+
+در این روش، شبکه در طول زمان باز می‌شود (\lr{Unroll}) و سپس گرادیان خطا از آخرین گام زمانی به سمت گام‌های ابتدایی منتشر می‌شود. بنابراین گرادیان هر گام نه تنها به خروجی همان گام بلکه به تأثیر آن بر گام‌های بعدی نیز وابسته است.
+
+\subsubsection{پیاده‌سازی متد \lr{backward}}
+
+در متد \lr{backward} ابتدا گرادیان تمامی پارامترها مقداردهی اولیه شده‌اند. سپس حلقه زمانی به صورت معکوس اجرا می‌شود:
+
+\[
+t = T-1 \rightarrow 0
+\]
+
+در هر گام:
+
+\begin{itemize}
+	\item گرادیان خروجی نسبت به وزن‌های خروجی محاسبه می‌شود.
+	\item گرادیان نسبت به حالت پنهان محاسبه می‌شود.
+	\item مشتق تابع $\tanh$ به صورت $(1 - h_t^2)$ اعمال می‌شود.
+	\item گرادیان نسبت به ماتریس وزن ترکیبی $W_{\text{combined}}$ محاسبه می‌شود.
+	\item بخش مربوط به حالت پنهان قبلی استخراج شده و به گام قبل منتقل می‌شود.
+\end{itemize}
+
+به این ترتیب وابستگی زمانی گرادیان‌ها به درستی در کل دنباله لحاظ می‌شود.
+
+\subsubsection{مشکل انفجار گرادیان و استفاده از \lr{Gradient Clipping}}
+
+یکی از مشکلات اساسی در شبکه‌های بازگشتی، پدیده انفجار گرادیان (\lr{Exploding Gradients}) است. در این حالت، هنگام انتشار گرادیان در طول زمان، مقدار گرادیان‌ها ممکن است به صورت نمایی افزایش یابد و باعث ناپایداری آموزش شود.
+
+برای جلوگیری از این مشکل، از تکنیک \lr{Gradient Clipping} استفاده می‌شود. در این روش، قبل از به‌روزرسانی وزن‌ها، اندازه گرادیان‌ها محدود می‌شود:
+
+\[
+g \leftarrow \text{clip}(g, -th, th)
+\]
+
+که در آن \lr{th} یک آستانه از پیش تعیین‌شده است.
+
+این کار باعث می‌شود:
+
+\begin{itemize}
+	\item آموزش پایدارتر شود،
+	\item از نوسانات شدید جلوگیری شود،
+	\item همگرایی مدل بهبود یابد.
+\end{itemize}
+
+در پیاده‌سازی انجام‌شده، گرادیان‌های محاسبه‌شده در متد \lr{backward} قبل از مرحله به‌روزرسانی وزن‌ها قابل تغییر هستند و می‌توان روی آن‌ها محدودسازی انجام داد تا از انفجار گرادیان جلوگیری کرد.
+\subsection{ایجاد داده مصنوعی \lr{Many-to-One} و آموزش مدل با \lr{SGD}}
+
+\subsubsection{تولید مجموعه‌داده مصنوعی}
+
+در این بخش یک مجموعه‌داده مصنوعی بسیار سبک با ساختار \lr{Many-to-One} طراحی شد. در این نوع مسائل، کل دنباله ورودی تنها به یک برچسب نهایی نگاشت می‌شود.  
+
+مسئله طراحی‌شده به صورت زیر است:
+
+\begin{itemize}
+	\item ورودی: دنباله‌ای باینری شامل صفر و یک
+	\item خروجی: تشخیص زوج یا فرد بودن تعداد عدد 1 در کل دنباله
+\end{itemize}
+
+اگر تعداد 1ها زوج باشد، برچسب کلاس 0 (Even) و اگر فرد باشد، کلاس 1 (Odd) اختصاص داده می‌شود.
+
+هر عنصر دنباله به صورت \lr{one-hot} با دو ویژگی نمایش داده شده است:
+
+\[
+0 \rightarrow [1,0] \quad , \quad 1 \rightarrow [0,1]
+\]
+
+بنابراین ورودی شبکه دارای ابعاد زیر است:
+
+\[
+(\text{Batch Size},\ \text{Sequence Length},\ 2)
+\]
+
+تعداد کل نمونه‌ها برابر 1000 در نظر گرفته شد که 80 درصد آن برای آموزش و 20 درصد برای تست استفاده گردید.
+
+همچنین با استفاده از:
+
+\[
+\texttt{np.random.seed(42)}
+\]
+
+اطمینان حاصل شد که در تمامی رویکردها دقیقاً از داده‌های یکسان استفاده می‌شود. بنابراین مقایسه بین آزمایش‌ها کاملاً منصفانه بوده و تفاوت نتایج صرفاً ناشی از تغییر پارامترها است.
+
+
+\subsubsection{رویکرد اول: دنباله کوتاه ($S_L=3$) و نرخ یادگیری بالا}
+
+در رویکرد اول طول دنباله برابر با 3 در نظر گرفته شد:
+
+\[
+\text{Sequence Length} = 3
+\]
+
+و مدل با نرخ یادگیری \lr{0.9} و به مدت 500 اپوک آموزش داده شد.
+
+\paragraph{نتایج آموزش}
+نتایج مربوط به فرآیند آموزش به صورت زیر است:
+
+\begin{LTR}
+	\begin{center}
+		\begin{tabular}{c c c c}
+			\hline
+			Epoch & Progress & Loss & Accuracy \\
+			\hline
+			\lr{50}  & \lr{50/500}  & \lr{0.6909} & \lr{53.1\%} \\
+			\lr{100} & \lr{100/500} & \lr{0.6908} & \lr{53.1\%} \\
+			\lr{150} & \lr{150/500} & \lr{0.6906} & \lr{53.1\%} \\
+			\lr{200} & \lr{200/500} & \lr{0.6897} & \lr{39.9\%} \\
+			\lr{250} & \lr{250/500} & \lr{0.1518} & \lr{100.0\%} \\
+			$\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\
+			\lr{500} & \lr{500/500} & \lr{0.0018} & \lr{100.0\%} \\
+			\hline
+		\end{tabular}
+	\end{center}
+\end{LTR}
+
+
+
+
+\paragraph{نتیجۀ تست}
+نتیجۀ مربوط به ارزیابی مدل روی داده های تست به صورت زیر است:
+
+
+\begin{LTR}
+	\texttt{Test Accuracy: \lr{100.00\%}
+	}
+\end{LTR}
+
+\paragraph{تحلیل}
+
+از آنجا که طول دنباله کوتاه است، وابستگی زمانی محدود بوده و شبکه \lr{Vanilla RNN} که ذاتاً حافظه کوتاه‌مدت دارد، می‌تواند به‌راحتی الگوی زوج/فرد بودن را یاد بگیرد.  
+
+مشاهده می‌شود که پس از حدود 250 اپوک، مدل به همگرایی کامل رسیده و دقت آموزش و تست هر دو به 100 درصد رسیده‌اند. این نشان می‌دهد که برای دنباله‌های کوتاه، مدل به‌خوبی توانایی استخراج وابستگی زمانی را دارد.
+
+نمودارهای \lr{Loss} و \lr{accuracy} در طول آموزش به صورت زیر است:
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/LA1.png}
+	\caption{نمودارهای دقت و خطا در طول آموزش(رویکرد اول)}
+\end{figure}
+همانطور که مشاهده می شود، مدل به صورت مناسبی آموزش دیده است.
+
+\subsubsection{رویکرد دوم: دنباله بلند  ($S_L=10$) و نرخ  یادگیری \lr{0.9}}
+
+در این رویکرد طول دنباله به 10 افزایش داده شد و آموزش به مدت 2000 اپوک ادامه یافت.
+
+\paragraph{نتایج آموزش}
+نتایج مربوط به فرآیند آموزش به صورت زیر است: 
+\begin{LTR}
+	\begin{center}
+		\begin{tabular}{c c c c}
+			\hline
+			Epoch & Progress & Loss & Accuracy \\
+			\hline
+			\lr{500}  & \lr{500/2000}  & \lr{0.6558} & \lr{59.9\%} \\
+			\lr{1000} & \lr{1000/2000} & \lr{0.0618} & \lr{99.5\%} \\
+			\lr{1500} & \lr{1500/2000} & \lr{0.0047} & \lr{100.0\%} \\
+			\lr{2000} & \lr{2000/2000} & \lr{0.0021} & \lr{100.0\%} \\
+			\hline
+		\end{tabular}
+	\end{center}
+\end{LTR}
+
+
+\paragraph{نتیجۀ تست}
+نتیجۀ مربوط به ارزیابی مدل روی داده های تست به صورت زیر است:
+\begin{LTR}
+	\texttt{Test Accuracy: \lr{83.00\%}
+	}
+\end{LTR}
+
+\paragraph{تحلیل}
+
+با افزایش طول دنباله، وابستگی زمانی عمیق‌تر شده و گرادیان باید در طول گام‌های بیشتری منتشر شود.  
+
+اگرچه در نهایت دقت آموزش به 100 درصد رسید اما دقت تست تنها 83 درصد بود. این موضوع نشان‌دهندۀ بیش‌برازش \lr{(Overfitting)} است.
+
+شبکه به دلیل محدودیت حافظه کوتاه‌مدت خود، در دنباله‌های بلند قادر به یادگیری پایدار وابستگی‌های زمانی نیست. در نتیجه، پس از تعداد زیادی اپوک، مدل به سمت حفظ کردن نمونه‌های آموزش حرکت کرده و تعمیم‌پذیری آن کاهش یافته است.
+
+این رفتار از محدودیت‌های ذاتی \lr{Vanilla RNN} ناشی می‌شود که در دنباله‌های بلند دچار مشکل می‌شود.
+
+نمودارهای \lr{Loss} و \lr{accuracy} در طول آموزش به صورت زیر است:
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/LA2.png}
+	\caption{نمودارهای دقت و خطا در طول آموزش(رویکرد دوم)}
+\end{figure}
+\subsubsection{تحلیل نوسانات تابع هزینه و دقت}
+
+در رویکرد دوم، نمودارهای \lr{Loss} و \lr{Accuracy} بر حسب تعداد اپوک رفتار یکنواخت و همگرای مناسبی ندارند و نوسانات قابل‌توجهی در طول آموزش مشاهده می‌شود. این پدیده عمدتاً به دو عامل اصلی بازمی‌گردد:  
+افزایش طول دنباله زمانی و استفاده از بهینه‌ساز ساده‌ی \lr{SGD}.
+
+\paragraph{تأثیر استفاده از \lr{SGD}}
+در این پیاده‌سازی، بهینه‌سازی پارامترها با استفاده از \lr{Stochastic Gradient Descent (SGD)} انجام شده است. در \lr{SGD}، به‌روزرسانی وزن‌ها تنها بر اساس گرادیان لحظه‌ای انجام می‌شود و هیچ حافظه‌ای از جهت یا شدت گرادیان‌های قبلی وجود ندارد. در نتیجه:
+
+\begin{itemize}
+	\item مسیر بهینه‌سازی بسیار حساس به نویز گرادیان است،
+	\item مدل ممکن است بین نواحی مختلف تابع هزینه نوسان کند،
+	\item در حضور نرخ یادگیری بالا، پرش‌های شدید اطراف کمینه‌ها رخ می‌دهد،
+	\item شبکه به‌راحتی در کمینه‌های محلی یا نواحی ناپایدار گرفتار می‌شود.
+\end{itemize}
+
+این رفتار به‌ویژه در شبکه‌های بازگشتی با دنباله‌های بلند تشدید می‌شود، زیرا گرادیان‌ها حاصل ترکیب اثرات چندین گام زمانی هستند و ذاتاً نویز و ناپایداری بیشتری دارند.
+
+\paragraph{نقش طول دنباله در نوسانات}
+در این رویکرد، طول دنباله برابر با $S_L=10$ است. با افزایش طول دنباله:
+
+\begin{itemize}
+	\item عمق مؤثر شبکه در زمان افزایش می‌یابد،
+	\item حساسیت گرادیان نسبت به تغییرات کوچک وزن‌ها بیشتر می‌شود،
+	\item خطای هر گام زمانی می‌تواند اثر تجمعی شدیدی بر گرادیان نهایی داشته باشد.
+\end{itemize}
+
+در چنین شرایطی، استفاده از \lr{SGD} بدون مکانیزم‌های کمکی، منجر به نوسان شدید در مسیر یادگیری می‌شود که به‌وضوح در نمودارهای Loss و Accuracy مشاهده می‌گردد.
+
+\paragraph{چرا Adam یا Momentum می‌توانند این مشکل را کاهش دهند؟}
+بهینه‌سازهایی مانند \lr{SGD with Momentum} و \lr{Adam} با افزودن حافظه به فرآیند به‌روزرسانی وزن‌ها، بخش زیادی از این نوسانات را کاهش می‌دهند:
+
+\begin{itemize}
+	\item \lr{Momentum} با میانگین‌گیری جهت‌دار از گرادیان‌های قبلی، نوسانات کوتاه‌مدت را فیلتر کرده و حرکت هموارتری به سمت کمینه ایجاد می‌کند.
+	\item \lr{Adam} علاوه بر مومنتوم، از نرخ یادگیری تطبیقی برای هر پارامتر استفاده می‌کند که باعث پایداری بیشتر آموزش، به‌ویژه در مسائل با گرادیان‌های ناپایدار می‌شود.
+\end{itemize}
+
+در نتیجه، اگر در این رویکرد به‌جای \lr{SGD} از \lr{Adam} یا \lr{SGD with Momentum} استفاده می‌شد، انتظار می‌رفت:
+
+\begin{itemize}
+	\item نوسانات نمودار Loss کاهش یابد،
+	\item منحنی Accuracy رفتار هموارتر و صعودی‌تری داشته باشد،
+	\item همگرایی مدل سریع‌تر و پایدارتر رخ دهد.
+\end{itemize}
+
+\paragraph{جمع‌بندی}
+نوسانات مشاهده‌شده در نمودارهای آموزشی رویکرد دوم نه به ضعف پیاده‌سازی، بلکه به ترکیب دو عامل زیر بازمی‌گردد:
+
+\begin{enumerate}
+	\item طول دنباله زمانی نسبتاً بلند،
+	\item بهره‌گیری از بهینه‌ساز ساده‌ی \lr{SGD} بدون مومنتوم.
+\end{enumerate}
+
+این تحلیل به‌خوبی نشان می‌دهد که انتخاب بهینه‌ساز نقش کلیدی در پایداری آموزش شبکه‌های بازگشتی دارد و برای مسائل ترتیبی با وابستگی زمانی عمیق، استفاده از بهینه‌سازهای پیشرفته‌تر امری ضروری است.
+
+
+\subsubsection{رویکرد سوم: دنباله بلند ($S_L=10$) و نرخ یادگیری پایین \lr{(0.1)}}
+
+در این رویکرد همان تنظیمات رویکرد دوم حفظ شداما نرخ یادگیری از \lr{0.9} به \lr{0.1} کاهش داده شد.
+
+\paragraph{نتایج آموزش}
+نتایج مربوط به فرآیند آموزش به صورت زیر است:
+
+\begin{LTR}
+	\begin{center}
+		\begin{tabular}{c c c c}
+			\hline
+			Epoch & Progress & Loss & Accuracy \\
+			\hline
+			\lr{1000} & \lr{1000/2000} & \lr{0.6876} & \lr{52.9\%} \\
+			\lr{1500} & \lr{1500/2000} & \lr{0.6872} & \lr{51.9\%} \\
+			\lr{2000} & \lr{2000/2000} & \lr{0.6868} & \lr{52.6\%} \\
+			\hline
+		\end{tabular}
+	\end{center}
+\end{LTR}
+
+
+\paragraph{نتبجۀ تست}
+نتیجۀ مربوط به ارزیابی مدل روی داده های تست به صورت زیر است:
+
+\begin{LTR}
+	\texttt{Test Accuracy: \lr{48.00\%}
+	}
+\end{LTR}
+
+\paragraph{تحلیل}
+
+در این حالت مدل تقریباً هیچ یادگیری مؤثری انجام نداده است. مقدار تابع هزینه در حوالی \lr{0.69} باقی مانده که معادل حدس تصادفی برای طبقه‌بندی دودویی است.
+
+علت اصلی این رفتار، پدیدۀ محو شدن گرادیان \LR{(Vanishing Gradient)} است.
+
+در شبکه‌های بازگشتی، گرادیان هنگام عبور از گام‌های زمانی متعدد، به صورت ضرب‌های متوالی از مشتق تابع فعال‌سازی (مانند $\tanh$) عبور می‌کند. از آنجا که مشتق $\tanh$ مقداری کمتر از 1 دارد:
+
+\[
+| \tanh'(x) | \le 1
+\]
+
+گرادیان در هر گام زمانی کوچک‌تر می‌شود و در گام‌های ابتدایی تقریباً به صفر میل می‌کند.
+
+در نتیجه:
+
+\begin{itemize}
+	\item گرادیان وزن‌های ابتدایی بسیار کوچک می‌شود،
+	\item وقتی این گرادیان کوچک در نرخ یادگیری کوچک \lr{(0.1)} ضرب می‌شود،
+	\item تغییر وزن‌ها ناچیز شده و عملاً یادگیری متوقف می‌شود.
+\end{itemize}
+
+به همین دلیل مشاهده می‌شود که مدل حتی پس از 2000 اپوک نیز عملکردی نزدیک به حد تصادفی دارد (دقت تست 48 درصد).
+
+این نتیجه به‌وضوح نشان می‌دهد که ترکیب دنباله بلند + گرادیان‌های محوشونده + نرخ یادگیری پایین می‌تواند یادگیری را کاملاً مختل کند.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/LA3.png}
+	\caption{نمودارهای دقت و خطا در طول آموزش(رویکرد سوم)}
+\end{figure}
+در نمودارهای بالا مشاهده می شود که مدل چیزی یاد نگرفته و رفتار تصادفی دارد. در واقع مدل \lr{underfit} است.
+\subsubsection{کد}
+\begin{LTR}
+	\inputminted{python}{code/ML-Hw3-Q4.py}
+\end{LTR}
+
+
+
+\section {سوال 5: پیاده سازی حرفه ای و ترفند های اموزش \lr{RNN} ها در \lr{Pytorch}}
+
+\subsection{داده‌های ترتیبی (\lr{Sequential Data})}
+
+در بسیاری از مسائل یادگیری ماشین، داده‌ها به صورت مستقل از یکدیگر در نظر گرفته می‌شوند. 
+برای مثال در مسائل دسته‌بندی تصاویر، هر تصویر یک نمونه مستقل است و ترتیب قرارگیری تصاویر در دیتاست تأثیری بر نتیجه مدل ندارد. 
+اما در دسته‌ای از مسائل، ترتیب داده‌ها دارای معنا و اطلاعات مهمی است. این نوع داده‌ها را داده‌های ترتیبی یا \lr{Sequential Data} می‌نامند.
+
+در داده‌های ترتیبی، هر عنصر از دنباله به عناصر قبلی یا حتی عناصر بعدی وابسته است. به عبارت دیگر، اگر ترتیب داده‌ها تغییر کند، معنای کل دنباله نیز تغییر خواهد کرد.
+
+یک دنباله را می‌توان به صورت زیر نمایش داد:
+
+\begin{equation}
+	X = (x_1, x_2, x_3, \dots, x_T)
+\end{equation}
+
+در این رابطه:
+\begin{itemize}
+	\item \(x_t\) عنصر مربوط به گام زمانی \(t\) است
+	\item \(T\) طول دنباله است
+\end{itemize}
+
+در بسیاری از مسائل، هدف این است که با مشاهده کل دنباله، یک برچسب برای آن پیش‌بینی شود. 
+این نوع مسئله را \lr{Sequence Classification} می‌نامند.
+
+تابع یادگیری در این حالت به شکل زیر تعریف می‌شود:
+
+\begin{equation}
+	f(x_1, x_2, \dots, x_T) = y
+\end{equation}
+
+که در آن \(y\) برچسب نهایی دنباله است.
+
+نمونه‌های رایج از داده‌های ترتیبی عبارت‌اند از:
+
+\begin{itemize}
+	\item متن در پردازش زبان طبیعی (\lr{Natural Language Processing})
+	\item سیگنال‌های صوتی
+	\item سری‌های زمانی مالی
+	\item داده‌های سنسورها
+	\item توالی‌های زیستی مانند \lr{DNA}
+\end{itemize}
+
+برای مثال در یک جمله:
+
+\begin{center}
+	\lr{The cat sat on the mat}
+\end{center}
+
+ترتیب کلمات بسیار مهم است. اگر ترتیب کلمات تغییر کند، معنی جمله کاملاً عوض می‌شود.
+
+به همین دلیل مدل باید بتواند وابستگی بین عناصر مختلف دنباله را یاد بگیرد. این وابستگی معمولاً به صورت زیر مدل می‌شود:
+
+\begin{equation}
+	P(x_t \mid x_1, x_2, \dots, x_{t-1})
+\end{equation}
+
+یعنی احتمال وقوع عنصر \(x_t\) وابسته به عناصر قبلی دنباله است.
+
+مدل‌های معمول مانند شبکه‌های عصبی \lr{Feedforward} نمی‌توانند این وابستگی ترتیبی را به خوبی مدل کنند، زیرا این مدل‌ها فرض می‌کنند ورودی‌ها مستقل هستند. 
+به همین دلیل برای داده‌های ترتیبی از معماری‌هایی مانند \lr{RNN}، \lr{LSTM} و \lr{GRU} استفاده می‌شود که قادرند اطلاعات گذشته را در حالت پنهان (\lr{Hidden State}) ذخیره کنند.
+
+\subsection{چالش توالی‌های طولانی (\lr{Long Sequences})}
+
+در بسیاری از کاربردهای واقعی، طول دنباله‌ها می‌تواند بسیار بزرگ باشد. 
+برای مثال:
+
+\begin{itemize}
+	\item یک جمله ممکن است \lr{20} تا \lr{30} کلمه داشته باشد
+	\item یک پاراگراف ممکن است بیش از \lr{100} کلمه داشته باشد
+	\item سیگنال‌های صوتی ممکن است هزاران گام زمانی داشته باشند
+\end{itemize}
+
+در چنین شرایطی، مدل باید بتواند اطلاعات مربوط به مراحل اولیه دنباله را تا مراحل انتهایی حفظ کند.
+
+در شبکه‌های بازگشتی ساده (\lr{RNN}) حالت پنهان در هر گام زمانی به صورت زیر محاسبه می‌شود:
+
+\begin{equation}
+	h_t = \tanh(W_{hh}h_{t-1} + W_{xh}x_t + b)
+\end{equation}
+
+در این رابطه:
+
+\begin{itemize}
+	\item \(x_t\) ورودی در زمان \(t\)
+	\item \(h_{t-1}\) حالت پنهان قبلی
+	\item \(W_{hh}\) ماتریس وزن انتقال حالت
+	\item \(W_{xh}\) ماتریس وزن ورودی
+\end{itemize}
+
+این رابطه نشان می‌دهد که هر حالت پنهان به حالت قبلی وابسته است. 
+اگر این رابطه را برای چند گام زمانی باز کنیم، مشاهده می‌کنیم که حالت پنهان در زمان \(t\) به صورت زیر به حالت اولیه وابسته می‌شود:
+
+\begin{equation}
+	h_t = \tanh(W_{hh}^t h_0 + \sum_{k=1}^{t} W_{hh}^{t-k} W_{xh} x_k)
+\end{equation}
+
+در این معادله، توان‌های متوالی ماتریس \(W_{hh}\) ظاهر می‌شوند. 
+این موضوع در فرآیند آموزش شبکه مشکلاتی ایجاد می‌کند که یکی از مهم‌ترین آن‌ها انفجار گرادیان است.
+
+\subsection{پدیده انفجار گرادیان (\lr{Exploding Gradient})}
+
+شبکه‌های بازگشتی با استفاده از الگوریتم \lr{Backpropagation Through Time} یا به اختصار \lr{BPTT} آموزش داده می‌شوند. 
+در این الگوریتم، گرادیان خطا نسبت به پارامترها از انتهای دنباله به ابتدای آن منتقل می‌شود.
+
+گرادیان کلی نسبت به یک پارامتر به صورت زیر نوشته می‌شود:
+
+\begin{equation}
+	\frac{\partial L}{\partial W} =
+	\sum_{t=1}^{T}
+	\left(
+	\frac{\partial L}{\partial h_t}
+	\prod_{k=t}^{1}
+	\frac{\partial h_k}{\partial h_{k-1}}
+	\right)
+\end{equation}
+
+در این رابطه یک ضرب زنجیره‌ای از ژاکوبین‌ها وجود دارد:
+
+\begin{equation}
+	\prod_{k=1}^{T}
+	\frac{\partial h_k}{\partial h_{k-1}}
+\end{equation}
+
+اگر مقدار نُرم این ژاکوبین‌ها بزرگ‌تر از \lr{1} باشد، این ضرب زنجیره‌ای به صورت نمایی رشد می‌کند.
+
+\begin{equation}
+	\left\|
+	\frac{\partial h_k}{\partial h_{k-1}}
+	\right\| > 1
+\end{equation}
+
+در نتیجه:
+
+\begin{equation}
+	\left\|
+	\prod_{k=1}^{T}
+	\frac{\partial h_k}{\partial h_{k-1}}
+	\right\|
+	\rightarrow \infty
+\end{equation}
+
+برای درک بهتر این موضوع یک مثال عددی ساده در نظر بگیرید.
+
+فرض کنید مقدار متوسط این ضریب برابر \lr{1.5} باشد و طول دنباله برابر \lr{20} باشد:
+
+\begin{equation}
+	1.5^{20} \approx 3325
+\end{equation}
+
+در این حالت مقدار گرادیان به سرعت بسیار بزرگ می‌شود. 
+این موضوع باعث مشکلات زیر می‌شود:
+
+\begin{itemize}
+	\item ناپایداری در فرآیند آموزش
+	\item جهش‌های شدید در به‌روزرسانی پارامترها
+	\item تولید مقادیر \lr{NaN}
+	\item عدم همگرایی مدل
+\end{itemize}
+
+به همین دلیل در مدل‌های بازگشتی معمولاً از تکنیک‌هایی مانند \lr{Gradient Clipping} استفاده می‌شود تا اندازه گرادیان محدود شود.
+
+\subsection{محاسبات هدررفته ناشی از \lr{Padding}}
+
+یکی دیگر از چالش‌های مهم در کار با داده‌های ترتیبی، متفاوت بودن طول دنباله‌ها است.
+
+برای مثال ممکن است دو دنباله زیر را داشته باشیم:
+
+\begin{align}
+	S_1 &= (x_1, x_2, x_3, x_4, x_5) \\
+	S_2 &= (y_1, y_2)
+\end{align}
+
+برای اینکه بتوانیم این داده‌ها را به صورت دسته‌ای (\lr{Batch}) به شبکه عصبی بدهیم، باید طول آن‌ها را یکسان کنیم. 
+رایج‌ترین روش برای این کار استفاده از \lr{Padding} است.
+
+در این روش دنباله کوتاه‌تر با مقادیر صفر یا یک توکن خاص پر می‌شود:
+
+\begin{align}
+	S_1 &= (x_1, x_2, x_3, x_4, x_5) \\
+	S_2 &= (y_1, y_2, 0, 0, 0)
+\end{align}
+
+در اینجا مقدار \lr{0} نشان‌دهنده \lr{padding token} است.
+
+اگر اندازه بچ برابر \lr{2} و طول حداکثر دنباله برابر \lr{5} باشد، مدل مجبور است در مجموع:
+
+\begin{equation}
+	2 \times 5 = 10
+\end{equation}
+
+گام محاسباتی انجام دهد.
+
+اما در واقع تعداد گام‌های واقعی برابر است با:
+
+\begin{equation}
+	5 + 2 = 7
+\end{equation}
+
+بنابراین:
+
+\begin{equation}
+	\text{محاسبات اضافی} = 10 - 7 = 3
+\end{equation}
+
+هرچه اختلاف طول دنباله‌ها بیشتر باشد، این اتلاف محاسباتی نیز بیشتر خواهد شد.
+
+این مشکل دو پیامد مهم دارد:
+
+\begin{itemize}
+	\item افزایش زمان محاسبات
+	\item مصرف بیشتر حافظه
+\end{itemize}
+
+علاوه بر این، اگر مدل از وجود \lr{padding} آگاه نباشد، ممکن است این مقادیر را به عنوان داده واقعی پردازش کند که باعث ایجاد نویز در فرآیند یادگیری می‌شود.
+
+به همین دلیل در بسیاری از پیاده‌سازی‌های مدرن از تکنیک‌هایی مانند \lr{Packed Sequences} استفاده می‌شود که باعث می‌شود مدل فقط روی بخش‌های واقعی دنباله محاسبه انجام دهد و گام‌های مربوط به \lr{padding} را نادیده بگیرد.
+\subsection{ساختار و نحوه عملکرد \lr{BiLSTM}}
+
+شبکه‌های \lr{Bidirectional Long Short-Term Memory} که به اختصار \lr{BiLSTM} نامیده می‌شوند، توسعه‌ای از معماری \lr{LSTM} هستند که هدف آن‌ها بهره‌برداری همزمان از اطلاعات گذشته و آینده در یک دنباله است. 
+در بسیاری از مسائل ترتیبی، تنها استفاده از اطلاعات گذشته کافی نیست، زیرا معنای یک عنصر ممکن است به عناصر بعدی نیز وابسته باشد. 
+به عنوان مثال در جمله زیر:
+
+\begin{center}
+	\lr{He went to the bank}
+\end{center}
+
+کلمه \lr{bank} می‌تواند به معنی بانک مالی یا کناره رودخانه باشد. 
+برای تشخیص معنای صحیح، نیاز داریم کلمات بعدی جمله را نیز ببینیم. 
+در چنین حالتی استفاده از یک \lr{LSTM} یک‌طرفه که فقط از گذشته به آینده حرکت می‌کند کافی نیست.
+
+\subsubsection{مرور ساختار \lr{LSTM}}
+
+برای درک بهتر \lr{BiLSTM} ابتدا ساختار \lr{LSTM} را مرور می‌کنیم. 
+در \lr{LSTM} در هر گام زمانی \( t \)، سه گیت اصلی و یک حالت حافظه وجود دارد:
+
+\paragraph{گیت فراموشی (\lr{Forget Gate})}
+
+\begin{equation}
+	f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)
+\end{equation}
+
+این گیت تعیین می‌کند چه مقدار از حافظه قبلی حفظ شود.
+
+\paragraph{گیت ورودی (\lr{Input Gate})}
+
+\begin{equation}
+	i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)
+\end{equation}
+
+\paragraph{بردار کاندید حافظه}
+
+\begin{equation}
+	\tilde{c}_t = \tanh(W_c x_t + U_c h_{t-1} + b_c)
+\end{equation}
+
+\paragraph{به‌روزرسانی حافظه}
+
+\begin{equation}
+	c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t
+\end{equation}
+
+\paragraph{گیت خروجی}
+
+\begin{equation}
+	o_t = \sigma(W_o x_t + U_o h_{t-1} + b_o)
+\end{equation}
+
+\paragraph{حالت پنهان نهایی}
+
+\begin{equation}
+	h_t = o_t \odot \tanh(c_t)
+\end{equation}
+
+وجود مسیر نسبتاً خطی در به‌روزرسانی \( c_t \) باعث می‌شود گرادیان بتواند در دنباله‌های طولانی بهتر منتقل شود و مشکل محوشدگی کاهش یابد.
+
+\subsubsection{ایده اصلی \lr{Bidirectional Processing}}
+
+در \lr{LSTM} استاندارد، پردازش فقط در یک جهت انجام می‌شود:
+
+\begin{equation}
+	x_1 \rightarrow x_2 \rightarrow \dots \rightarrow x_T
+\end{equation}
+
+اما در \lr{BiLSTM} دو شبکه \lr{LSTM} مستقل وجود دارد:
+
+\begin{itemize}
+	\item یک شبکه در جهت رو به جلو (\lr{Forward})
+	\item یک شبکه در جهت معکوس (\lr{Backward})
+\end{itemize}
+
+شبکه رو به جلو حالت‌های زیر را تولید می‌کند:
+
+\begin{equation}
+	\overrightarrow{h_t} = \text{LSTM}_{forward}(x_t, \overrightarrow{h_{t-1}})
+\end{equation}
+
+شبکه معکوس دنباله را از انتها به ابتدا پردازش می‌کند:
+
+\begin{equation}
+	\overleftarrow{h_t} = \text{LSTM}_{backward}(x_t, \overleftarrow{h_{t+1}})
+\end{equation}
+
+در نهایت خروجی هر گام زمانی از الحاق این دو بردار به دست می‌آید:
+
+\begin{equation}
+	h_t = [\overrightarrow{h_t} ; \overleftarrow{h_t}]
+\end{equation}
+
+در این رابطه نماد \( [\cdot ; \cdot] \) نشان‌دهنده الحاق برداری (\lr{Concatenation}) است.
+
+\subsubsection{تحلیل شهودی عملکرد}
+
+در جهت رو به جلو، مدل اطلاعات گذشته را خلاصه می‌کند. 
+در جهت معکوس، مدل اطلاعات آینده را خلاصه می‌کند. 
+بنابراین در هر لحظه زمانی \( t \)، مدل به اطلاعات کامل‌تری از کل دنباله دسترسی دارد.
+
+اگر اندازه بردار پنهان هر جهت برابر \( H \) باشد، خروجی نهایی در هر گام زمانی دارای ابعاد زیر خواهد بود:
+
+\begin{equation}
+	\text{dim}(h_t) = 2H
+\end{equation}
+
+زیرا دو بردار با اندازه \( H \) به یکدیگر الحاق شده‌اند.
+
+\subsubsection{کاربرد در دسته‌بندی دنباله (\lr{Sequence Classification})}
+
+در مسائل دسته‌بندی کل دنباله، معمولاً فقط به نمایش نهایی کل توالی نیاز داریم. 
+در \lr{BiLSTM} این نمایش معمولاً از آخرین حالت‌های پنهان هر دو جهت ساخته می‌شود:
+
+\begin{equation}
+	h_{final} = [\overrightarrow{h_T} ; \overleftarrow{h_1}]
+\end{equation}
+
+بردار فوق خلاصه‌ای از کل اطلاعات گذشته و آینده در دنباله است. 
+این بردار سپس به یک لایه کاملاً متصل (\lr{Fully Connected Layer}) داده می‌شود:
+
+\begin{equation}
+	y = W h_{final} + b
+\end{equation}
+
+و در نهایت با اعمال تابع فعال‌سازی مناسب (مثلاً \lr{Softmax}) احتمال کلاس‌ها محاسبه می‌شود:
+
+\begin{equation}
+	\hat{y} = \text{Softmax}(Wh_{final} + b)
+\end{equation}
+
+\subsubsection{مزایای \lr{BiLSTM}}
+
+\begin{itemize}
+	\item استفاده همزمان از اطلاعات گذشته و آینده
+	\item افزایش دقت در مسائل وابسته به زمینه (\lr{Context-Dependent})
+	\item مناسب برای متن، گفتار و داده‌های زیستی
+\end{itemize}
+
+\subsubsection{هزینه محاسباتی}
+
+از آنجا که دو شبکه \lr{LSTM} به طور همزمان اجرا می‌شوند، پیچیدگی محاسباتی تقریباً دو برابر یک \lr{LSTM} معمولی است. 
+اگر پیچیدگی یک \lr{LSTM} برابر باشد با:
+
+\begin{equation}
+	\mathcal{O}(T H^2)
+\end{equation}
+
+در \lr{BiLSTM} خواهیم داشت:
+
+\begin{equation}
+	\mathcal{O}(2 T H^2)
+\end{equation}
+
+که تقریباً دو برابر است.
+
+\subsubsection{جمع‌بندی مفهومی}
+
+\lr{BiLSTM} را می‌توان به صورت دو مشاهده‌گر تصور کرد که یکی از ابتدا به انتها و دیگری از انتها به ابتدا دنباله را بررسی می‌کند. 
+هر دو مشاهده‌گر برداشت خود را از دنباله ارائه می‌دهند و این دو برداشت با هم ترکیب می‌شوند تا نمایش کامل‌تری از داده ساخته شود.
+
+به همین دلیل \lr{BiLSTM} در بسیاری از مسائل پیچیده ترتیبی نسبت به \lr{LSTM} یک‌طرفه عملکرد بهتری دارد، به‌ویژه زمانی که درک هر عنصر به اطلاعات قبل و بعد از آن وابسته باشد.
+
+
+\subsection{بررسی \lr{pack\_padded\_sequence} و \lr{pad\_packed\_sequence}}
+
+در مسائل واقعی، دنباله‌ها معمولاً طول یکسان ندارند. 
+برای پردازش دسته‌ای (\lr{Batch Processing}) در چارچوب‌هایی مانند \lr{PyTorch}، لازم است تمام دنباله‌های داخل یک بچ دارای طول یکسان باشند. 
+به همین دلیل از تکنیک \lr{Padding} استفاده می‌شود.
+
+فرض کنید سه دنباله با طول‌های متفاوت داشته باشیم:
+
+\begin{align}
+	S_1 &= (x_1, x_2, x_3, x_4) \\
+	S_2 &= (y_1, y_2) \\
+	S_3 &= (z_1, z_2, z_3)
+\end{align}
+
+بیشترین طول برابر \lr{4} است، بنابراین دو دنباله دیگر را پد می‌کنیم:
+
+\begin{align}
+	S_2 &= (y_1, y_2, 0, 0) \\
+	S_3 &= (z_1, z_2, z_3, 0)
+\end{align}
+
+حال ورودی مدل یک تنسور با ابعاد زیر خواهد بود:
+
+\begin{equation}
+	\text{Batch Size} \times \text{Max Length}
+\end{equation}
+
+اگر اندازه بچ برابر \lr{3} و طول حداکثر برابر \lr{4} باشد:
+
+\begin{equation}
+	3 \times 4 = 12
+\end{equation}
+
+اما تعداد گام‌های واقعی برابر است با:
+
+\begin{equation}
+	4 + 2 + 3 = 9
+\end{equation}
+
+پس:
+
+\begin{equation}
+	\text{محاسبات هدررفته} = 12 - 9 = 3
+\end{equation}
+
+در دیتاست‌های بزرگ که اختلاف طول‌ها زیاد است، این اتلاف بسیار قابل توجه می‌شود.
+
+\subsubsection{مشکل مهم‌تر از اتلاف محاسبات}
+
+مشکل فقط اتلاف محاسبات نیست. 
+در حالت عادی، \lr{LSTM} از روی مقادیر \lr{padding} نیز عبور می‌کند و آن‌ها را مانند داده واقعی پردازش می‌کند. 
+در نتیجه:
+
+\begin{itemize}
+	\item گرادیان از روی گام‌های پد عبور می‌کند
+	\item حالت پنهان تحت تأثیر صفرهای غیرواقعی قرار می‌گیرد
+	\item مدل ممکن است الگوهای نادرست یاد بگیرد
+\end{itemize}
+
+\subsubsection{راه‌حل: \lr{Packed Sequence}}
+
+در \lr{PyTorch} می‌توان قبل از ورود داده به \lr{LSTM} آن را به ساختار فشرده تبدیل کرد:
+
+\begin{equation}
+	\text{PackedSequence}
+\end{equation}
+
+این ساختار باعث می‌شود مدل فقط روی گام‌های واقعی محاسبه انجام دهد و گام‌های پد را نادیده بگیرد.
+
+فرض کنید طول‌ها برابر باشند با:
+
+\begin{equation}
+	\text{lengths} = [4, 3, 2]
+\end{equation}
+
+در حالت عادی پردازش به صورت زیر است:
+
+\begin{center}
+	گام 1: سه عنصر \\
+	گام 2: سه عنصر \\
+	گام 3: سه عنصر \\
+	گام 4: سه عنصر
+\end{center}
+
+اما در حالت \lr{packed}:
+
+\begin{center}
+	گام 1: سه عنصر \\
+	گام 2: سه عنصر \\
+	گام 3: دو عنصر \\
+	گام 4: یک عنصر
+\end{center}
+
+در نتیجه تعداد کل محاسبات دقیقاً برابر با مجموع طول‌های واقعی خواهد بود.
+
+از نظر ریاضی، اگر طول‌های دنباله برابر باشند با \(l_1, l_2, \dots, l_n\)، در حالت عادی:
+
+\begin{equation}
+	\text{Total Computation} = n \times \max(l_i)
+\end{equation}
+
+اما در حالت \lr{packed}:
+
+\begin{equation}
+	\text{Total Computation} = \sum_{i=1}^{n} l_i
+\end{equation}
+
+که بهینه‌تر است.
+
+\subsubsection{چرا بعداً از \lr{pad\_packed\_sequence} استفاده می‌کنیم؟}
+
+پس از عبور از \lr{LSTM}، خروجی همچنان در قالب فشرده است. 
+اگر نیاز داشته باشیم خروجی را به شکل تنسور عادی بازگردانیم (مثلاً برای \lr{Sequence Labeling}) از تابع زیر استفاده می‌کنیم:
+
+\begin{equation}
+	\text{pad\_packed\_sequence}
+\end{equation}
+
+اما در مسئله دسته‌بندی کل دنباله، معمولاً فقط به حالت‌های نهایی \(h_n\) نیاز داریم و نیازی به بازسازی کامل توالی نیست.
+
+\subsection{لایه \lr{Embedding}}
+
+\subsubsection{تعریف مفهومی}
+
+در مسائل متنی یا داده‌های گسسته، ورودی‌ها معمولاً به صورت شناسه‌های عددی (\lr{Integer Index}) نمایش داده می‌شوند.
+
+برای مثال فرض کنید واژگان ما شامل \lr{5} کلمه باشد:
+
+\begin{center}
+	\lr{cat, dog, car, tree, house}
+\end{center}
+
+می‌توان آن‌ها را به صورت زیر کدگذاری کرد:
+
+\begin{center}
+	\lr{cat} $\rightarrow 0$ \\
+	\lr{dog} $\rightarrow 1$ \\
+	\lr{car} $\rightarrow 2$ \\
+	\lr{tree} $\rightarrow 3$ \\
+	\lr{house} $\rightarrow 4$
+\end{center}
+
+این اعداد صرفاً شناسه هستند و هیچ معنای هندسی ندارند.
+
+اگر این اعداد را مستقیماً وارد شبکه کنیم، مدل ممکن است تصور کند:
+
+\begin{equation}
+	4 > 1
+\end{equation}
+
+در حالی که این مقایسه بی‌معنا است.
+
+\subsubsection{راه‌حل: نگاشت به فضای برداری}
+
+\lr{Embedding} یک نگاشت قابل یادگیری است:
+
+\begin{equation}
+	E : \{0, 1, \dots, V-1\} \rightarrow \mathbb{R}^d
+\end{equation}
+
+که در آن:
+
+\begin{itemize}
+	\item \(V\) اندازه واژگان
+	\item \(d\) بعد فضای embedding
+\end{itemize}
+
+در عمل، embedding یک ماتریس پارامتری است:
+
+\begin{equation}
+	E \in \mathbb{R}^{V \times d}
+\end{equation}
+
+هر سطر این ماتریس یک بردار نمایشی برای یک توکن است.
+
+اگر ورودی \(x_t\) برابر اندیس \(i\) باشد، خروجی embedding برابر است با:
+
+\begin{equation}
+	x_t^{(embed)} = E_{i}
+\end{equation}
+
+\subsubsection{مقایسه با \lr{One-Hot}}
+
+در روش \lr{One-Hot}، هر کلمه به برداری با طول \(V\) تبدیل می‌شود که فقط یک مؤلفه آن برابر \lr{1} است.
+
+برای واژگان \lr{5} تایی:
+
+\begin{equation}
+	\text{cat} = (1,0,0,0,0)
+\end{equation}
+
+مشکل این روش:
+
+\begin{itemize}
+	\item بعد بسیار بالا
+	\item بردارهای کاملاً پراکنده (\lr{Sparse})
+	\item عدم نمایش شباهت معنایی
+\end{itemize}
+
+در مقابل، embedding:
+
+\begin{itemize}
+	\item چگال (\lr{Dense})
+	\item کم‌بعد
+	\item قابل یادگیری
+	\item قادر به نمایش شباهت معنایی
+\end{itemize}
+
+برای مثال ممکن است پس از آموزش داشته باشیم:
+
+\begin{align}
+	E_{\text{cat}} &= (0.2, -0.7, 1.1) \\
+	E_{\text{dog}} &= (0.3, -0.6, 1.0)
+\end{align}
+
+فاصله این دو بردار کوچک است، بنابراین مدل متوجه شباهت معنایی آن‌ها می‌شود.
+
+\subsubsection{نقش embedding در \lr{BiLSTM}}
+
+\lr{LSTM} با بردارهای پیوسته کار می‌کند. 
+اگر ورودی‌ها به صورت اندیس باشند، عملیات ضرب ماتریسی معنی‌دار نخواهد بود.
+
+در نتیجه قبل از ورود به \lr{BiLSTM} داریم:
+
+\begin{equation}
+	x_t \in \mathbb{Z}
+\end{equation}
+
+پس از embedding:
+
+\begin{equation}
+	x_t \in \mathbb{R}^d
+\end{equation}
+
+و حالا می‌توان آن را وارد رابطه زیر کرد:
+
+\begin{equation}
+	h_t = \text{LSTM}(x_t^{(embed)}, h_{t-1})
+\end{equation}
+
+\subsection{تحلیل دقیق معماری \lr{RobustBiLSTM}}
+
+در این بخش، معماری مدل \lr{RobustBiLSTM} به صورت دقیق بررسی می‌شود. هدف این مدل، انجام \lr{sequence classification} روی دنباله‌هایی با طول متغیر است؛ به گونه‌ای که هم اطلاعات گذشته و هم اطلاعات آینده هر دنباله در نمایش نهایی لحاظ شود. علاوه بر این، مدل طوری طراحی شده است که اثر \lr{padding} را به حداقل رسانده، محاسبات غیرضروری را حذف کند و در عین حال پایداری آموزش را نیز حفظ نماید.
+
+\subsubsection{هدف کلی مدل}
+
+ایده اصلی در این معماری آن است که هر دنباله ورودی ابتدا به بردارهای چگال معنایی تبدیل شود، سپس این بردارها توسط یک \lr{Bidirectional LSTM} چندلایه پردازش شوند، و در نهایت یک نمایش فشرده و سطح‌بالا از کل دنباله برای تصمیم‌گیری دسته‌بندی تولید گردد. به صورت خلاصه، جریان داده در مدل را می‌توان به شکل زیر نوشت:
+
+\begin{equation}
+	x \longrightarrow \text{\lr{Embedding}} \longrightarrow \text{\lr{Packed BiLSTM}} \longrightarrow h_{final} \longrightarrow \text{\lr{Dropout}} \longrightarrow \text{\lr{Fully Connected}} \longrightarrow \text{\lr{Logits}}
+\end{equation}
+
+در این ساختار، مهم‌ترین نکته آن است که نمایش نهایی دنباله نه از تمام خروجی‌های زمانی، بلکه از حالت‌های پنهان نهایی دو جهت \lr{LSTM} استخراج می‌شود.
+
+\subsubsection{پارامترهای ورودی سازنده کلاس}
+
+سازنده کلاس \lr{RobustBiLSTM} چند پارامتر اصلی دریافت می‌کند که هر یک نقش مشخصی در ظرفیت مدل و رفتار آن دارند.
+
+\paragraph{\lr{vocab\_size}}
+این پارامتر تعداد کل توکن‌های موجود در واژگان را مشخص می‌کند. اگر واژگان مدل شامل \(V\) نماد باشد، آنگاه لایه \lr{Embedding} باید قادر باشد هر اندیس صحیح بین \(0\) تا \(V-1\) را به یک بردار چگال نگاشت کند. در اینجا اندیس \(0\) برای \lr{padding} رزرو شده است.
+
+\paragraph{\lr{embedding\_dim}}
+این پارامتر بعد فضای \lr{embedding} را تعیین می‌کند. اگر \(\text{\lr{embedding\_dim}} = d_e\) باشد، هر توکن ورودی به یک بردار در \(\mathbb{R}^{d_e}\) نگاشت می‌شود. بنابراین اگر ورودی اولیه تنها شامل اندیس توکن‌ها باشد، پس از عبور از لایه \lr{Embedding}، نمایش برداری آن به صورت زیر خواهد بود:
+
+\begin{equation}
+	x_i \in \{0,1,\dots,V-1\}
+	\qquad \Longrightarrow \qquad
+	e_i \in \mathbb{R}^{d_e}
+\end{equation}
+
+\paragraph{\lr{hidden\_dim}}
+این پارامتر تعداد واحدهای پنهان در هر جهت از \lr{LSTM} را تعیین می‌کند. اگر \(\text{\lr{hidden\_dim}} = d_h\) باشد، هر جهتِ رو‌به‌جلو و رو‌به‌عقب، در هر گام زمانی یک بردار در \(\mathbb{R}^{d_h}\) تولید می‌کند. در نتیجه چون شبکه \lr{bidirectional} است، نمایش ترکیبی هر گام زمانی در خروجی \lr{LSTM} دارای بعد \(2d_h\) خواهد بود.
+
+\paragraph{\lr{num\_layers}}
+این پارامتر مشخص می‌کند چند لایه \lr{LSTM} روی یکدیگر قرار گرفته‌اند. اگر تعداد لایه‌ها برابر \(L\) باشد، آنگاه خروجی هر لایه به عنوان ورودی لایه بعدی استفاده می‌شود. این انباشت لایه‌ای باعث می‌شود مدل علاوه بر الگوهای ساده زمانی، روابط پیچیده‌تر و سلسله‌مراتبی را نیز یاد بگیرد.
+
+\paragraph{\lr{num\_classes}}
+این پارامتر تعداد کلاس‌های خروجی را تعیین می‌کند. اگر مسئله یک دسته‌بندی دودویی باشد، معمولاً \(\text{\lr{num\_classes}} = 2\) در نظر گرفته می‌شود. در این حالت، خروجی نهایی مدل یک بردار \lr{logit} با دو مؤلفه خواهد بود.
+
+\paragraph{\lr{dropout}}
+این پارامتر احتمال خاموش‌سازی تصادفی بخشی از نورون‌ها را تعیین می‌کند. هدف از آن کاهش بیش‌برازش و افزایش تعمیم‌پذیری مدل است. اگر مقدار این پارامتر را \(p\) در نظر بگیریم، در مرحله آموزش هر مؤلفه با احتمال \(p\) صفر می‌شود.
+
+\subsubsection{تحلیل اجزای داخلی مدل}
+
+\paragraph{لایه \lr{Embedding}}
+اولین مؤلفه مدل، لایه \lr{Embedding} است. این لایه ماتریسی قابل یادگیری به صورت زیر دارد:
+
+\begin{equation}
+	E \in \mathbb{R}^{V \times d_e}
+\end{equation}
+
+که در آن \(V\) اندازه واژگان و \(d_e\) بعد بردارهای嵌ه‌شده است. اگر یک توکن با اندیس \(i\) وارد مدل شود، خروجی لایه \lr{Embedding} سطر \(i\)-ام این ماتریس خواهد بود:
+
+\begin{equation}
+	e_i = E[i]
+\end{equation}
+
+وجود پارامتر \lr{padding\_idx = 0} اهمیت زیادی دارد؛ زیرا باعث می‌شود بردار مربوط به توکن \lr{padding} در آموزش اثرگذار نباشد و این اندیس به عنوان داده واقعی تفسیر نشود.
+
+\paragraph{لایه \lr{BiLSTM}}
+پس از تبدیل توکن‌ها به بردارهای چگال، دنباله وارد لایه \lr{LSTM} دوطرفه می‌شود. برای هر گام زمانی \(t\)، \lr{LSTM} رو‌به‌جلو و رو‌به‌عقب به ترتیب چنین عمل می‌کنند:
+
+\begin{equation}
+	\overrightarrow{h_t} = \text{\lr{LSTM}}_{\text{forward}}(e_t,\overrightarrow{h_{t-1}},\overrightarrow{c_{t-1}})
+\end{equation}
+
+\begin{equation}
+	\overleftarrow{h_t} = \text{\lr{LSTM}}_{\text{backward}}(e_t,\overleftarrow{h_{t+1}},\overleftarrow{c_{t+1}})
+\end{equation}
+
+در نتیجه نمایش خروجی هر موقعیت زمانی برابر است با:
+
+\begin{equation}
+	h_t = [\overrightarrow{h_t};\overleftarrow{h_t}]
+\end{equation}
+
+یعنی اطلاعات مربوط به گذشته و آینده هر موقعیت با یکدیگر ترکیب می‌شوند.
+
+\paragraph{بلوک نهایی \lr{Fully Connected}}
+پس از استخراج نمایش نهایی دنباله، این بردار وارد یک بلوک \lr{fully connected} چندمرحله‌ای می‌شود. ابتدا بعد ویژگی از \(2d_h\) به \(d_h\) کاهش می‌یابد، سپس یک تابع فعال‌سازی \lr{ReLU} اعمال می‌شود، پس از آن دوباره \lr{dropout} قرار می‌گیرد، و در انتها نگاشت نهایی به فضای کلاس‌ها انجام می‌شود. این فرآیند را می‌توان به صورت زیر نوشت:
+
+\begin{equation}
+	z_1 = W_1 h_{final} + b_1
+\end{equation}
+
+\begin{equation}
+	a_1 = \text{\lr{ReLU}}(z_1)
+\end{equation}
+
+\begin{equation}
+	a_1' = \text{\lr{Dropout}}(a_1)
+\end{equation}
+
+\begin{equation}
+	\text{\lr{logits}} = W_2 a_1' + b_2
+\end{equation}
+
+خروجی نهایی \lr{logits} هنوز احتمال نرمال‌شده نیست، بلکه ورودی خام تابع زیان \lr{CrossEntropyLoss} محسوب می‌شود.
+
+\subsubsection{تحلیل دقیق متد \lr{forward}}
+
+متد \lr{forward} سه ورودی اصلی دریافت می‌کند:
+
+\begin{itemize}
+	\item \lr{x}: دنباله‌های \lr{padding}-شده در قالب یک تنسور.
+	\item \lr{length}: طول واقعی هر دنباله پیش از \lr{padding}.
+	\item \lr{hidden}: حالت پنهان اولیه، که در این پیاده‌سازی اختیاری است.
+\end{itemize}
+
+\paragraph{شکل ورودی \lr{x}}
+اگر اندازه دسته را با \(B\) و بیشینه طول دنباله در آن دسته را با \(T_{\max}\) نمایش دهیم، آنگاه ورودی \lr{x} قبل از \lr{embedding} دارای شکل زیر است:
+
+\begin{equation}
+	x \in \mathbb{N}^{B \times T_{\max}}
+\end{equation}
+
+یعنی هر سطر یک دنباله از اندیس توکن‌ها است. پس از اعمال \lr{embedding}، شکل آن به صورت زیر تبدیل می‌شود:
+
+\begin{equation}
+	x_{emb} \in \mathbb{R}^{B \times T_{\max} \times d_e}
+\end{equation}
+
+\paragraph{نقش \lr{length}}
+بردار \lr{length} طول واقعی هر دنباله را قبل از \lr{padding} مشخص می‌کند:
+
+\begin{equation}
+	\text{\lr{length}} = [\ell_1,\ell_2,\dots,\ell_B]
+\end{equation}
+
+که در آن \(\ell_i\) طول نمونه \(i\)-ام است. این بردار برای حذف بخش‌های \lr{padding} از محاسبات \lr{LSTM} استفاده می‌شود.
+
+\subsubsection{تحلیل تابع \lr{pack\_padded\_sequence}}
+
+در این مدل، پس از \lr{embedding} از تابع \lr{pack\_padded\_sequence} استفاده می‌شود تا \lr{LSTM} فقط روی بخش واقعی داده محاسبه انجام دهد و موقعیت‌های \lr{padding} را نادیده بگیرد.
+
+\paragraph{ورودی‌های اصلی تابع}
+این تابع به طور مفهومی چهار ورودی مهم دارد:
+
+\begin{itemize}
+	\item \lr{input}: تنسور دنباله‌های \lr{padding}-شده.
+	\item \lr{lengths}: طول واقعی هر دنباله.
+	\item \lr{batch\_first}: مشخص می‌کند ترتیب ابعاد ورودی چگونه است.
+	\item \lr{enforce\_sorted}: مشخص می‌کند آیا دنباله‌ها باید بر اساس طول به صورت نزولی مرتب شده باشند یا خیر.
+\end{itemize}
+
+\paragraph{\lr{batch\_first} چیست؟}
+اگر \lr{batch\_first=True} باشد، شکل داده ورودی به صورت زیر است:
+
+\begin{equation}
+	(B, T_{\max}, d_e)
+\end{equation}
+
+اما اگر \lr{batch\_first=False} باشد، انتظار تابع این است که ورودی به شکل زیر باشد:
+
+\begin{equation}
+	(T_{\max}, B, d_e)
+\end{equation}
+
+در این پیاده‌سازی، چون از ابتدا داده‌ها در \lr{DataLoader} به صورت \lr{batch-first} ساخته شده‌اند، تنظیم \lr{batch\_first=True} ضروری و سازگار با بقیه کد است.
+
+\paragraph{\lr{enforce\_sorted} چیست؟}
+برخی پیاده‌سازی‌ها برای افزایش کارایی، انتظار دارند دنباله‌ها پیش از ورود به \lr{pack\_padded\_sequence} بر اساس طول به صورت نزولی مرتب شده باشند. اگر \lr{enforce\_sorted=True} باشد، این شرط باید رعایت شود. اما در اینجا مقدار آن \lr{False} قرار داده شده است تا نیاز به مرتب‌سازی دستی وجود نداشته باشد. در نتیجه، حتی اگر طول‌ها به صورت نامرتب باشند، تابع به درستی عمل خواهد کرد.
+
+\paragraph{مثال عددی برای \lr{packing}}
+فرض کنید سه دنباله در یک دسته داشته باشیم:
+
+\begin{equation}
+	s_1 = [4,2,7,5], \qquad s_2 = [8,3], \qquad s_3 = [6,1,9]
+\end{equation}
+
+پس از \lr{padding} با صفر، ورودی به شکل زیر در می‌آید:
+
+\begin{equation}
+	x =
+	\begin{bmatrix}
+		4 & 2 & 7 & 5 \\
+		8 & 3 & 0 & 0 \\
+		6 & 1 & 9 & 0
+	\end{bmatrix}
+\end{equation}
+
+و بردار طول‌ها برابر است با:
+
+\begin{equation}
+	\text{\lr{lengths}} = [4,2,3]
+\end{equation}
+
+اگر این داده مستقیماً وارد \lr{LSTM} شود، شبکه روی صفرهای انتهایی نیز محاسبه انجام می‌دهد. اما با استفاده از \lr{pack\_padded\_sequence}، فقط توکن‌های واقعی پردازش می‌شوند و صفرها از گراف محاسباتی حذف می‌گردند. بنابراین هم سرعت بهتر می‌شود و هم گرادیان ناشی از نواحی \lr{padding} وارد آموزش نمی‌شود.
+
+\subsubsection{تحلیل خروجی \lr{LSTM}: تفاوت \lr{packed\_output}، \lr{output} و \lr{h\_n}}
+
+خروجی \lr{LSTM} در این معماری به صورت زیر است:
+
+\begin{equation}
+	\text{\lr{packed\_output}}, (h_n, c_n)
+\end{equation}
+
+که هر کدام معنای متفاوتی دارند.
+
+\paragraph{\lr{packed\_output}}
+این متغیر شامل خروجی همه گام‌های زمانی است، اما در قالب فشرده‌شده. یعنی ساختار آن دیگر یک تنسور معمولی سه‌بعدی نیست، بلکه شیئی از نوع \lr{PackedSequence} است. این خروجی برای مواقعی مفید است که بخواهیم از نمایش همه موقعیت‌های زمانی استفاده کنیم، مثلاً در \lr{sequence labeling} یا \lr{token-level prediction}.
+
+\paragraph{\lr{pad\_packed\_sequence}}
+اگر بخواهیم \lr{packed\_output} را دوباره به فرم تنسور معمولی برگردانیم، از \lr{pad\_packed\_sequence} استفاده می‌کنیم. خروجی آن دو بخش دارد:
+
+\begin{itemize}
+	\item \lr{output}: تنسور بازسازی‌شده با \lr{padding}
+	\item \lr{output\_lengths}: طول واقعی هر دنباله
+\end{itemize}
+
+اگر \lr{batch\_first=True} باشد، شکل \lr{output} چنین خواهد بود:
+
+\begin{equation}
+	\text{\lr{output}} \in \mathbb{R}^{B \times T_{\max} \times 2d_h}
+\end{equation}
+
+\paragraph{\lr{h\_n}}
+متغیر \lr{h\_n} حالت پنهان نهایی همه لایه‌ها و همه جهت‌ها را نگه می‌دارد. شکل آن به صورت زیر است:
+
+\begin{equation}
+	h_n \in \mathbb{R}^{(L \times D) \times B \times d_h}
+\end{equation}
+
+که در آن \(L\) تعداد لایه‌ها و \(D\) تعداد جهت‌ها است. در \lr{BiLSTM} داریم:
+
+\begin{equation}
+	D = 2
+\end{equation}
+
+بنابراین شکل \lr{h\_n} برابر می‌شود با:
+
+\begin{equation}
+	h_n \in \mathbb{R}^{(2L) \times B \times d_h}
+\end{equation}
+
+\subsubsection{چرا در این مسئله فقط از \lr{h\_n} استفاده شده است؟}
+
+در مسئله دسته‌بندی دنباله، هدف نهایی برچسب‌گذاری کل دنباله است، نه تک‌تک موقعیت‌های زمانی. بنابراین ما به یک بردار خلاصه از کل دنباله نیاز داریم، نه به خروجی همه گام‌ها. دقیقاً به همین دلیل استفاده از \lr{h\_n} انتخابی طبیعی و مناسب است.
+
+\paragraph{دلیل اول: سازگاری مستقیم با \lr{sequence classification}}
+در \lr{sequence classification} باید از روی کل دنباله یک تصمیم نهایی گرفته شود. آخرین حالت پنهان در \lr{LSTM} دقیقاً برای همین منظور مناسب است، زیرا اطلاعات تجمع‌یافته تمام دنباله را در خود نگه می‌دارد. در جهت رو‌به‌جلو، \(\overrightarrow{h_T}\) خلاصه‌ای از ابتدای دنباله تا انتها را دارد و در جهت رو‌به‌عقب، \(\overleftarrow{h_1}\) خلاصه‌ای از انتها تا ابتدا را حفظ می‌کند.
+
+\paragraph{دلیل دوم: پرهیز از محاسبات و حافظه اضافی}
+اگر از \lr{output} یا خروجی \lr{pad\_packed\_sequence} استفاده می‌کردیم، باید تنسور کامل همه گام‌های زمانی را نگه می‌داشتیم. این موضوع هم حافظه بیشتری مصرف می‌کند و هم نیازمند یک مرحله تصمیم‌گیری اضافی برای انتخاب یا تجمیع گام‌های زمانی است. اما \lr{h\_n} از قبل همان خلاصه مناسب را در اختیار ما قرار می‌دهد.
+
+\paragraph{دلیل سوم: عدم نیاز به بازیابی ساختار زمانی کامل}
+در وظایفی مثل \lr{named entity recognition} یا \lr{part-of-speech tagging} لازم است برای هر موقعیت زمانی یک خروجی وجود داشته باشد، بنابراین \lr{output} اهمیت دارد. اما در اینجا فقط یک برچسب برای کل دنباله می‌خواهیم؛ پس بازیابی خروجی کل دنباله از \lr{packed\_output} ضرورتی ندارد.
+
+\subsubsection{چرا خروجی نهایی \lr{concatenate} شده است؟}
+
+در \lr{BiLSTM}، دو مسیر پردازشی وجود دارد:
+\begin{itemize}
+	\item مسیر رو‌به‌جلو که دنباله را از چپ به راست می‌خواند.
+	\item مسیر رو‌به‌عقب که دنباله را از راست به چپ می‌خواند.
+\end{itemize}
+
+در نتیجه، دو حالت پنهان نهایی مهم داریم:
+
+\begin{equation}
+	h_{\text{forward}} = \overrightarrow{h_T}
+\end{equation}
+
+\begin{equation}
+	h_{\text{backward}} = \overleftarrow{h_1}
+\end{equation}
+
+برای ساختن نمایش نهایی، این دو بردار کنار هم قرار می‌گیرند:
+
+\begin{equation}
+	h_{final} = [h_{\text{forward}} ; h_{\text{backward}}]
+\end{equation}
+
+این الحاق باعث می‌شود مدل به صورت همزمان هم اطلاعات وابسته به گذشته و هم اطلاعات وابسته به آینده را برای تصمیم‌گیری در اختیار داشته باشد.
+
+\paragraph{مثال عددی}
+فرض کنید \(\text{\lr{hidden\_dim}}=4\) باشد. در این صورت:
+
+\begin{equation}
+	h_{\text{forward}} = [0.2,\,-0.5,\,1.1,\,0.7]
+\end{equation}
+
+\begin{equation}
+	h_{\text{backward}} = [0.9,\,0.3,\,-0.2,\,0.4]
+\end{equation}
+
+پس از \lr{concatenate} خواهیم داشت:
+
+\begin{equation}
+	h_{final} = [0.2,\,-0.5,\,1.1,\,0.7,\,0.9,\,0.3,\,-0.2,\,0.4]
+\end{equation}
+
+در نتیجه، به جای یک بردار ۴بعدی، یک بردار ۸بعدی خواهیم داشت:
+
+\begin{equation}
+	h_{final} \in \mathbb{R}^{2d_h}
+\end{equation}
+
+این بردار غنی‌تر از حالتی است که فقط یکی از دو جهت استفاده شود، زیرا ترکیبی از دو دیدگاه زمانی متفاوت را در خود نگه می‌دارد.
+
+\paragraph{چرا جمع یا میانگین نگرفتیم؟}
+ممکن بود به جای \lr{concatenate} از جمع یا میانگین دو بردار استفاده شود، اما در آن صورت بخشی از اطلاعات ساختاری از بین می‌رفت. الحاق باعث می‌شود هر دو بردار به صورت مستقل حفظ شوند و لایه \lr{fully connected} خودش یاد بگیرد که چگونه از هر بخش استفاده کند.
+
+\subsubsection{تحلیل دقیق \lr{pad\_packed\_sequence}}
+
+اگرچه در این مدل از خروجی بازشده این تابع در تصمیم نهایی استفاده نشده است، اما بررسی آن از نظر مفهومی بسیار مهم است. این تابع یک \lr{PackedSequence} را دوباره به نمایش \lr{padded tensor} تبدیل می‌کند. به صورت مفهومی داریم:
+
+\begin{equation}
+	\text{\lr{PackedSequence}} \longrightarrow \text{\lr{Padded Tensor}} + \text{\lr{Lengths}}
+\end{equation}
+
+پارامتر مهم این تابع نیز \lr{batch\_first} است. اگر این پارامتر \lr{True} باشد، خروجی به صورت \((B, T_{\max}, 2d_h)\) خواهد بود. در غیر این صورت، فرم خروجی برابر \((T_{\max}, B, 2d_h)\) است.
+
+در این کد، اگرچه \lr{output} محاسبه می‌شود، اما در ادامه مورد استفاده قرار نمی‌گیرد، زیرا هدف اصلی فقط استخراج نمایش فشرده نهایی دنباله است.
+
+\subsubsection{تحلیل حالت‌های پنهان و سلولی}
+
+خروجی دوم \lr{LSTM} شامل دو جزء \lr{h\_n} و \lr{c\_n} است:
+
+\begin{equation}
+	(h_n, c_n)
+\end{equation}
+
+\paragraph{\lr{h\_n}}
+این متغیر نمایش خروجی نهایی حافظه کوتاه‌مدت در پایان پردازش است و مستقیماً برای دسته‌بندی استفاده می‌شود.
+
+\paragraph{\lr{c\_n}}
+این متغیر وضعیت سلولی نهایی را نگه می‌دارد و بیشتر نقش آن حفظ و انتقال حافظه بلندمدت درون ساختار \lr{LSTM} است. در این مدل، برای مرحله دسته‌بندی از \lr{c\_n} استفاده نشده است، زیرا خروجی مورد نیاز ما همان نمایش خلاصه‌شده در \lr{h\_n} است.
+
+\subsubsection{ساختار بلوک دیاگرامی مدل}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/arch.png}
+	\caption{ساختار کلی مدل \lr{RobustBiLSTM}}
+	\label{fig:arch}
+\end{figure}
+
+همان‌طور که در شکل \ref{fig:arch} مشاهده می‌شود:
+\begin{enumerate}
+	\item \textbf{ورودی}: داده‌ها به صورت خام وارد شده و پس از \lr{padding} به صورت یک تنسور منظم در می‌آیند.
+	\item \textbf{پردازش}: لایه‌های \lr{Stacked BiLSTM} به صورت متوالی ویژگی‌ها را استخراج می‌کنند.
+	\item \textbf{خروجی}: بردار الحاق شده وارد بلوک \lr{Fully Connected} شده و در نهایت کلاس نهایی پیش‌بینی می‌شود.
+\end{enumerate}
+
+\newpage
+\subsection{تحلیل دیتاست: تولید، ساختار و توزیع نمونه‌ها}
+
+در این بخش، به تشریح جامع دیتاست مصنوعی مورد استفاده برای آموزش و ارزیابی مدل \lr{RobustBiLSTM} می‌پردازیم. این دیتاست به گونه‌ای طراحی شده است که چالش‌های کلیدی مسائل \lr{Sequence Classification} با طول متغیر را شبیه‌سازی کند و دلیل مناسب بودن آن برای معماری \lr{BiLSTM} را مورد بررسی قرار می‌دهیم.
+
+\subsubsection{نحوه تولید دیتاست}
+
+دیتاست با استفاده از تابع \lr{generate\_balanced\_symmetric\_dataset} تولید شده است. هدف اصلی این تابع، ایجاد داده‌هایی برای مسئله دسته‌بندی شباهت دنباله‌ها است. هر دنباله از سه بخش اصلی تشکیل شده است:
+
+\begin{equation}
+	\text{Sequence} = [\text{\lr{Left Segment}} \; | \; \text{\lr{Noise Segment}} \; | \; \text{\lr{Right Segment}}]
+\end{equation}
+
+\paragraph{ساختار نمونه‌های مثبت و منفی}
+\begin{itemize}
+	\item \textbf{نمونه‌های مثبت (برچسب ۱):} در این دسته، بخش \lr{Right Segment} تقریباً معکوس \lr{Left Segment} است. یک اغتشاش کوچک نیز به صورت کنترل‌شده به بخش راست اضافه می‌شود تا مسئله کمی واقع‌گرایانه‌تر شود. این ساختار به مدل کمک می‌کند تا تقارن یا شباهت ترتیبی را یاد بگیرد.
+	\item \textbf{نمونه‌های منفی (برچسب ۰):} در این دسته، بخش \lr{Right Segment} به صورت کاملاً تصادفی و بدون وابستگی به \lr{Left Segment} تولید می‌شود. این امر باعث عدم تقارن و شباهت پایین بین دو نیمه می‌شود.
+\end{itemize}
+
+\paragraph{پارامترهای تولید دیتاست}
+تولید دیتاست با پارامترهای زیر انجام شده است:
+\begin{itemize}
+	\item \lr{num\_samples = 10000}: تعداد کل نمونه‌های تولید شده.
+	\item \lr{positive\_ratio = 0.6}: ۶۰\% نمونه‌ها مثبت و ۴۰\% منفی هستند.
+	\item \lr{vocab\_size = 60}: اندازه واژگان.
+	\item \lr{min\_half\_len = 3}, \lr{max\_half\_len = 7}: طول بخش‌های چپ و راست (بدون احتساب نویز) بین ۳ تا ۷ توکن است.
+	\item \lr{noise\_len = 1}: یک توکن نویز بین بخش چپ و راست قرار می‌گیرد.
+\end{itemize}
+
+\subsubsection{نمونه‌هایی از دیتاست}
+
+برای درک بهتر ساختار داده‌ها، سه نمونه اول پس از تولید و قبل از \lr{padding} به صورت زیر هستند:
+
+\begin{enumerate}
+	\item \textbf{نمونه ۱ (برچسب ۱):}
+	\begin{LTR}
+		\begin{itemize}
+			
+				\item \lr{Left part}: \texttt{[36, 16, 41, 46, 26]}
+				\item \lr{Noise token}: \texttt{[19]}
+				\item \lr{Right part}: \texttt{[25, 47, 41, 15, 36]} 
+				\item \lr{Full sequence}: \texttt{[36, 16, 41, 46, 26, 19, 25, 47, 41, 15, 36]}
+			
+		\end{itemize}
+	\end{LTR}
+	\item \textbf{نمونه ۲ (برچسب ۱):}
+	\begin{LTR}
+		\begin{itemize}
+		
+				\item \lr{Left part}: \texttt{[26, 54, 55, 15, 40, 19]}
+				\item \lr{Noise token}: \texttt{[28]}
+				\item \lr{Right part}: \texttt{[19, 41, 15, 56, 54, 25]} 
+				\item \lr{Full sequence}: \texttt{[26, 54, 55, 15, 40, 19, 28, 19, 41, 15, 56, 54, 25]}
+				
+		\end{itemize}
+	\end{LTR}
+	\item \textbf{نمونه ۳ (برچسب ۰):}
+	\begin{LTR}
+		\begin{itemize}
+			\item \lr{Left part}: \texttt{[1, 16, 51, 23, 33, 44, 56]}
+			\item \lr{Noise token}: \texttt{[15]}
+			\item \lr{Right part}: \texttt{[9, 22, 45, 23, 44, 24, 8]} 
+			\item \lr{Full sequence}: \texttt{[1, 16, 51, 23, 33, 44, 56, 15, 9, 22, 45, 23, 44, 24, 8]}
+		\end{itemize}
+	\end{LTR}
+\end{enumerate}
+
+این نمونه‌ها نشان می‌دهند که مدل باید بتواند الگوهای زمانی را در دو جهت تشخیص دهد و همچنین طول متغیر دنباله‌ها را مدیریت کند.
+
+\subsubsection{چرا این دیتاست برای \lr{BiLSTM} مناسب است؟}
+
+این دیتاست به دلایل زیر برای معماری \lr{BiLSTM} بسیار مناسب است:
+
+\begin{itemize}
+	\item \textbf{وابستگی ترتیبی و دوطرفه:} تشخیص شباهت بین نیمه چپ و راست نیازمند درک توالی است. علاوه بر این، در نمونه‌های مثبت، نیاز به تشخیص وارونگی (ترتیب معکوس) وجود دارد که \lr{BiLSTM} به خوبی از پس آن برمی‌آید. \lr{LSTM} یک‌طرفه فقط قادر به دیدن گذشته است، اما \lr{BiLSTM} با داشتن دو جهت پردازش، هم اطلاعات گذشته و هم اطلاعات آینده را برای درک رابطه بین دو نیمه دنباله استفاده می‌کند.
+	\item \textbf{یادگیری نمایش معنایی:} مدل باید یاد بگیرد که شباهت معنایی بین بخش چپ و راست (که به صورت دنباله توکن‌ها نمایش داده شده) را استخراج کند. این کار از طریق لایه \lr{Embedding} و سپس پردازش توسط \lr{BiLSTM} انجام می‌شود.
+	\item \textbf{مدیریت طول متغیر:} همانطور که گفته شد، دنباله‌ها طول متغیر دارند. \lr{BiLSTM} با ترکیب \lr{pack\_padded\_sequence} این چالش را به خوبی مدیریت می‌کند.
+\end{itemize}
+
+\subsubsection{تحلیل توزیع دیتاست}
+
+نمودارهای ارائه شده، اطلاعات ارزشمندی درباره توزیع نمونه‌ها و طول دنباله‌ها ارائه می‌دهند.
+
+\paragraph{توزیع طول دنباله‌ها (\lr{Sequence Length Distribution})}
+در نمودار اول (\ref{fig:seq_len_dist})، توزیع طول دنباله‌ها در دیتاست مشاهده می‌شود.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/output2.png}
+	\caption{توزیع طول دنباله‌ها در دیتاست}
+	\label{fig:seq_len_dist}
+\end{figure}
+همانطور که در نمودار \ref{fig:seq_len_dist} مشاهده می‌شود، طول دنباله‌ها در بازه تقریبی ۸ تا ۱۶ قرار دارند و توزیع نسبتاً یکنواختی بین این طول‌ها وجود دارد. این موضوع نشان می‌دهد که مدل با دنباله‌هایی با طول‌های متفاوت سروکار دارد و این نیازمند مکانیزم‌های مدیریت طول متغیر (مانند \lr{padding} و \lr{packing}) است. پراکندگی طول‌ها در این بازه، تمرین خوبی برای مدل \lr{BiLSTM} خواهد بود.
+
+\paragraph{توزیع کلاس‌ها در کل دیتاست (\lr{Class Distribution (Full Dataset)})}
+نمودار دوم (\ref{fig:class_dist_full}) توزیع کلی کلاس‌ها را در کل دیتاست نشان می‌دهد.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/output1.png}
+	\caption{توزیع کلاس‌ها در کل دیتاست}
+	\label{fig:class_dist_full}
+\end{figure}
+نمودار \ref{fig:class_dist_full} نشان می‌دهد که دیتاست تولید شده نامتوازن نیست، اما کمی تمایل به سمت کلاس ۱ (نمونه‌های مشابه) دارد (۶۰۰۰ نمونه در مقابل ۴۰۰۰ نمونه). نسبت کلاس ۱ حدود ۶۰\% است که با پارامتر \lr{positive\_ratio} تولید دیتاست همخوانی دارد. این نامتوازنی کم، معمولاً برای مدل‌ها مشکلی ایجاد نمی‌کند و حتی می‌تواند به یادگیری بهتر الگوهای کلاس پرتعدادتر کمک کند.
+
+\paragraph{توزیع کلاس‌ها در مجموعه‌های آموزش و اعتبارسنجی (\lr{Train vs Validation Class Distribution})}
+نمودار سوم (\ref{fig:class_dist_train_val}) مقایسه توزیع کلاس‌ها در بخش آموزش و اعتبارسنجی را نشان می‌دهد.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/output3.png}
+	\caption{مقایسه توزیع کلاس‌ها بین مجموعه‌های آموزش و اعتبارسنجی}
+	\label{fig:class_dist_train_val}
+\end{figure}
+نمودار \ref{fig:class_dist_train_val} مقایسه توزیع کلاس‌ها بین بخش آموزش (نارنجی) و اعتبارسنجی (سبز) را نشان می‌دهد. روش \lr{train\_test\_split} با پارامتر \lr{stratify=labels} تضمین کرده است که نسبت کلاس‌ها در هر دو مجموعه تقریباً حفظ شود. این امر برای اطمینان از ارزیابی عادلانه مدل بسیار مهم است. همانطور که دیده می‌شود، مجموعه آموزش و اعتبارسنجی هر دو دارای نسبت مشابهی از کلاس ۰ و کلاس ۱ هستند، که نشان‌دهنده حفظ ساختار دیتاست در تقسیم‌بندی است.
+
+\subsubsection{جمع‌بندی تحلیل دیتاست}
+
+دیتاست تولیدی، نمونه‌ای مناسب از مسائل \lr{Sequence Classification} با چالش‌های کلیدی مانند طول متغیر و نیاز به درک وابستگی‌های ترتیبی در دو جهت است. طراحی این دیتاست به خوبی با معماری \lr{BiLSTM} و تکنیک‌های مدیریت داده‌های ترتیبی هماهنگ است. توزیع تقریباً متعادل کلاس‌ها و طول دنباله‌ها، آموزش و ارزیابی مدل \lr{RobustBiLSTM} را تسهیل می‌کند و اطمینان می‌دهد که مدل بتواند الگوهای پیچیده را به خوبی فراگیرد.
+
+
+\subsection{آماده‌سازی داده و پایداری گرادیان‌ها در \lr{LSTM}}
+
+در این بخش، به تشریح دقیق فرآیند آماده‌سازی داده‌ها برای مدل \lr{RobustBiLSTM} و همچنین تحلیل عمیق تابع \lr{init\_orthogonal\_lstm} و اهمیت مقداردهی اولیه متعامد در بهبود جریان گرادیان‌ها در طول انتشار به عقب (BPTT) می‌پردازیم.
+
+\subsubsection{مدیریت داده‌های با طول متغیر: \lr{SequenceDataset} و \lr{collate\_fn}}
+
+همانطور که پیشتر اشاره شد، دنباله‌های ورودی به مدل دارای طول‌های متغیر هستند. شبکه‌های عصبی، به خصوص در زمان پردازش دسته‌ای \lr{(batch processing)}، نیاز به ورودی‌هایی با ابعاد ثابت دارند. کلاس \lr{SequenceDataset} و تابع \lr{collate\_fn} با همکاری یکدیگر این مشکل را حل می‌کنند.
+
+\paragraph{کلاس \lr{SequenceDataset}}
+این کلاس به عنوان یک واسط استاندارد عمل می‌کند که داده‌ها را به شکلی قابل فهم برای \lr{DataLoader} در PyTorch سازماندهی می‌کند. وظایف اصلی آن عبارتند از:
+\begin{itemize}
+	\item \lr{\_\_len\_\_}: این متد تعداد کل نمونه‌های موجود در دیتاست را برمی‌گرداند. \lr{DataLoader} از این مقدار برای تعیین تعداد دفعات تکرار در هر دوره (\lr{epoch}) استفاده می‌کند.
+	\item \lr{\_\_getitem\_\_(self, index)}: این متد با دریافت یک اندیس، یک نمونه داده (شامل دنباله و برچسب مربوطه) را از دیتاست بازیابی کرده و برمی‌گرداند. این تابع اساس دسترسی به داده‌های منفرد را فراهم می‌کند.
+\end{itemize}
+به عبارت دیگر، \lr{SequenceDataset} امکان دسترسی به هر جفت (دنباله، برچسب) را به صورت مستقل فراهم می‌کند، اما هنوز مشکل طول متغیر دنباله‌ها در زمان ایجاد دسته‌های آموزشی (\lr{batches}) پابرجاست.
+
+\paragraph{تابع \lr{collate\_fn}}
+این تابع نقش کلیدی در تجمیع نمونه‌های بازیابی شده توسط \lr{SequenceDataset} به یک دسته (batch) منسجم و قابل پردازش توسط مدل دارد. \lr{collate\_fn} توسط \lr{DataLoader} برای هر دسته فراخوانی می‌شود و وظایف زیر را انجام می‌دهد:
+\begin{enumerate}
+	\item \textbf{جمع‌آوری نمونه‌ها:} ابتدا، لیستی از نمونه‌ها (که هر کدام شامل یک دنباله و یک برچسب هستند) از \lr{SequenceDataset} جمع‌آوری می‌شود.
+	\item \textbf{جداسازی دنباله‌ها و برچسب‌ها:} دنباله‌ها و برچسب‌ها از یکدیگر جدا می‌شوند.
+	\item \textbf{محاسبه طول واقعی دنباله‌ها:} برای هر دنباله در دسته، طول واقعی آن (یعنی تعداد توکن‌های غیر از توکن‌های \lr{padding}) محاسبه می‌شود. این اطلاعات، که به صورت یک لیست بازگردانده می‌شوند، برای عملیات بعدی مانند \lr{pack\_padded\_sequence} حیاتی هستند.
+	\item \textbf{\lr{Padding} دنباله‌ها:} مهم‌ترین وظیفه \lr{collate\_fn}، اطمینان از یکسان بودن طول تمام دنباله‌ها در یک دسته است. این کار با استفاده از تابع \lr{torch.nn.utils.rnn.pad\_sequence} انجام می‌شود. این تابع دنباله‌های با طول‌های متفاوت را با افزودن توکن‌های \lr{padding} (معمولاً با مقدار ۰) تا رسیدن به طول بیشینه دنباله در آن دسته، تکمیل می‌کند.
+	\begin{itemize}
+		\item \lr{batch\_first=True}: این پارامتر تضمین می‌کند که ابعاد دسته خروجی به صورت \((B, T_{\max}, D)\) باشد، که \(B\) اندازه دسته، \(T_{\max}\) بیشینه طول دنباله در دسته، و \(D\) بعد ویژگی (مانند ابعاد embedding) است. این فرمت با ساختار ورودی بسیاری از مدل‌های \lr{PyTorch} مطابقت دارد.
+		\item \lr{padding\_value=0}: این مقدار مشخص می‌کند که توکن \lr{padding} چه عددی خواهد بود. معمولاً اندیس ۰ برای توکن \lr{padding} در لایه \lr{Embedding} در نظر گرفته می‌شود.
+	\end{itemize}
+\end{enumerate}
+بدون \lr{collate\_fn}، \lr{DataLoader} قادر به ایجاد دسته‌هایی با ابعاد ثابت از دنباله‌هایی با طول متغیر نخواهد بود و پردازش مدل با خطا مواجه می‌شود. \lr{collate\_fn} با استانداردسازی طول دنباله‌ها، امکان استفاده کارآمد از \lr{LSTM} و سایر لایه‌های مبتنی بر توالی را فراهم می‌سازد.
+
+\subsubsection{تحلیل عمیق مقداردهی اولیه متعامد در \lr{LSTM}}
+
+\paragraph{اهمیت مقداردهی اولیه وزن‌ها}
+مقداردهی اولیه مناسب وزن‌های یک شبکه عصبی، گامی حیاتی در موفقیت فرآیند آموزش است. این امر به ویژه در شبکه‌های عمیق و همچنین شبکه‌های بازگشتی مانند \lr{LSTM} که با مشکلاتی نظیر ناپایداری گرادیان‌ها (محوشدگی یا انفجار) مواجه هستند، اهمیت دوچندان پیدا می‌کند.
+
+\paragraph{تابع \lr{init\_orthogonal\_lstm}: جزئیات و مثال مفهومی}
+تابع \lr{init\_orthogonal\_lstm} مسئول مقداردهی اولیه ماتریس‌های وزن در سلول \lr{LSTM} به گونه‌ای است که این ماتریس‌ها خاصیت تعامد را داشته باشند.
+
+\textbf{خاصیت تعامد:}
+یک ماتریس \(W\) را متعامد گوییم هرگاه شرط زیر برقرار باشد:
+\begin{equation}
+	W W^T = W^T W = I
+\end{equation}
+که در آن \(W^T\) ترانهاده ماتریس \(W\) و \(I\) ماتریس همانی است. این خاصیت به این معناست که تبدیل خطی که توسط ماتریس \(W\) انجام می‌شود، طول هر بردار را حفظ می‌کند. به عبارت دیگر، اگر \(v\) یک بردار باشد، آنگاه \(||Wv|| = ||v||\).
+
+\textbf{مثال مفهومی:}
+یک ماتریس چرخش در صفحه دوبعدی نمونه‌ای از ماتریس متعامد است:
+\begin{equation}
+	W = \begin{bmatrix} \cos(\theta) & -\sin(\theta) \\ \sin(\theta) & \cos(\theta) \end{bmatrix}
+\end{equation}
+اگر این ماتریس را به بردار \(v = \begin{bmatrix} 1 \\ 0 \end{bmatrix}\) اعمال کنیم، خواهیم داشت:
+\(Wv = \begin{bmatrix} \cos(\theta) \\ \sin(\theta) \end{bmatrix}\). طول این بردار همچنان ۱ است (\(\sqrt{\cos^2(\theta) + \sin^2(\theta)} = 1\))، که برابر با طول \(v\) است. این ماتریس صرفاً بردار را به اندازه زاویه \(\theta\) دوران می‌دهد.
+
+\textbf{کاربرد در \lr{LSTM}:}
+در سلول \lr{LSTM}، ماتریس‌های وزن متعددی وجود دارند که تبدیلات خطی را بر روی ورودی فعلی و حالت پنهان قبلی اعمال می‌کنند. این ماتریس‌ها شامل وزن‌های مربوط به دروازه ورودی (\(W_{ii}, W_{hi}\))، دروازه فراموشی (\(W_{if}, W_{hf}\))، دروازه خروجی (\(W_{io}, W_{ho}\)) و دروازه حالت سلول (\(W_{ic}, W_{hc}\)) هستند. تابع \lr{init\_orthogonal\_lstm} این ماتریس‌ها (یا زیرمجموعه‌ای از آن‌ها، معمولاً ماتریس‌های "recurrent" مانند \(W_{hi}, W_{hf}, W_{ho}, W_{hc}\)) را به صورت متعامد مقداردهی اولیه می‌کند.
+
+\paragraph{چرا مقداردهی اولیه متعامد به پایداری گرادیان در \lr{BPTT} کمک می‌کند؟}
+فرآیند انتشار گرادیان در طول زمان در شبکه‌های بازگشتی (\lr{BPTT}) شامل ضرب مکرر ماتریس‌های وزن است. فرض کنید گرادیان نسبت به حالت پنهان در زمان \(t\) به حالت پنهان در زمان \(t-1\) به صورت \(\frac{\partial h_t}{\partial h_{t-1}}\) محاسبه شود. اگر این نسبت برابر با یک ماتریس \(W\) باشد، آنگاه گرادیان نسبت به حالت پنهان در زمان \(t-k\) به حالت پنهان در زمان \(t\) برابر با ضرب مکرر \(W\) خواهد بود: \(\frac{\partial h_t}{\partial h_{t-k}} = W^k\).
+
+\begin{itemize}
+	\item \textbf{انفجار گرادیان (\lr{Gradient Explosion}):} اگر مقادیر ویژه (\lr{eigenvalues}) ماتریس \(W\) بزرگتر از ۱ باشند (یعنی \(|\lambda| > 1\))، آنگاه با افزایش \(k\)، \(|\lambda^k|\) به صورت نمایی رشد می‌کند. این منجر به انفجار گرادیان می‌شود، زیرا گرادیان‌ها بسیار بزرگ شده و باعث تغییرات ناگهانی و نامطلوب در وزن‌ها می‌گردند که آموزش را بی‌ثبات می‌کند.
+	\item \textbf{محوشدگی گرادیان (\lr{Vanishing Gradient}):} اگر مقادیر ویژه ماتریس \(W\) کوچکتر از ۱ باشند (یعنی \(|\lambda| < 1\))، آنگاه با افزایش \(k\)، \(|\lambda^k|\) به صورت نمایی به سمت صفر میل می‌کند. این باعث می‌شود گرادیان‌ها بسیار کوچک شده و عملاً لایه‌های اولیه شبکه (یا اطلاعات مربوط به زمان‌های دورتر) نتوانند سیگنال گرادیان کافی برای به‌روزرسانی وزن‌ها دریافت کنند، که مانع یادگیری وابستگی‌های بلندمدت می‌شود.
+\end{itemize}
+
+\textbf{نقش تعامد:}
+ماتریس‌های متعامد دارای مقادیر ویژه با اندازه دقیقاً ۱ هستند (\(|\lambda| = 1\)). این بدان معناست که ضرب مکرر یک ماتریس متعامد در خودش، اندازه مقادیر ویژه را تغییر نمی‌دهد. در نتیجه:
+\begin{equation}
+	||W^k v|| = ||v||
+\end{equation}
+این خاصیت باعث می‌شود که انتشار گرادیان‌ها از طریق ماتریس‌های وزن متعامد، از نظر مقیاس (norm) نسبتاً پایدار بماند. این امر از بروز شدید انفجار یا محوشدگی گرادیان جلوگیری کرده و به \lr{LSTM} اجازه می‌دهد تا اطلاعات و گرادیان‌ها را برای مدت طولانی‌تری در طول دنباله حفظ کند. این امر به طور خاص برای یادگیری وابستگی‌های بلندمدت\lr{ (long-term dependencies) }که \lr{LSTM} برای آن طراحی شده، بسیار حیاتی است.
+
+\paragraph{ورودی‌ها و خروجی‌ها}
+تابع \lr{init\_orthogonal\_lstm} معمولاً پارامترهای ماتریسی یک ماژول \lr{LSTM} را به عنوان ورودی دریافت می‌کند. این پارامترها شامل ماتریس‌های وزن برای تبدیل ورودی فعلی و حالت پنهان قبلی به حالت‌های جدید و گیت‌ها هستند. تابع، این ماتریس‌ها را با مقادیر متعامد جایگزین کرده و آن‌ها را به ماژول \lr{LSTM} برمی‌گرداند.
+
+\paragraph{پیامدهای عدم استفاده از مقداردهی اولیه متعامد}
+همانطور که ذکر شد، عدم استفاده از این روش می‌تواند منجر به:
+\begin{itemize}
+	\item \textbf{آموزش ناپایدار:} گرادیان‌های منفجر شونده یا محوشونده، فرآیند بهینه‌سازی را بسیار دشوار و ناپایدار می‌کنند.
+	\item \textbf{همگرایی کند:} ممکن است مدل بسیار کند همگرا شود یا در یک نقطه بهینه محلی نامناسب گیر کند.
+	\item \textbf{عملکرد ضعیف در وظایف نیازمند حافظه بلندمدت:} توانایی \lr{LSTM} در به خاطر سپردن اطلاعات از گذشته‌های دور به شدت تحت تأثیر قرار می‌گیرد.
+\end{itemize}
+بنابراین، مقداردهی اولیه متعامد یک استراتژی مؤثر برای بهبود آموزش و عملکرد شبکه‌های \lr{LSTM}، به خصوص در مواجهه با دنباله‌های طولانی و وظایفی است که به حافظه بلندمدت نیاز دارند.
+
+
+\subsection{مدیریت حافظه و جلوگیری از ناپایداری گرادیان‌ها}
+
+در این بخش به دو موضوع مهم در آموزش شبکه‌های عصبی عمیق می‌پردازیم: مدیریت حافظه با استفاده از تابع \lr{detach\_hidden} و روش برش گرادیان \lr{(Gradient Clipping) }برای جلوگیری از ناپایداری در فرآیند آموزش.
+
+\subsubsection{تابع \lr{detach\_hidden} و مدیریت حافظه}
+
+
+\paragraph{عملکرد تابع \lr{detach\_hidden}}
+وظیفه اصلی این تابع، جدا کردن (\lr{detaching}) حالت‌های پنهان (\lr{hidden states}) از گراف محاسباتی (\LR{computational graph}) فعلی است. در \lr{PyTorch}، زمانی که عملیاتی روی تانسورها انجام می‌شود، یک گراف محاسباتی ساخته می‌شود که مسیر محاسبه گرادیان‌ها را در طول انتشار به عقب (\LR{backpropagation}) تعیین می‌کند.
+\begin{itemize}
+	\item \lr{hidden}: این پارامتر معمولاً یک تاپل (\lr{tuple}) شامل تانسورهایی است که حالت پنهان سلول \lr{LSTM} یا \lr{RNN} را در انتهای یک دنباله یا یک بخش از دنباله نشان می‌دهند (معمولاً شامل حالت پنهان \(h_n\) و حالت سلول \(c_n\) برای \lr{LSTM}).
+	\item \lr{h.detach()}: متد \lr{detach()} یک تانسور جدید ایجاد می‌کند که از گراف محاسباتی فعلی جدا شده است. تانسور جدید همان مقادیر تانسور اصلی را دارد، اما هیچ تاریخچه‌ای از محاسباتی که منجر به تولید آن شده، ندارد. این بدان معناست که گرادیان‌ها از طریق این تانسور جدا شده به عقب منتشر نخواهند شد.
+	\item \lr{tuple(...)}: چون حالت پنهان \lr{LSTM} معمولاً شامل دو بخش (حالت پنهان \(h_n\) و حالت سلول \(c_n\)) است، تابع این دو را در یک تاپل دریافت کرده و هر کدام را جداگانه با \lr{detach()} پردازش می‌کند تا یک تاپل جدید از تانسورهای جدا شده را برگرداند.
+\end{itemize}
+
+\paragraph{مدیریت حافظه و پشته (\lr{Stack})}
+در طول فرآیند انتشار به عقب، \lr{PyTorch} باید تاریخچه تمام محاسبات را برای محاسبه گرادیان‌ها ذخیره کند. این تاریخچه در حافظه \lr{RAM} نگهداری می‌شود و می‌تواند حجم قابل توجهی را اشغال کند، به خصوص در شبکه‌های عمیق یا هنگام پردازش دنباله‌های طولانی.
+
+تابع \lr{detach\_hidden} به طور مستقیم حافظه \lr{RAM} را "مدیریت" نمی‌کند، بلکه با جلوگیری از ذخیره تاریخچه محاسبات برای حالت‌های پنهان، به طور غیرمستقیم به **کاهش مصرف حافظه** کمک می‌کند. وقتی حالت‌های پنهان با \lr{detach()} جدا می‌شوند، \lr{PyTorch} نیازی به نگهداری اطلاعات مربوط به نحوه محاسبه آن‌ها برای انتشار گرادیان ندارد. این امر به خصوص در سناریوهایی که حالت پنهان از یک مرحله به مرحله بعدی منتقل می‌شود (مانند پردازش دنباله‌های بسیار طولانی در حالت ناپیوسته یا زمانی که نیاز به پردازش دسته‌هایی داریم که از حالت پنهان مرحله قبل استفاده می‌کنند) مفید است.
+
+از نظر "پشته" (\lr{stack}) در مفهوم سیستم عامل یا ساختار داده، این تابع مستقیماً آن را مدیریت نمی‌کند. پشته (\lr{stack}) در علوم کامپیوتر معمولاً به حافظه موقتی برای ذخیره فراخوانی‌های تابع، متغیرهای محلی و آدرس‌های بازگشت اشاره دارد. تابع \lr{detach\_hidden} متغیرهای محلی خود (\lr{hidden}) را پردازش می‌کند و یک نتیجه (تاپل) را برمی‌گرداند. این فرآیند به طور معمول در پشته فراخوانی (call stack) رخ می‌دهد، اما خود تابع تأثیری بر اندازه کلی پشته سیستم ندارد، بلکه صرفاً از حافظه \lr{RAM} برای نگهداری تانسورها و گراف محاسباتی استفاده می‌کند.
+
+\paragraph{چرا این تابع در پروژه فعلی ما (\lr{RobustBiLSTM}) به آن نیاز نیست؟}
+دلیل اصلی عدم نیاز به تابع \lr{detach\_hidden} در پیاده‌سازی فعلی ما این است که نحوه استفاده از \lr{LSTM} در این پروژه به گونه‌ای است که نیازی به حفظ و انتقال حالت پنهان بین دسته‌های آموزشی مجزا (به صورت پیوسته) نیست.
+\begin{itemize}
+	\item \textbf{پردازش دسته‌ای مستقل:} در پیاده‌سازی رایج \lr{PyTorch} برای مسائل دسته‌بندی دنباله، هر دسته آموزشی (\lr{batch}) به طور مستقل پردازش می‌شود. تابع \lr{forward} مدل، دنباله‌های موجود در یک دسته را دریافت کرده، آن‌ها را پردازش می‌کند و خروجی نهایی (مثلاً \lr{logit} ها) و حالت پنهان نهایی آن دسته را برمی‌گرداند.
+	\item \textbf{عدم نیاز به حالت پنهان قبلی برای دسته بعدی:} برای دسته آموزشی بعدی، معمولاً حالت پنهان اولیه به صورت "صفر" مقداردهی می‌شود (یا از طریق پارامتر \lr{hidden} در تابع \lr{forward} که مقدارش \lr{None} است، بازنشانی می‌شود). این بدان معناست که هیچ وابستگی محاسباتی بین پردازش یک دسته و دسته بعدی وجود ندارد.
+	\item \textbf{گراف محاسباتی برای هر دسته:} گراف محاسباتی فقط برای محاسبات درون یک دسته ساخته می‌شود. پس از اتمام پردازش آن دسته و محاسبه گرادیان‌ها (در صورت نیاز)، گراف برای آن دسته دور ریخته می‌شود. بنابراین، نیازی به "جدا کردن" حالت پنهان برای جلوگیری از مصرف بیش از حد حافظه در طول عمر مدل نیست، زیرا این حالت‌ها برای دسته‌های بعدی استفاده نمی‌شوند یا به طور کامل بازنشانی می‌شوند.
+\end{itemize}
+
+\paragraph{تحلیل دقیق‌تر: چرا به آن نیاز نیست؟}
+در مدل \lr{RobustBiLSTM} ما، همانطور که در توضیحات تابع \lr{forward} مدل دیده می‌شود:
+\begin{itemize}
+	\item تابع \lr{forward} ورودی‌های \lr{x}, \lr{length}, \lr{hidden} را می‌گیرد.
+	\item اگر \lr{hidden} مقدار \lr{None} باشد، حالت پنهان اولیه به صورت صفر مقداردهی می‌شود: \lr{self.lstm.flatten\_parameters()} یا مقداردهی دستی داخل \lr{forward} که به طور پیش‌فرض صفر است.
+	\item پس از پردازش دنباله‌ها با \lr{pack\_padded\_sequence} و سپس \lr{lstm}، خروجی‌ها (\(output\), (\(h_n, c_n\))) به دست می‌آیند.
+	\item این خروجی‌ها (\(h_n, c_n\)) برای مرحله بعدی آموزش (اگر مثلاً بخواهیم حالت پنهان را برای دنباله‌های بسیار طولانی حفظ کنیم) یا برای محاسبات بعدی در همان دسته استفاده می‌شوند.
+	\item اما نکته کلیدی این است که این \(h_n, c_n\) بازگشتی به ابتدای تابع \lr{forward} برای \textbf{دسته بعدی} ندارند. \lr{DataLoader} دسته بعدی را با حالت پنهان اولیه صفر بارگذاری می‌کند.
+\end{itemize}
+بنابراین، هیچ مسیر گرادیانی \LR{(gradient path) }وجود ندارد که از حالت پنهان یک دسته به حالت پنهان دسته بعدی منتقل شود. این امر باعث می‌شود که نیازی به قطع کردن (\LR{detaching}) حالت پنهان نباشد، زیرا گراف محاسباتی به طور طبیعی پس از پردازش هر دسته از بین می‌رود و حافظه مربوطه آزاد می‌شود. تابع \lr{detach\_hidden} بیشتر در سناریوهایی مانند پردازش تکراری (\LR{unrolling}) یک دنباله طولانی در چند مرحله زمانی یا در شبکه‌هایی که حالت پنهان به صورت صریح بین دسته‌های متوالی حفظ می‌شود، کاربرد دارد.
+
+\subsubsection{برش گرادیان (\LR{Gradient Clipping})}
+
+\paragraph{توضیح دقیق برش گرادیان}
+برش گرادیان یک تکنیک تنظیم \LR{(regularization technique)} است که برای جلوگیری از انفجار گرادیان\LR{ (exploding gradients)} در طول فرآیند آموزش شبکه‌های عصبی عمیق، به ویژه شبکه‌های بازگشتی، استفاده می‌شود. این تکنیک به سادگی با محدود کردن (\LR{clipping}) اندازه (\LR{norm}) بردار گرادیان، به طوری که از یک حد آستانه (\LR{threshold}) مشخص تجاوز نکند، عمل می‌کند.
+
+\paragraph{چرا از برش گرادیان استفاده می‌کنیم؟}
+همانطور که در بخش مقداردهی اولیه متعامد اشاره شد، انفجار گرادیان می‌تواند فرآیند آموزش را کاملاً مختل کند. زمانی که گرادیان‌ها بسیار بزرگ می‌شوند:
+\begin{itemize}
+	\item \textbf{به‌روزرسانی‌های نامطلوب:} وزن‌های شبکه با مقادیر بسیار بزرگ به‌روزرسانی می‌شوند که می‌تواند مدل را از نقطه بهینه دور کرده و باعث واگرایی (\LR{divergence}) آموزش شود.
+	\item \textbf{عدم پایداری عددی:} محاسبات ممکن است با اعداد بسیار بزرگ مواجه شده و منجر به خطاهای عددی (\LR{numerical instability}) شوند.
+\end{itemize}
+برش گرادیان با قرار دادن یک سقف بر اندازه گرادیان‌ها، این مشکل را برطرف می‌کند.
+
+\paragraph{نحوه عملکرد برش گرادیان}
+فرض کنید \(\nabla W\) بردار گرادیان نسبت به وزن‌های \(W\) باشد. اندازه (\LR{norm}) این بردار معمولاً با استفاده از نرم اقلیدسی (\LR{L2 norm}) محاسبه می‌شود:
+\begin{equation}
+	||\nabla W||_2 = \sqrt{\sum_i (\frac{\partial L}{\partial W_i})^2}
+\end{equation}
+که \(L\) تابع هزینه \LR{(loss function) }است.
+
+فرآیند برش گرادیان به صورت زیر است:
+\begin{enumerate}
+	\item محاسبه گرادیان‌ها برای تمام پارامترهای مدل.
+	\item محاسبه اندازه (\LR{norm}) بردار گرادیان کل (که معمولاً مجموع گرادیان‌های تمام پارامترها است).
+	\item \textbf{مقایسه با حد آستانه:} اگر اندازه گرادیان از یک حد آستانه از پیش تعیین شده (\(max\_norm\)) بیشتر باشد:
+	\item \textbf{مقیاس‌بندی گرادیان:} بردار گرادیان را مقیاس‌بندی می‌کنیم تا اندازه آن برابر با \(max\_norm\) شود. این کار با ضرب گرادیان در نسبت \(max\_norm / ||\nabla W||_2\) انجام می‌شود:
+	\begin{equation}
+		\nabla W_{\text{clipped}} = \nabla W \times \frac{max\_norm}{||\nabla W||_2}
+	\end{equation}
+	\item \textbf{اعمال گرادیان برش خورده:} سپس از گرادیان برش خورده (\(\nabla W_{\text{clipped}}\)) برای به‌روزرسانی وزن‌ها استفاده می‌شود (مثلاً با الگوریتم \lr{Adam} یا \lr{SGD}).
+\end{enumerate}
+اگر اندازه گرادیان کمتر یا مساوی \(max\_norm\) باشد، گرادیان بدون تغییر باقی می‌ماند.
+
+\paragraph{کمک برش گرادیان به فرآیند آموزش}
+\begin{itemize}
+	\item \textbf{افزایش پایداری آموزش:} اصلی‌ترین مزیت آن، جلوگیری از واگرایی آموزش به دلیل انفجار گرادیان است.
+	\item \textbf{بهبود همگرایی:} با حفظ گرادیان‌ها در یک محدوده معقول، فرآیند همگرایی به سمت نقطه بهینه پایدارتر و قابل پیش‌بینی‌تر می‌شود.
+	\item \textbf{مناسب برای \lr{RNN} ها:} شبکه‌های بازگشتی به دلیل ماهیت تکراری خود، بیشتر در معرض انفجار گرادیان هستند، بنابراین برش گرادیان یک ابزار استاندارد در آموزش آن‌ها محسوب می‌شود.
+\end{itemize}
+
+\subsection{تحلیل نتایج آموزش و اعتبارسنجی}
+
+
+
+
+نمودار زیر روند تغییرات خطای آموزش و اعتبارسنجی را در طول دوره‌های آموزش نشان می‌دهد.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/output4.png}
+	\caption{نمودار خطای آموزش و اعتبارسنجی در طول دوره‌ها.}
+	\label{fig:loss_plot}
+\end{figure}
+
+
+
+\begin{enumerate}
+	\item \textbf{همگرایی موفقیت‌آمیز:} مدل در ابتدا به سرعت یاد گرفته و خطای آموزش و اعتبارسنجی را به شدت کاهش داده است.
+	\item \textbf{نشانه‌های بیش‌برازش (\lr{Overfitting}):} از حدود دوره \lr{4}-\lr{5} به بعد، شکاف بین خطای آموزش (که همچنان کاهش می‌یابد) و خطای اعتبارسنجی (که نوسان دارد و گاهی افزایش می‌یابد) شروع به ظاهر شدن می‌کند. این امر نشان می‌دهد که مدل در حال یادگیری جزئیاتی است که مختص داده‌های آموزشی است و ممکن است به تعمیم‌پذیری کلی آسیب بزند.
+	\item \textbf{عملکرد کلی:} با وجود نشانه‌های بیش‌برازش، دقت نهایی اعتبارسنجی (حدود \lr{94.7\%}) نسبتاً خوب است و نشان می‌دهد که مدل توانایی تشخیص الگوهای تقارن را تا حد زیادی کسب کرده است.
+\end{enumerate}
+
+در مجموع، مدل \texttt{RobustBiLSTM} عملکرد قابل قبولی در تشخیص تقارن دنباله‌ها از خود نشان داده است، اما برای دستیابی به بهترین عملکرد و جلوگیری از بیش‌برازش، نیاز به تنظیم دقیق‌تر فراپارامترها و احتمالا پیاده‌سازی تکنیک‌های منظم‌سازی پیشرفته‌تر دارد.
+
+\subsection{کد کامل}
+\begin{LTR}
+	\inputminted{python}{code/hw3_q5_py.py}
+\end{LTR}
+
+\end{document}
+

@@ -1,0 +1,422 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+ch}{\PYGZsh{}!/usr/bin/env python}
+\PYG{c+c1}{\PYGZsh{} coding: utf\PYGZhy{}8}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Implementation of the VanillaRNN class}
+
+\PYG{c+c1}{\PYGZsh{} In[62]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+
+
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{c+c1}{\PYGZsh{} Part A and B: Implementation of the RNN class}
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{BatchedVanillaRNN}\PYG{p}{:}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{features}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{output\PYGZus{}size}\PYG{p}{):}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{features} \PYG{o}{=} \PYG{n}{features}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}size}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{output\PYGZus{}size} \PYG{o}{=} \PYG{n}{output\PYGZus{}size}
+
+        \PYG{c+c1}{\PYGZsh{} Initialize weights with a normal (Gaussian) distribution to prevent early tanh saturation}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{features} \PYG{o}{+} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}h} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{))}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{output\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{output\PYGZus{}size}\PYG{p}{))}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{inputs}\PYG{p}{):}
+        \PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{,} \PYG{n}{features} \PYG{o}{=} \PYG{n}{inputs}\PYG{o}{.}\PYG{n}{shape}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{cache} \PYG{o}{=} \PYG{p}{[]}
+        \PYG{n}{h\PYGZus{}prev} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{))}
+        \PYG{n}{outputs} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{output\PYGZus{}size}\PYG{p}{))}
+
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{seq\PYGZus{}len}\PYG{p}{):}
+            \PYG{n}{x\PYGZus{}t} \PYG{o}{=} \PYG{n}{inputs}\PYG{p}{[:,} \PYG{n}{t}\PYG{p}{,} \PYG{p}{:]}
+            \PYG{c+c1}{\PYGZsh{} Matrix concatenation trick}
+            \PYG{n}{concat\PYGZus{}input} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{concatenate}\PYG{p}{((}\PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{),} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+            \PYG{c+c1}{\PYGZsh{} Single matrix multiplication}
+            \PYG{n}{h\PYGZus{}raw} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{concat\PYGZus{}input}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}h}
+            \PYG{n}{h\PYGZus{}next} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{tanh}\PYG{p}{(}\PYG{n}{h\PYGZus{}raw}\PYG{p}{)}
+            \PYG{n}{y\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{h\PYGZus{}next}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}y}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}y}
+
+            \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{cache}\PYG{o}{.}\PYG{n}{append}\PYG{p}{((}\PYG{n}{concat\PYGZus{}input}\PYG{p}{,} \PYG{n}{h\PYGZus{}next}\PYG{p}{))}
+            \PYG{n}{outputs}\PYG{p}{[:,} \PYG{n}{t}\PYG{p}{,} \PYG{p}{:]} \PYG{o}{=} \PYG{n}{y\PYGZus{}t}
+            \PYG{n}{h\PYGZus{}prev} \PYG{o}{=} \PYG{n}{h\PYGZus{}next}
+
+        \PYG{k}{return} \PYG{n}{outputs}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{backward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{d\PYGZus{}outputs}\PYG{p}{):}
+        \PYG{n}{dW\PYGZus{}combined} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined}\PYG{p}{)}
+        \PYG{n}{db\PYGZus{}h} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}h}\PYG{p}{)}
+        \PYG{n}{dW\PYGZus{}y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}y}\PYG{p}{)}
+        \PYG{n}{db\PYGZus{}y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b\PYGZus{}y}\PYG{p}{)}
+
+        \PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{,} \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{d\PYGZus{}outputs}\PYG{o}{.}\PYG{n}{shape}
+        \PYG{n}{dh\PYGZus{}next} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{))}
+
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{reversed}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{seq\PYGZus{}len}\PYG{p}{)):}
+            \PYG{n}{dy\PYGZus{}t} \PYG{o}{=} \PYG{n}{d\PYGZus{}outputs}\PYG{p}{[:,} \PYG{n}{t}\PYG{p}{,} \PYG{p}{:]}
+            \PYG{n}{concat\PYGZus{}input}\PYG{p}{,} \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{cache}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}
+
+            \PYG{k}{if} \PYG{n}{np}\PYG{o}{.}\PYG{n}{any}\PYG{p}{(}\PYG{n}{dy\PYGZus{}t} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{):}
+                \PYG{n}{dW\PYGZus{}y} \PYG{o}{+=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{T}\PYG{p}{,} \PYG{n}{dy\PYGZus{}t}\PYG{p}{)}
+                \PYG{n}{db\PYGZus{}y} \PYG{o}{+=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{dy\PYGZus{}t}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+            \PYG{n}{dh\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{dy\PYGZus{}t}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}y}\PYG{o}{.}\PYG{n}{T}\PYG{p}{)} \PYG{o}{+} \PYG{n}{dh\PYGZus{}next}
+            \PYG{n}{dtanh} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mi}{1} \PYG{o}{\PYGZhy{}} \PYG{n}{h\PYGZus{}t} \PYG{o}{**} \PYG{l+m+mi}{2}\PYG{p}{)} \PYG{o}{*} \PYG{n}{dh\PYGZus{}t}
+
+            \PYG{n}{dW\PYGZus{}combined} \PYG{o}{+=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{concat\PYGZus{}input}\PYG{o}{.}\PYG{n}{T}\PYG{p}{,} \PYG{n}{dtanh}\PYG{p}{)}
+            \PYG{n}{db\PYGZus{}h} \PYG{o}{+=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{dtanh}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+            \PYG{n}{d\PYGZus{}concat\PYGZus{}input} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{dtanh}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined}\PYG{o}{.}\PYG{n}{T}\PYG{p}{)}
+            \PYG{n}{dh\PYGZus{}next} \PYG{o}{=} \PYG{n}{d\PYGZus{}concat\PYGZus{}input}\PYG{p}{[:,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{features}\PYG{p}{:]}
+
+        \PYG{n}{gradients} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+            \PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}combined\PYGZsq{}}\PYG{p}{:} \PYG{n}{dW\PYGZus{}combined}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}h\PYGZsq{}}\PYG{p}{:} \PYG{n}{db\PYGZus{}h}\PYG{p}{,}
+            \PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}y\PYGZsq{}}\PYG{p}{:} \PYG{n}{dW\PYGZus{}y}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}y\PYGZsq{}}\PYG{p}{:} \PYG{n}{db\PYGZus{}y}
+        \PYG{p}{\PYGZcb{}}
+        \PYG{k}{return} \PYG{n}{gradients}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Implementing Softmax and Cross\PYGZus{}entropy\PYGZus{}loss}
+
+\PYG{c+c1}{\PYGZsh{} In[63]:}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{softmax}\PYG{p}{(}\PYG{n}{x}\PYG{p}{):}
+    \PYG{n}{e\PYGZus{}x} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{exp}\PYG{p}{(}\PYG{n}{x} \PYG{o}{\PYGZhy{}} \PYG{n}{np}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{))}
+    \PYG{k}{return} \PYG{n}{e\PYGZus{}x} \PYG{o}{/} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{e\PYGZus{}x}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{cross\PYGZus{}entropy\PYGZus{}loss}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{y\PYGZus{}true}\PYG{p}{):}
+    \PYG{n}{n\PYGZus{}samples} \PYG{o}{=} \PYG{n}{y\PYGZus{}true}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+    \PYG{n}{log\PYGZus{}likelihood} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{log}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{[}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{n\PYGZus{}samples}\PYG{p}{),} \PYG{n}{y\PYGZus{}true}\PYG{p}{]} \PYG{o}{+} \PYG{l+m+mf}{1e\PYGZhy{}9}\PYG{p}{)}
+    \PYG{n}{loss} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{log\PYGZus{}likelihood}\PYG{p}{)} \PYG{o}{/} \PYG{n}{n\PYGZus{}samples}
+
+    \PYG{n}{grad} \PYG{o}{=} \PYG{n}{probs}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{()}
+    \PYG{n}{grad}\PYG{p}{[}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{n\PYGZus{}samples}\PYG{p}{),} \PYG{n}{y\PYGZus{}true}\PYG{p}{]} \PYG{o}{\PYGZhy{}=} \PYG{l+m+mi}{1}
+    \PYG{n}{grad} \PYG{o}{/=} \PYG{n}{n\PYGZus{}samples}
+    \PYG{k}{return} \PYG{n}{loss}\PYG{p}{,} \PYG{n}{grad}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Generating Data}
+
+\PYG{c+c1}{\PYGZsh{} In[64]:}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{generate\PYGZus{}data}\PYG{p}{(}\PYG{n}{num\PYGZus{}samples}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{):}
+    \PYG{n}{X} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{size}\PYG{o}{=}\PYG{p}{(}\PYG{n}{num\PYGZus{}samples}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{))}
+    \PYG{n}{y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{X}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{\PYGZpc{}} \PYG{l+m+mi}{2}
+
+    \PYG{n}{X\PYGZus{}onehot} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{num\PYGZus{}samples}\PYG{p}{,} \PYG{n}{seq\PYGZus{}len}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{))}
+    \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{num\PYGZus{}samples}\PYG{p}{):}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{seq\PYGZus{}len}\PYG{p}{):}
+            \PYG{n}{X\PYGZus{}onehot}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{X}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{t}\PYG{p}{]]} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+    \PYG{k}{return} \PYG{n}{X\PYGZus{}onehot}\PYG{p}{,} \PYG{n}{y}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training model on the train set(S\PYGZus{}L=3,Lr=0.9,Epochs=500), Inference on the test set and evaluate it }
+
+\PYG{c+c1}{\PYGZsh{} In[71]:}
+
+
+\PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{:}
+    \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)}
+    \PYG{c+c1}{\PYGZsh{} 1. Explicit definition of network dimensions}
+    \PYG{n}{BATCH\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{800}         \PYG{c+c1}{\PYGZsh{} Training batch size}
+    \PYG{n}{SEQUENCE\PYGZus{}LENGTH} \PYG{o}{=} \PYG{l+m+mi}{3}      \PYG{c+c1}{\PYGZsh{} Length of time sequence}
+    \PYG{n}{FEATURES} \PYG{o}{=} \PYG{l+m+mi}{2}             \PYG{c+c1}{\PYGZsh{} Number of features at each timestep (binary one\PYGZhy{}hot)}
+
+    \PYG{n}{HIDDEN\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{32}
+    \PYG{n}{OUTPUT\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{2}
+    \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+    \PYG{n}{EPOCHS} \PYG{o}{=} \PYG{l+m+mi}{500}
+    \PYG{n}{TOTAL\PYGZus{}SAMPLES} \PYG{o}{=} \PYG{l+m+mi}{1000}
+    \PYG{n}{CLIP\PYGZus{}THRESHOLD} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+    \PYG{c+c1}{\PYGZsh{} 2. Generate and split data into Train (80\PYGZpc{}) and Test (20\PYGZpc{})}
+    \PYG{n}{X\PYGZus{}all}\PYG{p}{,} \PYG{n}{y\PYGZus{}all} \PYG{o}{=} \PYG{n}{generate\PYGZus{}data}\PYG{p}{(}\PYG{n}{TOTAL\PYGZus{}SAMPLES}\PYG{p}{,} \PYG{n}{SEQUENCE\PYGZus{}LENGTH}\PYG{p}{)}
+
+    \PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{]}
+    \PYG{n}{X\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}test} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Train Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}train}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Test Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}test}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{rnn} \PYG{o}{=} \PYG{n}{BatchedVanillaRNN}\PYG{p}{(}\PYG{n}{FEATURES}\PYG{p}{,} \PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{,} \PYG{n}{OUTPUT\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{n}{loss\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+    \PYG{n}{acc\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Training Start \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{epoch} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{EPOCHS}\PYG{p}{):}
+        \PYG{n}{outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{)}
+        \PYG{n}{last\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]}  \PYG{c+c1}{\PYGZsh{} Many\PYGZhy{}to\PYGZhy{}One}
+
+        \PYG{n}{probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{last\PYGZus{}outputs}\PYG{p}{)}
+        \PYG{n}{loss}\PYG{p}{,} \PYG{n}{d\PYGZus{}loss} \PYG{o}{=} \PYG{n}{cross\PYGZus{}entropy\PYGZus{}loss}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Calculate accuracy on training data}
+        \PYG{n}{predictions} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{predictions} \PYG{o}{==} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{n}{loss\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{loss}\PYG{p}{)}
+        \PYG{n}{acc\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{accuracy}\PYG{p}{)}
+
+        \PYG{n}{d\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n}{outputs}\PYG{p}{)}
+        \PYG{n}{d\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]} \PYG{o}{=} \PYG{n}{d\PYGZus{}loss}
+
+        \PYG{n}{gradients} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{(}\PYG{n}{d\PYGZus{}outputs}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Gradient clipping}
+        \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{n}{gradients}\PYG{p}{:}
+            \PYG{n}{np}\PYG{o}{.}\PYG{n}{clip}\PYG{p}{(}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{],} \PYG{o}{\PYGZhy{}}\PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{out}\PYG{o}{=}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{])}
+
+        \PYG{c+c1}{\PYGZsh{} Update weights}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}combined\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}h} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}h\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+
+        \PYG{k}{if} \PYG{p}{(}\PYG{n}{epoch} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{\PYGZpc{}} \PYG{l+m+mi}{50} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Epoch }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{epoch}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{3d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{EPOCHS}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Loss: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Acc: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} 3. Evaluation on test data (unseen data)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Evaluation on Test Data \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:])}
+    \PYG{n}{test\PYGZus{}preds} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{n}{test\PYGZus{}accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{test\PYGZus{}preds} \PYG{o}{==} \PYG{n}{y\PYGZus{}test}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Test Accuracy: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{test\PYGZus{}accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Display some examples of model performance on test data}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Displaying first 5 test samples:\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{):}
+        \PYG{n}{seq} \PYG{o}{=} \PYG{p}{[}\PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)} \PYG{k}{for} \PYG{n}{x} \PYG{o+ow}{in} \PYG{n}{X\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]]}  \PYG{c+c1}{\PYGZsh{} Convert one\PYGZhy{}hot back to original numbers for display}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Sequence: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{seq}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Model Prediction: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{test\PYGZus{}preds}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | True Label: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{y\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{30}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[72]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+\PYG{n}{fig}\PYG{p}{,} \PYG{p}{(}\PYG{n}{ax1}\PYG{p}{,} \PYG{n}{ax2}\PYG{p}{)} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{))}
+
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{loss\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Cross\PYGZhy{}Entropy Loss (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Loss\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{acc\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training model on the train set(S\PYGZus{}L=10,Lr=0.9,Epochs=2000), Inference on the test set and evaluate it }
+
+\PYG{c+c1}{\PYGZsh{} In[73]:}
+
+
+\PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{:}
+    \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)}
+    \PYG{n}{BATCH\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{800}         
+    \PYG{n}{SEQUENCE\PYGZus{}LENGTH} \PYG{o}{=} \PYG{l+m+mi}{10}    
+    \PYG{n}{FEATURES} \PYG{o}{=} \PYG{l+m+mi}{2}             
+
+    \PYG{n}{HIDDEN\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{32}
+    \PYG{n}{OUTPUT\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{2}
+    \PYG{c+c1}{\PYGZsh{} Increase learning rate to 1.0 (because using vanilla SGD and gradients are averaged)}
+    \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{=} \PYG{l+m+mf}{0.9}
+    \PYG{n}{EPOCHS} \PYG{o}{=} \PYG{l+m+mi}{2000}
+    \PYG{n}{TOTAL\PYGZus{}SAMPLES} \PYG{o}{=} \PYG{l+m+mi}{1000}
+    \PYG{n}{CLIP\PYGZus{}THRESHOLD} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+    \PYG{n}{X\PYGZus{}all}\PYG{p}{,} \PYG{n}{y\PYGZus{}all} \PYG{o}{=} \PYG{n}{generate\PYGZus{}data}\PYG{p}{(}\PYG{n}{TOTAL\PYGZus{}SAMPLES}\PYG{p}{,} \PYG{n}{SEQUENCE\PYGZus{}LENGTH}\PYG{p}{)}
+
+    \PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{]}
+    \PYG{n}{X\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}test} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Train Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}train}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Test Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}test}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{rnn} \PYG{o}{=} \PYG{n}{BatchedVanillaRNN}\PYG{p}{(}\PYG{n}{FEATURES}\PYG{p}{,} \PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{,} \PYG{n}{OUTPUT\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{n}{loss\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+    \PYG{n}{acc\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Training Start \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{epoch} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{EPOCHS}\PYG{p}{):}
+        \PYG{n}{outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{)}
+        \PYG{n}{last\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]} 
+
+        \PYG{n}{probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{last\PYGZus{}outputs}\PYG{p}{)}
+        \PYG{n}{loss}\PYG{p}{,} \PYG{n}{d\PYGZus{}loss} \PYG{o}{=} \PYG{n}{cross\PYGZus{}entropy\PYGZus{}loss}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{n}{predictions} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{predictions} \PYG{o}{==} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{n}{loss\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{loss}\PYG{p}{)}
+        \PYG{n}{acc\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{accuracy}\PYG{p}{)}
+
+        \PYG{n}{d\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n}{outputs}\PYG{p}{)}
+        \PYG{n}{d\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]} \PYG{o}{=} \PYG{n}{d\PYGZus{}loss}
+
+        \PYG{n}{gradients} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{(}\PYG{n}{d\PYGZus{}outputs}\PYG{p}{)}
+
+        \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{n}{gradients}\PYG{p}{:}
+            \PYG{n}{np}\PYG{o}{.}\PYG{n}{clip}\PYG{p}{(}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{],} \PYG{o}{\PYGZhy{}}\PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{out}\PYG{o}{=}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{])}
+
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}combined\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}h} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}h\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+
+        \PYG{k}{if} \PYG{p}{(}\PYG{n}{epoch} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{\PYGZpc{}} \PYG{l+m+mi}{100} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Epoch }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{epoch}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{4d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{EPOCHS}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Loss: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Acc: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Evaluation on Test Data \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:])}
+    \PYG{n}{test\PYGZus{}preds} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{n}{test\PYGZus{}accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{test\PYGZus{}preds} \PYG{o}{==} \PYG{n}{y\PYGZus{}test}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Test Accuracy: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{test\PYGZus{}accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Displaying first 5 test samples:\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{):}
+        \PYG{n}{seq} \PYG{o}{=} \PYG{p}{[}\PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)} \PYG{k}{for} \PYG{n}{x} \PYG{o+ow}{in} \PYG{n}{X\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]]} 
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Sequence: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{seq}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Model Prediction: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{test\PYGZus{}preds}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | True Label: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{y\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{30}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[74]:}
+
+
+\PYG{n}{fig}\PYG{p}{,} \PYG{p}{(}\PYG{n}{ax1}\PYG{p}{,} \PYG{n}{ax2}\PYG{p}{)} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{))}
+
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{loss\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Cross\PYGZhy{}Entropy Loss (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Loss\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{acc\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training model on the train set(S\PYGZus{}L=10,Lr=0.1,Epochs=2000), Inference on the test set and evaluate it }
+
+\PYG{c+c1}{\PYGZsh{} In[76]:}
+
+
+\PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{:}
+    \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)}
+    \PYG{n}{BATCH\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{800}         
+    \PYG{n}{SEQUENCE\PYGZus{}LENGTH} \PYG{o}{=} \PYG{l+m+mi}{10}    
+    \PYG{n}{FEATURES} \PYG{o}{=} \PYG{l+m+mi}{2}             
+
+    \PYG{n}{HIDDEN\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{32}
+    \PYG{n}{OUTPUT\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{2}
+    \PYG{c+c1}{\PYGZsh{} Decrease learning rate to 0.1 (because we\PYGZsq{}re using simple SGD and gradients are averaged)}
+    \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{=} \PYG{l+m+mf}{0.1}
+    \PYG{n}{EPOCHS} \PYG{o}{=} \PYG{l+m+mi}{2000}
+    \PYG{n}{TOTAL\PYGZus{}SAMPLES} \PYG{o}{=} \PYG{l+m+mi}{1000}
+    \PYG{n}{CLIP\PYGZus{}THRESHOLD} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+    \PYG{n}{X\PYGZus{}all}\PYG{p}{,} \PYG{n}{y\PYGZus{}all} \PYG{o}{=} \PYG{n}{generate\PYGZus{}data}\PYG{p}{(}\PYG{n}{TOTAL\PYGZus{}SAMPLES}\PYG{p}{,} \PYG{n}{SEQUENCE\PYGZus{}LENGTH}\PYG{p}{)}
+
+    \PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[:}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{]}
+    \PYG{n}{X\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}test} \PYG{o}{=} \PYG{n}{X\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:],} \PYG{n}{y\PYGZus{}all}\PYG{p}{[}\PYG{n}{BATCH\PYGZus{}SIZE}\PYG{p}{:]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Train Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}train}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Test Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}test}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{rnn} \PYG{o}{=} \PYG{n}{BatchedVanillaRNN}\PYG{p}{(}\PYG{n}{FEATURES}\PYG{p}{,} \PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{,} \PYG{n}{OUTPUT\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{n}{loss\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+    \PYG{n}{acc\PYGZus{}history} \PYG{o}{=} \PYG{p}{[]}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Training Start \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{epoch} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{EPOCHS}\PYG{p}{):}
+        \PYG{n}{outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{)}
+        \PYG{n}{last\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]} 
+
+        \PYG{n}{probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{last\PYGZus{}outputs}\PYG{p}{)}
+        \PYG{n}{loss}\PYG{p}{,} \PYG{n}{d\PYGZus{}loss} \PYG{o}{=} \PYG{n}{cross\PYGZus{}entropy\PYGZus{}loss}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{n}{predictions} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{predictions} \PYG{o}{==} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+        \PYG{n}{loss\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{loss}\PYG{p}{)}
+        \PYG{n}{acc\PYGZus{}history}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{accuracy}\PYG{p}{)}
+
+        \PYG{n}{d\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}like}\PYG{p}{(}\PYG{n}{outputs}\PYG{p}{)}
+        \PYG{n}{d\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:]} \PYG{o}{=} \PYG{n}{d\PYGZus{}loss}
+
+        \PYG{n}{gradients} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{(}\PYG{n}{d\PYGZus{}outputs}\PYG{p}{)}
+
+        \PYG{k}{for} \PYG{n}{key} \PYG{o+ow}{in} \PYG{n}{gradients}\PYG{p}{:}
+            \PYG{n}{np}\PYG{o}{.}\PYG{n}{clip}\PYG{p}{(}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{],} \PYG{o}{\PYGZhy{}}\PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{CLIP\PYGZus{}THRESHOLD}\PYG{p}{,} \PYG{n}{out}\PYG{o}{=}\PYG{n}{gradients}\PYG{p}{[}\PYG{n}{key}\PYG{p}{])}
+
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}combined} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}combined\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}h} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}h\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{W\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}dW\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+        \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{b\PYGZus{}y} \PYG{o}{\PYGZhy{}=} \PYG{n}{LEARNING\PYGZus{}RATE} \PYG{o}{*} \PYG{n}{gradients}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}db\PYGZus{}y\PYGZsq{}}\PYG{p}{]}
+
+        \PYG{k}{if} \PYG{p}{(}\PYG{n}{epoch} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{\PYGZpc{}} \PYG{l+m+mi}{100} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Epoch }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{epoch}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{4d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{EPOCHS}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Loss: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Acc: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZhy{}\PYGZhy{}\PYGZhy{} Evaluation on Test Data \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}outputs} \PYG{o}{=} \PYG{n}{rnn}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+    \PYG{n}{test\PYGZus{}probs} \PYG{o}{=} \PYG{n}{softmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}outputs}\PYG{p}{[:,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{p}{:])}
+    \PYG{n}{test\PYGZus{}preds} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{test\PYGZus{}probs}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{n}{test\PYGZus{}accuracy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{test\PYGZus{}preds} \PYG{o}{==} \PYG{n}{y\PYGZus{}test}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Test Accuracy: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{test\PYGZus{}accuracy}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Displaying first 5 test samples:\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{):}
+        \PYG{n}{seq} \PYG{o}{=} \PYG{p}{[}\PYG{n}{np}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)} \PYG{k}{for} \PYG{n}{x} \PYG{o+ow}{in} \PYG{n}{X\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]]}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Sequence: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{seq}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Model Prediction: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{test\PYGZus{}preds}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | True Label: }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Odd (1)\PYGZsq{}}\PYG{+w}{ }\PYG{k}{if}\PYG{+w}{ }\PYG{n}{y\PYGZus{}test}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{==}\PYG{+w}{ }\PYG{l+m+mi}{1}\PYG{+w}{ }\PYG{k}{else}\PYG{+w}{ }\PYG{l+s+s1}{\PYGZsq{}Even (0)\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{30}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[77]:}
+
+
+\PYG{n}{fig}\PYG{p}{,} \PYG{p}{(}\PYG{n}{ax1}\PYG{p}{,} \PYG{n}{ax2}\PYG{p}{)} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{))}
+
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{loss\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Cross\PYGZhy{}Entropy Loss (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Loss\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{acc\PYGZus{}history}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy (Training)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Accuracy\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+\end{MintedVerbatim}

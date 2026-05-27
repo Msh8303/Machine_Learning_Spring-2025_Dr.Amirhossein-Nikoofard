@@ -1,0 +1,268 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+ch}{\PYGZsh{}!/usr/bin/env python}
+\PYG{c+c1}{\PYGZsh{} coding: utf\PYGZhy{}8}
+
+\PYG{c+c1}{\PYGZsh{} In[1]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.datasets}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{make\PYGZus{}circles}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.model\PYGZus{}selection}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{train\PYGZus{}test\PYGZus{}split}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.linear\PYGZus{}model}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{LogisticRegression}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.metrics}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{accuracy\PYGZus{}score}\PYG{p}{,} \PYG{n}{classification\PYGZus{}report}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Generating Data}
+
+\PYG{c+c1}{\PYGZsh{} In[2]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Generate the \PYGZdq{}Habitable Zone\PYGZdq{} dataset}
+\PYG{n}{X}\PYG{p}{,} \PYG{n}{y} \PYG{o}{=} \PYG{n}{make\PYGZus{}circles}\PYG{p}{(}\PYG{n}{n\PYGZus{}samples}\PYG{o}{=}\PYG{l+m+mi}{600}\PYG{p}{,} \PYG{n}{noise}\PYG{o}{=}\PYG{l+m+mf}{0.05}\PYG{p}{,} \PYG{n}{factor}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{n}{random\PYGZus{}state}
+\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+\PYG{n}{X\PYGZus{}train} \PYG{p}{,} \PYG{n}{X\PYGZus{}test} \PYG{p}{,} \PYG{n}{y\PYGZus{}train} \PYG{p}{,} \PYG{n}{y\PYGZus{}test} \PYG{o}{=} \PYG{n}{train\PYGZus{}test\PYGZus{}split}\PYG{p}{(}\PYG{n}{X}\PYG{p}{,} \PYG{n}{y}\PYG{p}{,} \PYG{n}{test\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mf}{0.2}\PYG{p}{,}
+\PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Plotting Dataset}
+
+\PYG{c+c1}{\PYGZsh{} In[3]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Plotting the dataset}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Uninhabitable (Class 0)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Habitable (Class 1)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Distance from Star (X1)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Atmospheric Thickness (X2)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Exoplanet Habitable Zone\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Generating logisticRegression Model}
+
+\PYG{c+c1}{\PYGZsh{} In[4]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Generate model logisticRegression}
+\PYG{n}{model} \PYG{o}{=} \PYG{n}{LogisticRegression}\PYG{p}{()}
+\PYG{n}{model}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} prediction on model}
+\PYG{n}{y\PYGZus{}pred} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{predict}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Evaluating on model}
+
+\PYG{c+c1}{\PYGZsh{} In[11]:}
+
+
+\PYG{c+c1}{\PYGZsh{} evaluation on model}
+\PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{accuracy\PYGZus{}score}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}accuracy on the test set: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{+w}{ }\PYG{o}{*}\PYG{+w}{ }\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} classification Report(Precision, Recall, F1\PYGZhy{}Score)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{classification\PYGZus{}report}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{))}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Generating meshgrid}
+
+\PYG{c+c1}{\PYGZsh{} In[7]:}
+
+
+\PYG{n}{x\PYGZus{}min}\PYG{p}{,} \PYG{n}{x\PYGZus{}max} \PYG{o}{=} \PYG{n}{X}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{min}\PYG{p}{()} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{n}{X}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{max}\PYG{p}{()} \PYG{o}{+} \PYG{l+m+mf}{0.5}
+\PYG{n}{y\PYGZus{}min}\PYG{p}{,} \PYG{n}{y\PYGZus{}max} \PYG{o}{=} \PYG{n}{X}\PYG{p}{[:,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{min}\PYG{p}{()} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{n}{X}\PYG{p}{[:,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{max}\PYG{p}{()} \PYG{o}{+} \PYG{l+m+mf}{0.5}
+\PYG{n}{xx}\PYG{p}{,} \PYG{n}{yy} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{meshgrid}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{x\PYGZus{}min}\PYG{p}{,} \PYG{n}{x\PYGZus{}max}\PYG{p}{,} \PYG{l+m+mf}{0.01}\PYG{p}{),}
+                     \PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{y\PYGZus{}min}\PYG{p}{,} \PYG{n}{y\PYGZus{}max}\PYG{p}{,} \PYG{l+m+mf}{0.01}\PYG{p}{))}
+
+\PYG{n}{Z} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{predict}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{c\PYGZus{}}\PYG{p}{[}\PYG{n}{xx}\PYG{o}{.}\PYG{n}{ravel}\PYG{p}{(),} \PYG{n}{yy}\PYG{o}{.}\PYG{n}{ravel}\PYG{p}{()])}
+\PYG{n}{Z} \PYG{o}{=} \PYG{n}{Z}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{n}{xx}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Plotting decision boundary for logisticRegression}
+
+\PYG{c+c1}{\PYGZsh{} In[8]:}
+
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{contourf}\PYG{p}{(}\PYG{n}{xx}\PYG{p}{,} \PYG{n}{yy}\PYG{p}{,} \PYG{n}{Z}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{,} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bwr\PYGZsq{}}\PYG{p}{)} 
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,} \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}k\PYGZsq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Uninhabitable (Class 0)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{,} \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}k\PYGZsq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Habitable (Class 1)\PYGZsq{}}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Distance from Star (X1)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Atmospheric Thickness (X2)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Logistic Regression Decision Boundary\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} In[9]:}
+
+
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.neural\PYGZus{}network}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{MLPClassifier}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Generating MLP model with one Hidden layer}
+
+\PYG{c+c1}{\PYGZsh{} In[19]:}
+
+
+\PYG{c+c1}{\PYGZsh{} 2. تعریف مدل MLP با \PYGZdq{}تنها یک لایه پنهان\PYGZdq{} شامل 4 نورون}
+\PYG{c+c1}{\PYGZsh{} activation=\PYGZsq{}relu\PYGZsq{} : تابع فعال‌سازی لایه پنهان}
+\PYG{c+c1}{\PYGZsh{} solver=\PYGZsq{}lbfgs\PYGZsq{} : بهینه‌سازی که برای داده‌های کم و شبکه‌های کوچک بسیار عالی و همگرا عمل می‌کند}
+\PYG{n}{mlp\PYGZus{}model} \PYG{o}{=} \PYG{n}{MLPClassifier}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}layer\PYGZus{}sizes}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{4}\PYG{p}{,),} 
+                          \PYG{n}{activation}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}relu\PYGZsq{}}\PYG{p}{,} 
+                          \PYG{n}{solver}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}lbfgs\PYGZsq{}}\PYG{p}{,} 
+                          \PYG{n}{max\PYGZus{}iter}\PYG{o}{=}\PYG{l+m+mi}{1000}\PYG{p}{,} 
+                          \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training Model}
+
+\PYG{c+c1}{\PYGZsh{} In[20]:}
+
+
+\PYG{n}{mlp\PYGZus{}model}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Prediction on Test set}
+
+\PYG{c+c1}{\PYGZsh{} In[21]:}
+
+
+\PYG{n}{y\PYGZus{}pred} \PYG{o}{=} \PYG{n}{mlp\PYGZus{}model}\PYG{o}{.}\PYG{n}{predict}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Evaluation on test set}
+
+\PYG{c+c1}{\PYGZsh{} In[22]:}
+
+
+\PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{accuracy\PYGZus{}score}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}accuracy on the test set: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{+w}{ }\PYG{o}{*}\PYG{+w}{ }\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Classification Report:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{classification\PYGZus{}report}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{))}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training Mlp model with adam optimization}
+
+\PYG{c+c1}{\PYGZsh{} In[26]:}
+
+
+\PYG{n}{mlp\PYGZus{}model} \PYG{o}{=} \PYG{n}{MLPClassifier}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}layer\PYGZus{}sizes}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{4}\PYG{p}{,),} 
+                          \PYG{n}{activation}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}relu\PYGZsq{}}\PYG{p}{,} 
+                          \PYG{n}{solver}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}adam\PYGZsq{}}\PYG{p}{,} 
+                          \PYG{n}{max\PYGZus{}iter}\PYG{o}{=}\PYG{l+m+mi}{1000}\PYG{p}{,} 
+                          \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training Model}
+
+\PYG{c+c1}{\PYGZsh{} In[27]:}
+
+
+\PYG{n}{mlp\PYGZus{}model}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Prediction on Test set}
+
+\PYG{c+c1}{\PYGZsh{} In[28]:}
+
+
+\PYG{n}{y\PYGZus{}pred} \PYG{o}{=} \PYG{n}{mlp\PYGZus{}model}\PYG{o}{.}\PYG{n}{predict}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Evaluation on test set}
+
+\PYG{c+c1}{\PYGZsh{} In[29]:}
+
+
+\PYG{n}{accuracy} \PYG{o}{=} \PYG{n}{accuracy\PYGZus{}score}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}accuracy on the test set: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{accuracy}\PYG{+w}{ }\PYG{o}{*}\PYG{+w}{ }\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Classification Report:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{classification\PYGZus{}report}\PYG{p}{(}\PYG{n}{y\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}pred}\PYG{p}{))}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Plotting Decision Boundary for neurons}
+
+\PYG{c+c1}{\PYGZsh{} In[24]:}
+
+
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{axes} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{))}
+\PYG{n}{neurons} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{]}
+
+\PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{n}{ax} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{axes}\PYG{o}{.}\PYG{n}{ravel}\PYG{p}{()):}
+    \PYG{n}{n} \PYG{o}{=} \PYG{n}{neurons}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} تعریف و آموزش مدل با n نورون در لایه پنهان}
+    \PYG{n}{mlp} \PYG{o}{=} \PYG{n}{MLPClassifier}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}layer\PYGZus{}sizes}\PYG{o}{=}\PYG{p}{(}\PYG{n}{n}\PYG{p}{,),} 
+                        \PYG{n}{activation}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}relu\PYGZsq{}}\PYG{p}{,} 
+                        \PYG{n}{solver}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}lbfgs\PYGZsq{}}\PYG{p}{,} 
+                        \PYG{n}{max\PYGZus{}iter}\PYG{o}{=}\PYG{l+m+mi}{2000}\PYG{p}{,} 
+                        \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+    \PYG{n}{mlp}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} پیش‌بینی برای تمام نقاط شبکه (Meshgrid)}
+    \PYG{n}{Z} \PYG{o}{=} \PYG{n}{mlp}\PYG{o}{.}\PYG{n}{predict}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{c\PYGZus{}}\PYG{p}{[}\PYG{n}{xx}\PYG{o}{.}\PYG{n}{ravel}\PYG{p}{(),} \PYG{n}{yy}\PYG{o}{.}\PYG{n}{ravel}\PYG{p}{()])}
+    \PYG{n}{Z} \PYG{o}{=} \PYG{n}{Z}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{n}{xx}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} محاسبه دقت روی داده‌های تست}
+    \PYG{n}{acc} \PYG{o}{=} \PYG{n}{mlp}\PYG{o}{.}\PYG{n}{score}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{,} \PYG{n}{y\PYGZus{}test}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} رسم مرز تصمیم}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{contourf}\PYG{p}{(}\PYG{n}{xx}\PYG{p}{,} \PYG{n}{yy}\PYG{p}{,} \PYG{n}{Z}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{,} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bwr\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,} \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}k\PYGZsq{}}\PYG{p}{,} \PYG{n}{s}\PYG{o}{=}\PYG{l+m+mi}{20}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{scatter}\PYG{p}{(}\PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{X}\PYG{p}{[}\PYG{n}{y}\PYG{o}{==}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{,} \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}k\PYGZsq{}}\PYG{p}{,} \PYG{n}{s}\PYG{o}{=}\PYG{l+m+mi}{20}\PYG{p}{)}
+
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{n}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{ Neuron(s) | Test Accuracy: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{acc}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s1}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{\PYGZpc{}\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}X1\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}X2\PYGZsq{}}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Training models with sigmoid or Relu}
+
+\PYG{c+c1}{\PYGZsh{} In[25]:}
+
+
+\PYG{n}{mlp\PYGZus{}sigmoid} \PYG{o}{=} \PYG{n}{MLPClassifier}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}layer\PYGZus{}sizes}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{),} 
+                            \PYG{n}{activation}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}logistic\PYGZsq{}}\PYG{p}{,} 
+                            \PYG{n}{solver}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}sgd\PYGZsq{}}\PYG{p}{,} 
+                            \PYG{n}{learning\PYGZus{}rate\PYGZus{}init}\PYG{o}{=}\PYG{l+m+mf}{0.01}\PYG{p}{,} 
+                            \PYG{n}{max\PYGZus{}iter}\PYG{o}{=}\PYG{l+m+mi}{1000}\PYG{p}{,} 
+                            \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+
+
+\PYG{n}{mlp\PYGZus{}relu} \PYG{o}{=} \PYG{n}{MLPClassifier}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}layer\PYGZus{}sizes}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{),} 
+                         \PYG{n}{activation}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}relu\PYGZsq{}}\PYG{p}{,} 
+                         \PYG{n}{solver}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}sgd\PYGZsq{}}\PYG{p}{,} 
+                         \PYG{n}{learning\PYGZus{}rate\PYGZus{}init}\PYG{o}{=}\PYG{l+m+mf}{0.01}\PYG{p}{,} 
+                         \PYG{n}{max\PYGZus{}iter}\PYG{o}{=}\PYG{l+m+mi}{1000}\PYG{p}{,} 
+                         \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}\PYG{p}{)}
+
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}در حال آموزش شبکه با Sigmoid...\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{mlp\PYGZus{}sigmoid}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}در حال آموزش شبکه با ReLU...\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{mlp\PYGZus{}relu}\PYG{o}{.}\PYG{n}{fit}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{figure}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mi}{6}\PYG{p}{))}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{mlp\PYGZus{}sigmoid}\PYG{o}{.}\PYG{n}{loss\PYGZus{}curve\PYGZus{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Sigmoid Loss\PYGZsq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}red\PYGZsq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{mlp\PYGZus{}relu}\PYG{o}{.}\PYG{n}{loss\PYGZus{}curve\PYGZus{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}ReLU Loss\PYGZsq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}blue\PYGZsq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Loss Curve Comparison: Sigmoid vs ReLU (3 Hidden Layers)\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Epochs\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Loss\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Test Accuracy (Sigmoid): }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{mlp\PYGZus{}sigmoid}\PYG{o}{.}\PYG{n}{score}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{y\PYGZus{}test}\PYG{p}{)}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Test Accuracy (ReLU): }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{mlp\PYGZus{}relu}\PYG{o}{.}\PYG{n}{score}\PYG{p}{(}\PYG{n}{X\PYGZus{}test}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{y\PYGZus{}test}\PYG{p}{)}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+\end{MintedVerbatim}

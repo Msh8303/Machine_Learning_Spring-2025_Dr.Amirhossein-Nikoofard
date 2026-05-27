@@ -1,0 +1,187 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+c1}{\PYGZsh{} mlhw2q4.py}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{ContractiveDenoisingAE}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Single\PYGZhy{}layer Contractive (Denoising) Autoencoder with Sigmoid encoder.}
+
+\PYG{l+s+sd}{    Encoder:}
+\PYG{l+s+sd}{        h = sigmoid(W x\PYGZus{}noisy + b)}
+
+\PYG{l+s+sd}{    Decoder:}
+\PYG{l+s+sd}{        x\PYGZus{}hat = decoder(h)   (here: a simple linear layer)}
+
+\PYG{l+s+sd}{    Contractive penalty:}
+\PYG{l+s+sd}{        For encoder f\PYGZus{}theta(x) = h = sigma(Wx + b),}
+\PYG{l+s+sd}{        the Jacobian J\PYGZus{}f(x) has entries:}
+\PYG{l+s+sd}{            J\PYGZus{}ij = ∂h\PYGZus{}i / ∂x\PYGZus{}j = sigma\PYGZsq{}(u\PYGZus{}i) * W\PYGZus{}ij}
+\PYG{l+s+sd}{        where u = Wx + b and sigma\PYGZsq{}(u\PYGZus{}i) = h\PYGZus{}i (1 \PYGZhy{} h\PYGZus{}i).}
+
+\PYG{l+s+sd}{        Thus:}
+\PYG{l+s+sd}{            ||J\PYGZus{}f(x)||\PYGZus{}F\PYGZca{}2 = sum\PYGZus{}i (sigma\PYGZsq{}(u\PYGZus{}i))\PYGZca{}2 * ||W\PYGZus{}i||\PYGZus{}2\PYGZca{}2}
+\PYG{l+s+sd}{                            = sum\PYGZus{}i (h\PYGZus{}i (1 \PYGZhy{} h\PYGZus{}i))\PYGZca{}2 * ||W\PYGZus{}i||\PYGZus{}2\PYGZca{}2}
+
+\PYG{l+s+sd}{        We compute this analytically without forming the full Jacobian.}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}
+        \PYG{n+nb+bp}{self}\PYG{p}{,}
+        \PYG{n}{input\PYGZus{}dim}\PYG{p}{,}
+        \PYG{n}{hidden\PYGZus{}dim}\PYG{p}{,}
+        \PYG{n}{noise\PYGZus{}std}\PYG{o}{=}\PYG{l+m+mf}{0.1}\PYG{p}{,}
+        \PYG{n}{lambda\PYGZus{}c}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}2}
+    \PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            input\PYGZus{}dim (int): Dimensionality of input x.}
+\PYG{l+s+sd}{            hidden\PYGZus{}dim (int): Number of hidden units in encoder.}
+\PYG{l+s+sd}{            noise\PYGZus{}std (float): Standard deviation of Gaussian noise}
+\PYG{l+s+sd}{                               for denoising behavior.}
+\PYG{l+s+sd}{            lambda\PYGZus{}c (float): Coefficient for contractive penalty term.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n+nb}{super}\PYG{p}{()}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{input\PYGZus{}dim} \PYG{o}{=} \PYG{n}{input\PYGZus{}dim}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}dim} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}dim}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{noise\PYGZus{}std} \PYG{o}{=} \PYG{n}{noise\PYGZus{}std}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lambda\PYGZus{}c} \PYG{o}{=} \PYG{n}{lambda\PYGZus{}c}
+
+        \PYG{c+c1}{\PYGZsh{} Encoder: linear layer + Sigmoid activation}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoder\PYGZus{}linear} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Linear}\PYG{p}{(}\PYG{n}{input\PYGZus{}dim}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}dim}\PYG{p}{)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoder\PYGZus{}act} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Sigmoid}\PYG{p}{()}
+
+        \PYG{c+c1}{\PYGZsh{} Decoder: here a simple linear layer}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{decoder} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Linear}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}dim}\PYG{p}{,} \PYG{n}{input\PYGZus{}dim}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{c+c1}{\PYGZsh{} Noise injection (for denoising behavior)}
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{add\PYGZus{}noise}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Add Gaussian noise to the input x.}
+
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            x (Tensor): Input tensor of shape [batch\PYGZus{}size, input\PYGZus{}dim].}
+
+\PYG{l+s+sd}{        Returns:}
+\PYG{l+s+sd}{            Tensor: Noisy input x\PYGZus{}noisy.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{noise\PYGZus{}std} \PYG{o}{\PYGZlt{}=} \PYG{l+m+mf}{0.0}\PYG{p}{:}
+            \PYG{k}{return} \PYG{n}{x}
+        \PYG{n}{noise} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{noise\PYGZus{}std} \PYG{o}{*} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn\PYGZus{}like}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{x} \PYG{o}{+} \PYG{n}{noise}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{c+c1}{\PYGZsh{} Encoder / Decoder}
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{encode}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{,} \PYG{n}{add\PYGZus{}noise}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Encode input x into latent representation h.}
+
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            x (Tensor): Input tensor [batch\PYGZus{}size, input\PYGZus{}dim].}
+\PYG{l+s+sd}{            add\PYGZus{}noise (bool): If True, apply Gaussian noise before encoding.}
+
+\PYG{l+s+sd}{        Returns:}
+\PYG{l+s+sd}{            h (Tensor): Latent representation [batch\PYGZus{}size, hidden\PYGZus{}dim].}
+\PYG{l+s+sd}{            x\PYGZus{}noisy (Tensor): Possibly noised input used by encoder.}
+\PYG{l+s+sd}{            u (Tensor): Pre\PYGZhy{}activation u = Wx + b [batch\PYGZus{}size, hidden\PYGZus{}dim].}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{if} \PYG{n}{add\PYGZus{}noise}\PYG{p}{:}
+            \PYG{n}{x\PYGZus{}noisy} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{add\PYGZus{}noise}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+        \PYG{k}{else}\PYG{p}{:}
+            \PYG{n}{x\PYGZus{}noisy} \PYG{o}{=} \PYG{n}{x}
+
+        \PYG{n}{u} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoder\PYGZus{}linear}\PYG{p}{(}\PYG{n}{x\PYGZus{}noisy}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} pre\PYGZhy{}activation Wx + b}
+        \PYG{n}{h} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoder\PYGZus{}act}\PYG{p}{(}\PYG{n}{u}\PYG{p}{)}           \PYG{c+c1}{\PYGZsh{} h = sigmoid(u)}
+        \PYG{k}{return} \PYG{n}{h}\PYG{p}{,} \PYG{n}{x\PYGZus{}noisy}\PYG{p}{,} \PYG{n}{u}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{decode}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{h}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Decode latent representation h into reconstructed input x\PYGZus{}hat.}
+
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            h (Tensor): Latent tensor [batch\PYGZus{}size, hidden\PYGZus{}dim].}
+
+\PYG{l+s+sd}{        Returns:}
+\PYG{l+s+sd}{            x\PYGZus{}hat (Tensor): Reconstructed input [batch\PYGZus{}size, input\PYGZus{}dim].}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{x\PYGZus{}hat} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{decoder}\PYG{p}{(}\PYG{n}{h}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{x\PYGZus{}hat}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{c+c1}{\PYGZsh{} Analytic contractive penalty (Jacobian Frobenius norm)}
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{contractive\PYGZus{}penalty}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{h}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Compute the analytic contractive penalty:}
+
+\PYG{l+s+sd}{            ||J\PYGZus{}f(x)||\PYGZus{}F\PYGZca{}2 = sum\PYGZus{}i (h\PYGZus{}i (1 \PYGZhy{} h\PYGZus{}i))\PYGZca{}2 * ||W\PYGZus{}i||\PYGZus{}2\PYGZca{}2}
+
+\PYG{l+s+sd}{        where W\PYGZus{}i is the i\PYGZhy{}th row of the encoder weight matrix W.}
+
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            h (Tensor): Latent representation [batch\PYGZus{}size, hidden\PYGZus{}dim].}
+
+\PYG{l+s+sd}{        Returns:}
+\PYG{l+s+sd}{            Tensor (scalar): Mean Jacobian Frobenius norm over batch.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{c+c1}{\PYGZsh{} Encoder weights W have shape [hidden\PYGZus{}dim, input\PYGZus{}dim]}
+        \PYG{n}{W} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encoder\PYGZus{}linear}\PYG{o}{.}\PYG{n}{weight}  \PYG{c+c1}{\PYGZsh{} [H, D]}
+
+        \PYG{c+c1}{\PYGZsh{} For each hidden unit i, compute ||W\PYGZus{}i||\PYGZus{}2\PYGZca{}2}
+        \PYG{c+c1}{\PYGZsh{} row\PYGZus{}norm\PYGZus{}squared: [H]}
+        \PYG{n}{row\PYGZus{}norm\PYGZus{}squared} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{W} \PYG{o}{**} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} h: [B, H]}
+        \PYG{n}{dh} \PYG{o}{=} \PYG{n}{h} \PYG{o}{*} \PYG{p}{(}\PYG{l+m+mf}{1.0} \PYG{o}{\PYGZhy{}} \PYG{n}{h}\PYG{p}{)}      \PYG{c+c1}{\PYGZsh{} sigma\PYGZsq{}(u) = h (1 \PYGZhy{} h)}
+        \PYG{n}{dh2} \PYG{o}{=} \PYG{n}{dh} \PYG{o}{**} \PYG{l+m+mi}{2}           \PYG{c+c1}{\PYGZsh{} [B, H]}
+
+        \PYG{c+c1}{\PYGZsh{} penalty\PYGZus{}per\PYGZus{}unit[b, i] = (h\PYGZus{}i(1 \PYGZhy{} h\PYGZus{}i))\PYGZca{}2 * ||W\PYGZus{}i||\PYGZus{}2\PYGZca{}2}
+        \PYG{n}{penalty\PYGZus{}per\PYGZus{}unit} \PYG{o}{=} \PYG{n}{dh2} \PYG{o}{*} \PYG{n}{row\PYGZus{}norm\PYGZus{}squared}  \PYG{c+c1}{\PYGZsh{} [B, H]}
+
+        \PYG{c+c1}{\PYGZsh{} sum over hidden units and average over batch}
+        \PYG{n}{penalty\PYGZus{}per\PYGZus{}sample} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{penalty\PYGZus{}per\PYGZus{}unit}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} [B]}
+        \PYG{n}{penalty} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{penalty\PYGZus{}per\PYGZus{}sample}\PYG{p}{)}                 \PYG{c+c1}{\PYGZsh{} scalar}
+
+        \PYG{k}{return} \PYG{n}{penalty}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{c+c1}{\PYGZsh{} Loss function: reconstruction + contractive penalty}
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{loss}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Compute the total loss for a batch:}
+
+\PYG{l+s+sd}{            L = L\PYGZus{}reconstruction + lambda\PYGZus{}c * ||J\PYGZus{}f(x)||\PYGZus{}F\PYGZca{}2}
+
+\PYG{l+s+sd}{        where the reconstruction loss is MSE between x and x\PYGZus{}hat.}
+
+\PYG{l+s+sd}{        Args:}
+\PYG{l+s+sd}{            x (Tensor): Input batch [batch\PYGZus{}size, input\PYGZus{}dim].}
+
+\PYG{l+s+sd}{        Returns:}
+\PYG{l+s+sd}{            total\PYGZus{}loss (Tensor): Scalar loss.}
+\PYG{l+s+sd}{            recon\PYGZus{}loss (Tensor): Reconstruction MSE.}
+\PYG{l+s+sd}{            contr\PYGZus{}penalty (Tensor): Contractive penalty term.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{c+c1}{\PYGZsh{} Encode with noise (denoising behavior)}
+        \PYG{n}{h}\PYG{p}{,} \PYG{n}{x\PYGZus{}noisy}\PYG{p}{,} \PYG{n}{u} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{encode}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{add\PYGZus{}noise}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Decode}
+        \PYG{n}{x\PYGZus{}hat} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{decode}\PYG{p}{(}\PYG{n}{h}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Reconstruction loss (MSE)}
+        \PYG{n}{recon\PYGZus{}loss} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{((}\PYG{n}{x\PYGZus{}hat} \PYG{o}{\PYGZhy{}} \PYG{n}{x}\PYG{p}{)} \PYG{o}{**} \PYG{l+m+mi}{2}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Contractive penalty (Jacobian Frobenius norm)}
+        \PYG{n}{contr\PYGZus{}penalty} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{contractive\PYGZus{}penalty}\PYG{p}{(}\PYG{n}{h}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Total loss}
+        \PYG{n}{total\PYGZus{}loss} \PYG{o}{=} \PYG{n}{recon\PYGZus{}loss} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lambda\PYGZus{}c} \PYG{o}{*} \PYG{n}{contr\PYGZus{}penalty}
+
+        \PYG{k}{return} \PYG{n}{total\PYGZus{}loss}\PYG{p}{,} \PYG{n}{recon\PYGZus{}loss}\PYG{p}{,} \PYG{n}{contr\PYGZus{}penalty}
+\end{MintedVerbatim}

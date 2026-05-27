@@ -1,0 +1,351 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+ch}{\PYGZsh{}!/usr/bin/env python}
+\PYG{c+c1}{\PYGZsh{} coding: utf\PYGZhy{}8}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Coupled Input‑Forget Gate LSTM Implementation}
+
+\PYG{c+c1}{\PYGZsh{} In[1]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{CIFG\PYGZus{}LSTM}\PYG{p}{:}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Initialize network parameters}
+\PYG{l+s+sd}{        input\PYGZus{}size: dimension of the input vector at each time step}
+\PYG{l+s+sd}{        hidden\PYGZus{}size: dimension of the hidden state (memory)}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{input\PYGZus{}size} \PYG{o}{=} \PYG{n}{input\PYGZus{}size}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}size}
+
+        \PYG{c+c1}{\PYGZsh{} Initialize weights with a normal distribution and biases with zeros}
+        \PYG{c+c1}{\PYGZsh{} W: weights connected to input X}
+        \PYG{c+c1}{\PYGZsh{} U: weights connected to previous hidden state h}
+        \PYG{c+c1}{\PYGZsh{} b: biases}
+
+        \PYG{c+c1}{\PYGZsh{} 1. Input Gate parameters}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wi} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Ui} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bi} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} 2. Candidate Cell State parameters}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Uc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} 3. Output Gate parameters}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Uo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Sigmoid activation function producing output between 0 and 1\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{c+c1}{\PYGZsh{} Prevent numerical overflow}
+        \PYG{n}{x} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{clip}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{500}\PYG{p}{,} \PYG{l+m+mi}{500}\PYG{p}{)}
+        \PYG{k}{return} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mf}{1.0} \PYG{o}{+} \PYG{n}{np}\PYG{o}{.}\PYG{n}{exp}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n}{x}\PYG{p}{))}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{\PYGZus{}tanh}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Hyperbolic tangent activation function producing output between \PYGZhy{}1 and 1\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{return} \PYG{n}{np}\PYG{o}{.}\PYG{n}{tanh}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward\PYGZus{}step}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{,} \PYG{n}{c\PYGZus{}prev}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Perform the forward pass for a single time step}
+\PYG{l+s+sd}{        x\PYGZus{}t: input at time t with shape (input\PYGZus{}size, 1)}
+\PYG{l+s+sd}{        h\PYGZus{}prev: previous hidden state with shape (hidden\PYGZus{}size, 1)}
+\PYG{l+s+sd}{        c\PYGZus{}prev: previous cell state with shape (hidden\PYGZus{}size, 1)}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{c+c1}{\PYGZsh{} 1. Compute input gate (i\PYGZus{}t)}
+        \PYG{n}{i\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wi}\PYG{p}{,} \PYG{n}{x\PYGZus{}t}\PYG{p}{)} \PYG{o}{+} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Ui}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bi}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Forget gate is implicitly defined as (1 \PYGZhy{} i\PYGZus{}t)}
+        \PYG{n}{f\PYGZus{}t} \PYG{o}{=} \PYG{l+m+mf}{1.0} \PYG{o}{\PYGZhy{}} \PYG{n}{i\PYGZus{}t}
+
+        \PYG{c+c1}{\PYGZsh{} 2. Compute candidate cell state (c\PYGZus{}tilde\PYGZus{}t)}
+        \PYG{n}{c\PYGZus{}tilde\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}tanh}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wc}\PYG{p}{,} \PYG{n}{x\PYGZus{}t}\PYG{p}{)} \PYG{o}{+} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Uc}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bc}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} 3. Update the cell state (C\PYGZus{}t) using the given formula}
+        \PYG{c+c1}{\PYGZsh{} Ct = (1 − it) ⊙ Ct−1 + it ⊙ C˜t}
+        \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{n}{f\PYGZus{}t} \PYG{o}{*} \PYG{n}{c\PYGZus{}prev} \PYG{o}{+} \PYG{n}{i\PYGZus{}t} \PYG{o}{*} \PYG{n}{c\PYGZus{}tilde\PYGZus{}t}  \PYG{c+c1}{\PYGZsh{} In NumPy, * means element\PYGZhy{}wise multiplication}
+
+        \PYG{c+c1}{\PYGZsh{} 4. Compute output gate (o\PYGZus{}t)}
+        \PYG{n}{o\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Wo}\PYG{p}{,} \PYG{n}{x\PYGZus{}t}\PYG{p}{)} \PYG{o}{+} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{Uo}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{bo}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} 5. Compute the new hidden state (h\PYGZus{}t)}
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{o\PYGZus{}t} \PYG{o}{*} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}tanh}\PYG{p}{(}\PYG{n}{c\PYGZus{}t}\PYG{p}{)}
+
+        \PYG{k}{return} \PYG{n}{h\PYGZus{}t}\PYG{p}{,} \PYG{n}{c\PYGZus{}t}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{X}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Perform the forward pass for a full input sequence}
+\PYG{l+s+sd}{        X: input sequence with shape (sequence\PYGZus{}length, input\PYGZus{}size)}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{seq\PYGZus{}length} \PYG{o}{=} \PYG{n}{X}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+
+        \PYG{c+c1}{\PYGZsh{} Initialize memory states with zeros}
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+        \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} List to store all hidden states over time}
+        \PYG{n}{hidden\PYGZus{}states} \PYG{o}{=} \PYG{p}{[]}
+
+        \PYG{c+c1}{\PYGZsh{} Loop through time steps}
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{seq\PYGZus{}length}\PYG{p}{):}
+            \PYG{c+c1}{\PYGZsh{} Reshape the t\PYGZhy{}th input into a column vector (input\PYGZus{}size, 1)}
+            \PYG{n}{x\PYGZus{}t} \PYG{o}{=} \PYG{n}{X}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+
+            \PYG{c+c1}{\PYGZsh{} Run one LSTM step}
+            \PYG{n}{h\PYGZus{}t}\PYG{p}{,} \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{forward\PYGZus{}step}\PYG{p}{(}\PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}t}\PYG{p}{,} \PYG{n}{c\PYGZus{}t}\PYG{p}{)}
+
+            \PYG{c+c1}{\PYGZsh{} Store output}
+            \PYG{n}{hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{flatten}\PYG{p}{())}
+
+        \PYG{k}{return} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}states}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[3]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{time}
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{c+c1}{\PYGZsh{} Testing the code on a Synthetic Time Series}
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{:}
+    \PYG{c+c1}{\PYGZsh{} Dimension settings based on problem requirements}
+    \PYG{n}{INPUT\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{10}   \PYG{c+c1}{\PYGZsh{} Input vector dimension at each time step}
+    \PYG{n}{HIDDEN\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{16}  \PYG{c+c1}{\PYGZsh{} Hidden state (memory) dimension}
+    \PYG{n}{SEQ\PYGZus{}LENGTH} \PYG{o}{=} \PYG{l+m+mi}{50}   \PYG{c+c1}{\PYGZsh{} Synthetic time series length (50 time steps)}
+
+    \PYG{c+c1}{\PYGZsh{} 1. Generate synthetic time series randomly}
+    \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} For reproducible results}
+    \PYG{n}{X\PYGZus{}synthetic} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{,} \PYG{n}{INPUT\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} 2. Create model instance }
+    \PYG{c+c1}{\PYGZsh{} (Random weight initialization is done automatically in \PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{})}
+    \PYG{n}{model} \PYG{o}{=} \PYG{n}{CIFG\PYGZus{}LSTM}\PYG{p}{(}\PYG{n}{input\PYGZus{}size}\PYG{o}{=}\PYG{n}{INPUT\PYGZus{}SIZE}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{o}{=}\PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} 3. Run the model and get outputs}
+    \PYG{n}{all\PYGZus{}hidden\PYGZus{}states} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{} Verify matrix dimensions \PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Matrix Dimensions Verification ===\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Input time series shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}synthetic}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ \PYGZhy{}\PYGZgt{} (Seq\PYGZus{}len=50, Input\PYGZus{}size=10)\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Total output matrix shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ \PYGZhy{}\PYGZgt{} (Seq\PYGZus{}len=50, Hidden\PYGZus{}size=16)\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{assert} \PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{,} \PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{),} \PYG{l+s+s2}{\PYGZdq{}Output dimension mismatch error!\PYGZdq{}}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Matrix dimensions verified successfully.}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{} Extract h\PYGZus{}t at each time step \PYGZhy{}\PYGZhy{}\PYGZhy{}}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Extracting h\PYGZus{}t at each time step ===\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Print the initial state (h\PYGZus{}0)}
+    \PYG{c+c1}{\PYGZsh{} Assuming initial state is zeros as per standard LSTM initialization}
+    \PYG{n}{h\PYGZus{}0} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step 00 (Initial h\PYGZus{}0) | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}0}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}0}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{):}
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} \PYG{c+c1}{\PYGZsh{} Extract hidden state vector at time t}
+
+        \PYG{c+c1}{\PYGZsh{} To avoid excessively long console output, print only the first few and the last step}
+        \PYG{k}{if} \PYG{n}{t} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{3}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{t}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{elif} \PYG{n}{t} \PYG{o}{==} \PYG{l+m+mi}{3}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}...}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[Outputs for steps 4 to 49 calculated and extracted, but hidden for brevity]}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{...\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{elif} \PYG{n}{t} \PYG{o}{==} \PYG{n}{SEQ\PYGZus{}LENGTH} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{t}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ (Last Step) | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{c+c1}{\PYGZsh{} ==========================================}
+    \PYG{c+c1}{\PYGZsh{} Performance Benchmarking}
+    \PYG{c+c1}{\PYGZsh{} ==========================================}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Performance Benchmarking ===\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{num\PYGZus{}runs} \PYG{o}{=} \PYG{l+m+mi}{1000}  \PYG{c+c1}{\PYGZsh{} تعداد تکرار برای محاسبه دقیق‌تر زمان}
+
+    \PYG{c+c1}{\PYGZsh{} گرم کردن پردازنده (Warm\PYGZhy{}up)}
+    \PYG{k}{for} \PYG{n}{\PYGZus{}} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{):}
+        \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} شروع اندازه‌گیری زمان}
+    \PYG{n}{start\PYGZus{}time} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{perf\PYGZus{}counter}\PYG{p}{()}
+
+    \PYG{k}{for} \PYG{n}{\PYGZus{}} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{num\PYGZus{}runs}\PYG{p}{):}
+        \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{n}{end\PYGZus{}time} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{perf\PYGZus{}counter}\PYG{p}{()}
+
+    \PYG{n}{total\PYGZus{}time} \PYG{o}{=} \PYG{n}{end\PYGZus{}time} \PYG{o}{\PYGZhy{}} \PYG{n}{start\PYGZus{}time}
+    \PYG{n}{avg\PYGZus{}time\PYGZus{}per\PYGZus{}run} \PYG{o}{=} \PYG{p}{(}\PYG{n}{total\PYGZus{}time} \PYG{o}{/} \PYG{n}{num\PYGZus{}runs}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{1000} \PYG{c+c1}{\PYGZsh{} بر حسب میلی‌ثانیه}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Total time for }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{num\PYGZus{}runs}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ forward passes: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}time}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ seconds\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Average time per forward pass: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{avg\PYGZus{}time\PYGZus{}per\PYGZus{}run}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ milliseconds\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}========================================}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZsh{} Optimized Coupled Input‑Forget Gate LSTM Implementation}
+
+\PYG{c+c1}{\PYGZsh{} In[4]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{CIFG\PYGZus{}LSTM}\PYG{p}{:}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Initialize parameters (same interface as the original non‑optimized version)}
+\PYG{l+s+sd}{        input\PYGZus{}size: dimension of input vector}
+\PYG{l+s+sd}{        hidden\PYGZus{}size: dimension of hidden state}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{input\PYGZus{}size} \PYG{o}{=} \PYG{n}{input\PYGZus{}size}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}size}
+
+        \PYG{c+c1}{\PYGZsh{} Original\PYGZhy{}style initialization (same distributions as the first code)}
+        \PYG{n}{Wi} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{Ui} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{bi} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{n}{Wc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{Uc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{bc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{n}{Wo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{input\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{Uo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{0.1}
+        \PYG{n}{bo} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{} Optimized combined matrices \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZhy{}}
+        \PYG{c+c1}{\PYGZsh{} Shape: (input\PYGZus{}size + hidden\PYGZus{}size , 3 * hidden\PYGZus{}size)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n}{input\PYGZus{}size} \PYG{o}{+} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{3} \PYG{o}{*} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} Input part}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[:}\PYG{n}{input\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{:}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Wi}\PYG{o}{.}\PYG{n}{T}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[:}\PYG{n}{input\PYGZus{}size}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Wc}\PYG{o}{.}\PYG{n}{T}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[:}\PYG{n}{input\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{3}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Wo}\PYG{o}{.}\PYG{n}{T}
+
+        \PYG{c+c1}{\PYGZsh{} Hidden part}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[}\PYG{n}{input\PYGZus{}size}\PYG{p}{:,} \PYG{l+m+mi}{0}\PYG{p}{:}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Ui}\PYG{o}{.}\PYG{n}{T}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[}\PYG{n}{input\PYGZus{}size}\PYG{p}{:,} \PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Uc}\PYG{o}{.}\PYG{n}{T}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{[}\PYG{n}{input\PYGZus{}size}\PYG{p}{:,} \PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{3}\PYG{o}{*}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]} \PYG{o}{=} \PYG{n}{Uo}\PYG{o}{.}\PYG{n}{T}
+
+        \PYG{c+c1}{\PYGZsh{} Bias}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{concatenate}\PYG{p}{((}\PYG{n}{bi}\PYG{o}{.}\PYG{n}{T}\PYG{p}{,} \PYG{n}{bc}\PYG{o}{.}\PYG{n}{T}\PYG{p}{,} \PYG{n}{bo}\PYG{o}{.}\PYG{n}{T}\PYG{p}{),} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+        \PYG{n}{x} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{clip}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{500}\PYG{p}{,} \PYG{l+m+mi}{500}\PYG{p}{)}
+        \PYG{k}{return} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mf}{1.0} \PYG{o}{+} \PYG{n}{np}\PYG{o}{.}\PYG{n}{exp}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n}{x}\PYG{p}{))}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward\PYGZus{}step}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{,} \PYG{n}{c\PYGZus{}prev}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Forward computation for a single time step}
+\PYG{l+s+sd}{        Shapes are identical to the original implementation}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{x\PYGZus{}t} \PYG{o}{=} \PYG{n}{x\PYGZus{}t}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{h\PYGZus{}prev} \PYG{o}{=} \PYG{n}{h\PYGZus{}prev}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{c\PYGZus{}prev} \PYG{o}{=} \PYG{n}{c\PYGZus{}prev}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+        \PYG{n}{combined} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{concatenate}\PYG{p}{((}\PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}prev}\PYG{p}{),} \PYG{n}{axis}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+        \PYG{n}{gates} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{dot}\PYG{p}{(}\PYG{n}{combined}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{W}\PYG{p}{)} \PYG{o}{+} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{b}
+
+        \PYG{n}{i\PYGZus{}raw} \PYG{o}{=} \PYG{n}{gates}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{:}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]}
+        \PYG{n}{c\PYGZus{}raw} \PYG{o}{=} \PYG{n}{gates}\PYG{p}{[:,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]}
+        \PYG{n}{o\PYGZus{}raw} \PYG{o}{=} \PYG{n}{gates}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{:}\PYG{l+m+mi}{3}\PYG{o}{*}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{]}
+
+        \PYG{n}{i\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n}{i\PYGZus{}raw}\PYG{p}{)}
+        \PYG{n}{c\PYGZus{}tilde} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{tanh}\PYG{p}{(}\PYG{n}{c\PYGZus{}raw}\PYG{p}{)}
+        \PYG{n}{o\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{\PYGZus{}sigmoid}\PYG{p}{(}\PYG{n}{o\PYGZus{}raw}\PYG{p}{)}
+
+        \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mf}{1.0} \PYG{o}{\PYGZhy{}} \PYG{n}{i\PYGZus{}t}\PYG{p}{)} \PYG{o}{*} \PYG{n}{c\PYGZus{}prev} \PYG{o}{+} \PYG{n}{i\PYGZus{}t} \PYG{o}{*} \PYG{n}{c\PYGZus{}tilde}
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{o\PYGZus{}t} \PYG{o}{*} \PYG{n}{np}\PYG{o}{.}\PYG{n}{tanh}\PYG{p}{(}\PYG{n}{c\PYGZus{}t}\PYG{p}{)}
+
+        \PYG{k}{return} \PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{T}\PYG{p}{,} \PYG{n}{c\PYGZus{}t}\PYG{o}{.}\PYG{n}{T}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{X}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Forward pass for a full sequence}
+\PYG{l+s+sd}{        Same input/output format as the original implementation}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{seq\PYGZus{}length} \PYG{o}{=} \PYG{n}{X}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+        \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{((}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}size}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+
+        \PYG{n}{hidden\PYGZus{}states} \PYG{o}{=} \PYG{p}{[]}
+
+        \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{seq\PYGZus{}length}\PYG{p}{):}
+            \PYG{n}{x\PYGZus{}t} \PYG{o}{=} \PYG{n}{X}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+            \PYG{n}{h\PYGZus{}t}\PYG{p}{,} \PYG{n}{c\PYGZus{}t} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{forward\PYGZus{}step}\PYG{p}{(}\PYG{n}{x\PYGZus{}t}\PYG{p}{,} \PYG{n}{h\PYGZus{}t}\PYG{p}{,} \PYG{n}{c\PYGZus{}t}\PYG{p}{)}
+            \PYG{n}{hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{flatten}\PYG{p}{())}
+
+        \PYG{k}{return} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}states}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[5]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{time}
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{c+c1}{\PYGZsh{} Testing the Optimized CIFG\PYGZhy{}LSTM Model}
+\PYG{c+c1}{\PYGZsh{} ==========================================}
+\PYG{k}{if} \PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}main\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{:}
+    \PYG{n}{INPUT\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{10}
+    \PYG{n}{HIDDEN\PYGZus{}SIZE} \PYG{o}{=} \PYG{l+m+mi}{16}
+    \PYG{n}{SEQ\PYGZus{}LENGTH} \PYG{o}{=} \PYG{l+m+mi}{50}
+
+    \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{l+m+mi}{42}\PYG{p}{)}
+    \PYG{n}{X\PYGZus{}synthetic} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{,} \PYG{n}{INPUT\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{n}{model} \PYG{o}{=} \PYG{n}{CIFG\PYGZus{}LSTM}\PYG{p}{(}\PYG{n}{input\PYGZus{}size}\PYG{o}{=}\PYG{n}{INPUT\PYGZus{}SIZE}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}size}\PYG{o}{=}\PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{)}
+
+    \PYG{n}{all\PYGZus{}hidden\PYGZus{}states} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Matrix Dimensions Verification ===\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Input Time Series Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{X\PYGZus{}synthetic}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ \PYGZhy{}\PYGZgt{} (Seq\PYGZus{}len=50, Input\PYGZus{}size=10)\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Optimized Weight Matrix Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{model}\PYG{o}{.}\PYG{n}{W}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ \PYGZhy{}\PYGZgt{} (Input+Hidden, 3*Hidden)\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Output Hidden States Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ \PYGZhy{}\PYGZgt{} (Seq\PYGZus{}len=50, Hidden\PYGZus{}size=16)\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{assert} \PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{,} \PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{),} \PYG{l+s+s2}{\PYGZdq{}Output dimension mismatch!\PYGZdq{}}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Dimensions verified successfully.}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Extracting h\PYGZus{}t at each time step ===\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{h\PYGZus{}0} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{HIDDEN\PYGZus{}SIZE}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step 00 (Initial h\PYGZus{}0) | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}0}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}0}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{k}{for} \PYG{n}{t} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{SEQ\PYGZus{}LENGTH}\PYG{p}{):}
+        \PYG{n}{h\PYGZus{}t} \PYG{o}{=} \PYG{n}{all\PYGZus{}hidden\PYGZus{}states}\PYG{p}{[}\PYG{n}{t}\PYG{p}{]} 
+
+        \PYG{k}{if} \PYG{n}{t} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{3}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{t}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{elif} \PYG{n}{t} \PYG{o}{==} \PYG{l+m+mi}{3}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}...}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[Steps 4 to 49 calculated and extracted, hidden for brevity]}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{...\PYGZdq{}}\PYG{p}{)}
+        \PYG{k}{elif} \PYG{n}{t} \PYG{o}{==} \PYG{n}{SEQ\PYGZus{}LENGTH} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{:}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Time Step }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{t}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{:}\PYG{l+s+s2}{02d}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ (Last Step) | Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{h\PYGZus{}t}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+            \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Values: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{round}\PYG{p}{(}\PYG{n}{h\PYGZus{}t}\PYG{p}{,}\PYG{+w}{ }\PYG{l+m+mi}{3}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{c+c1}{\PYGZsh{} ==========================================}
+    \PYG{c+c1}{\PYGZsh{} Performance Benchmarking}
+    \PYG{c+c1}{\PYGZsh{} ==========================================}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=== Performance Benchmarking ===\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{num\PYGZus{}runs} \PYG{o}{=} \PYG{l+m+mi}{1000}  \PYG{c+c1}{\PYGZsh{} تعداد تکرار برای محاسبه دقیق‌تر زمان}
+
+    \PYG{c+c1}{\PYGZsh{} گرم کردن پردازنده (Warm\PYGZhy{}up)}
+    \PYG{k}{for} \PYG{n}{\PYGZus{}} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{):}
+        \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} شروع اندازه‌گیری زمان}
+    \PYG{n}{start\PYGZus{}time} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{perf\PYGZus{}counter}\PYG{p}{()}
+
+    \PYG{k}{for} \PYG{n}{\PYGZus{}} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{num\PYGZus{}runs}\PYG{p}{):}
+        \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{model}\PYG{o}{.}\PYG{n}{forward}\PYG{p}{(}\PYG{n}{X\PYGZus{}synthetic}\PYG{p}{)}
+
+    \PYG{n}{end\PYGZus{}time} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{perf\PYGZus{}counter}\PYG{p}{()}
+
+    \PYG{n}{total\PYGZus{}time} \PYG{o}{=} \PYG{n}{end\PYGZus{}time} \PYG{o}{\PYGZhy{}} \PYG{n}{start\PYGZus{}time}
+    \PYG{n}{avg\PYGZus{}time\PYGZus{}per\PYGZus{}run} \PYG{o}{=} \PYG{p}{(}\PYG{n}{total\PYGZus{}time} \PYG{o}{/} \PYG{n}{num\PYGZus{}runs}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{1000} \PYG{c+c1}{\PYGZsh{} بر حسب میلی‌ثانیه}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Total time for }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{num\PYGZus{}runs}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ forward passes: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{total\PYGZus{}time}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ seconds\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Average time per forward pass: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{avg\PYGZus{}time\PYGZus{}per\PYGZus{}run}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ milliseconds\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}========================================}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\end{MintedVerbatim}

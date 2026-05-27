@@ -1,0 +1,549 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{torch.nn.utils.rnn}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{pack\PYGZus{}padded\PYGZus{}sequence}\PYG{p}{,} \PYG{n}{pad\PYGZus{}packed\PYGZus{}sequence}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{random}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{torch.utils.data}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{DataLoader}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{sklearn.model\PYGZus{}selection}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{train\PYGZus{}test\PYGZus{}split}
+
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{RobustBiLSTM}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    \PYGZhy{} Capture both past and future contextual information (Bidirectional)}
+\PYG{l+s+sd}{    \PYGZhy{} Learn hierarchical temporal representations (Stacked LSTM)}
+\PYG{l+s+sd}{    \PYGZhy{} Reduce overfitting using Dropout (Regularization)}
+\PYG{l+s+sd}{    \PYGZhy{} Avoid unnecessary computation on padding tokens}
+\PYG{l+s+sd}{    \PYGZhy{} Handle variable\PYGZhy{}length sequences efficiently}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,}
+        \PYG{n}{vocab\PYGZus{}size}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{,}
+        \PYG{n}{embedding\PYGZus{}dim}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{,}
+        \PYG{n}{hidden\PYGZus{}dim}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{,}
+        \PYG{n}{num\PYGZus{}layers}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{,}
+        \PYG{n}{num\PYGZus{}classes}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{,}
+        \PYG{n}{dropout}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{0.5}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        vocab\PYGZus{}size :   Number of tokens in vocabulary}
+\PYG{l+s+sd}{        embedding\PYGZus{}dim : Dimensionality of token embeddings}
+\PYG{l+s+sd}{        hidden\PYGZus{}dim :   Number of hidden units in each LSTM direction}
+\PYG{l+s+sd}{        num\PYGZus{}layers :   Number of stacked LSTM layers}
+\PYG{l+s+sd}{        num\PYGZus{}classes :  Number of output classes for sequence classification}
+\PYG{l+s+sd}{        dropout :      Dropout probability for regularization}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n+nb}{super}\PYG{p}{()}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+\PYG{+w}{        }
+\PYG{+w}{        }
+\PYG{+w}{        }
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Calling super().init() initializes the parent nn.Module class, enabling parameter }
+\PYG{l+s+sd}{        registration, autograd, and proper model behavior during training.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{hidden\PYGZus{}dim} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}dim}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{num\PYGZus{}layers} \PYG{o}{=} \PYG{n}{num\PYGZus{}layers}
+        
+        \PYG{c+c1}{\PYGZsh{} Embedding layer converts token indices into dense vectors}
+        \PYG{c+c1}{\PYGZsh{} padding\PYGZus{}idx=0 ensures that padding tokens do not affect learning}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{embedding} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Embedding}\PYG{p}{(}
+            \PYG{n}{num\PYGZus{}embeddings}\PYG{o}{=}\PYG{n}{vocab\PYGZus{}size}\PYG{p}{,}
+            \PYG{n}{embedding\PYGZus{}dim}\PYG{o}{=}\PYG{n}{embedding\PYGZus{}dim}\PYG{p}{,}
+            \PYG{n}{padding\PYGZus{}idx}\PYG{o}{=}\PYG{l+m+mi}{0}
+        \PYG{p}{)}
+        
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lstm} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{LSTM}\PYG{p}{(}\PYG{n}{input\PYGZus{}size} \PYG{o}{=} \PYG{n}{embedding\PYGZus{}dim}\PYG{p}{,}
+                            \PYG{n}{hidden\PYGZus{}size} \PYG{o}{=} \PYG{n}{hidden\PYGZus{}dim}\PYG{p}{,}
+                            \PYG{n}{num\PYGZus{}layers} \PYG{o}{=} \PYG{n}{num\PYGZus{}layers}\PYG{p}{,}
+                            \PYG{n}{batch\PYGZus{}first} \PYG{o}{=} \PYG{k+kc}{True}\PYG{p}{,}
+                            \PYG{n}{bidirectional} \PYG{o}{=} \PYG{k+kc}{True}\PYG{p}{,} \PYG{c+c1}{\PYGZsh{} bidirectional=True ensures that the model processes the sequence in both forward and backward directions.}
+                            \PYG{n}{dropout} \PYG{o}{=} \PYG{n}{dropout} \PYG{k}{if} \PYG{n}{num\PYGZus{}layers} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{1} \PYG{k}{else} \PYG{l+m+mi}{0} \PYG{c+c1}{\PYGZsh{} dropout is applied between LSTM layers}
+                            \PYG{p}{)}
+        
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{dropout} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Dropout}\PYG{p}{(}\PYG{n}{dropout}\PYG{p}{)}
+        
+        \PYG{c+c1}{\PYGZsh{}self.fc = nn.Linear(hidden\PYGZus{}dim * 2, num\PYGZus{}classes) \PYGZsh{} Fully Connected layer for sequence classification}
+        \PYG{c+c1}{\PYGZsh{} BiLSTM outputs hidden\PYGZus{}dim * 2 features (forward + backward)}
+        
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fc} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Sequential}\PYG{p}{(}
+    \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Linear}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}dim} \PYG{o}{*} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{hidden\PYGZus{}dim}\PYG{p}{),}
+    \PYG{n}{nn}\PYG{o}{.}\PYG{n}{ReLU}\PYG{p}{(),}
+    \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Dropout}\PYG{p}{(}\PYG{n}{dropout}\PYG{p}{),}
+    \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Linear}\PYG{p}{(}\PYG{n}{hidden\PYGZus{}dim}\PYG{p}{,} \PYG{n}{num\PYGZus{}classes}\PYG{p}{)}
+\PYG{p}{)}
+
+        
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward} \PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{:} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{Tensor}\PYG{p}{,} \PYG{n}{length}\PYG{p}{:} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{Tensor}\PYG{p}{,} \PYG{n}{hidden}\PYG{o}{=}\PYG{k+kc}{None}\PYG{p}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{Tensor}\PYG{p}{:}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Forward pass of the model}
+
+\PYG{l+s+sd}{        x : Padded input tensor of shape:}
+\PYG{l+s+sd}{            (batch\PYGZus{}size, max\PYGZus{}sequence\PYGZus{}length, input\PYGZus{}dim)}
+
+\PYG{l+s+sd}{        lengths : True lengths of each sequence before padding}
+\PYG{l+s+sd}{            Shape: (batch\PYGZus{}size,)}
+
+\PYG{l+s+sd}{        Returns}
+\PYG{l+s+sd}{        logits :  Output logits for sequence classification}
+\PYG{l+s+sd}{            Shape: (batch\PYGZus{}size, num\PYGZus{}classes)}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{n}{x} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{embedding}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+        \PYG{n}{packed\PYGZus{}input} \PYG{o}{=} \PYG{n}{pack\PYGZus{}padded\PYGZus{}sequence}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} 
+                                            \PYG{n}{length}\PYG{o}{.}\PYG{n}{cpu}\PYG{p}{(),}
+                                            \PYG{n}{batch\PYGZus{}first} \PYG{o}{=} \PYG{k+kc}{True}\PYG{p}{,}
+                                            \PYG{n}{enforce\PYGZus{}sorted} \PYG{o}{=} \PYG{k+kc}{False}
+                                            \PYG{p}{)}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        This operation removes padding tokens from computation.}
+\PYG{l+s+sd}{            \PYGZhy{} No unnecessary computation on padding}
+\PYG{l+s+sd}{            \PYGZhy{} No gradient noise from padded positions}
+\PYG{l+s+sd}{            \PYGZhy{} Faster and more memory\PYGZhy{}efficient training}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        
+        
+        \PYG{n}{packed\PYGZus{}output} \PYG{p}{,} \PYG{p}{(}\PYG{n}{h\PYGZus{}n}\PYG{p}{,} \PYG{n}{c\PYGZus{}n}\PYG{p}{)} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{lstm}\PYG{p}{(}\PYG{n}{packed\PYGZus{}input}\PYG{p}{)}
+\PYG{+w}{        }
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{} The hidden state hₙ represents the final output of the LSTM and }
+\PYG{l+s+sd}{        summarizes the sequence, while the cell state cₙ stores long\PYGZhy{}term }
+\PYG{l+s+sd}{        memory and enables stable gradient flow. }
+\PYG{l+s+sd}{        }
+\PYG{l+s+sd}{        For a Bidirectional LSTM:}
+\PYG{l+s+sd}{          \PYGZhy{} h\PYGZus{}n[\PYGZhy{}2] → last layer, forward direction}
+\PYG{l+s+sd}{          \PYGZhy{} h\PYGZus{}n[\PYGZhy{}1] → last layer, backward direction}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        
+        
+        \PYG{c+c1}{\PYGZsh{} Unpack the sequence (not used here). The model uses the final hidden states}
+        \PYG{c+c1}{\PYGZsh{} (h\PYGZus{}n) as the sequence representation instead of the full LSTM outputs.}
+        \PYG{n}{output}\PYG{p}{,} \PYG{n}{output\PYGZus{}lengths} \PYG{o}{=} \PYG{n}{pad\PYGZus{}packed\PYGZus{}sequence}\PYG{p}{(}\PYG{n}{packed\PYGZus{}output}\PYG{p}{,} \PYG{n}{batch\PYGZus{}first}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+        
+        \PYG{c+c1}{\PYGZsh{} hidden state\PYGZus{}n \PYGZhy{}\PYGZgt{} (num\PYGZus{}layers * num\PYGZus{}directions, batch\PYGZus{}size, hidden\PYGZus{}dim)}
+        \PYG{c+c1}{\PYGZsh{} cell state\PYGZus{}n \PYGZhy{}\PYGZgt{} (num\PYGZus{}layers * num\PYGZus{}directions, batch\PYGZus{}size, hidden\PYGZus{}dim)}
+        
+        \PYG{n}{h\PYGZus{}forward} \PYG{o}{=} \PYG{n}{h\PYGZus{}n}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{2}\PYG{p}{,:,:]}
+        \PYG{n}{h\PYGZus{}backward} \PYG{o}{=} \PYG{n}{h\PYGZus{}n}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,:,:]}
+        
+        
+        \PYG{c+c1}{\PYGZsh{}Concatenate forward and backward hidden states}
+        \PYG{c+c1}{\PYGZsh{}This creates a complete sequence representation containing both past and future context.}
+        \PYG{n}{h\PYGZus{}final} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{cat}\PYG{p}{((}\PYG{n}{h\PYGZus{}forward}\PYG{p}{,} \PYG{n}{h\PYGZus{}backward}\PYG{p}{),} \PYG{n}{dim} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} (batch\PYGZus{}size, hidden\PYGZus{}dim * 2)}
+        
+        \PYG{n}{h\PYGZus{}final} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{dropout}\PYG{p}{(}\PYG{n}{h\PYGZus{}final}\PYG{p}{)}
+        \PYG{n}{logits} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{fc}\PYG{p}{(}\PYG{n}{h\PYGZus{}final}\PYG{p}{)}
+        
+        \PYG{k}{return} \PYG{n}{logits}\PYG{p}{,} \PYG{p}{(}\PYG{n}{h\PYGZus{}n}\PYG{p}{,} \PYG{n}{c\PYGZus{}n}\PYG{p}{)}
+        
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{generate\PYGZus{}balanced\PYGZus{}symmetric\PYGZus{}dataset}\PYG{p}{(}
+    \PYG{n}{num\PYGZus{}samples}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{8000}\PYG{p}{,}
+    \PYG{n}{positive\PYGZus{}ratio}\PYG{p}{:} \PYG{n+nb}{float} \PYG{o}{=} \PYG{l+m+mf}{0.6}\PYG{p}{,}
+    \PYG{n}{vocab\PYGZus{}size}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{60}\PYG{p}{,}
+    \PYG{n}{min\PYGZus{}half\PYGZus{}len}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{3}\PYG{p}{,}
+    \PYG{n}{max\PYGZus{}half\PYGZus{}len}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{7}\PYG{p}{,}
+    \PYG{n}{noise\PYGZus{}len}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{1}\PYG{p}{,}
+    \PYG{n}{seed}\PYG{p}{:} \PYG{n+nb}{int} \PYG{o}{=} \PYG{l+m+mi}{42}
+\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Generate a synthetic sequence classification dataset with controllable class balance.}
+
+\PYG{l+s+sd}{    The dataset is designed for sequence similarity classification:}
+\PYG{l+s+sd}{        \PYGZhy{} Class 1 (Positive): Right half is approximately the reverse of the left half}
+\PYG{l+s+sd}{        \PYGZhy{} Class 0 (Negative): Right half is random (dissimilar)}
+
+\PYG{l+s+sd}{    Each sequence structure:}
+\PYG{l+s+sd}{        [ left | noise | right ]}
+
+
+\PYG{l+s+sd}{    Parameters}
+\PYG{l+s+sd}{    num\PYGZus{}samples : int}
+\PYG{l+s+sd}{        Total number of sequences to generate.}
+
+\PYG{l+s+sd}{    positive\PYGZus{}ratio : float}
+\PYG{l+s+sd}{        Proportion of positive (symmetric) samples.}
+\PYG{l+s+sd}{        Example:}
+\PYG{l+s+sd}{            0.5 → 50\PYGZpc{} positive / 50\PYGZpc{} negative}
+\PYG{l+s+sd}{            0.6 → 60\PYGZpc{} positive / 40\PYGZpc{} negative}
+
+\PYG{l+s+sd}{    vocab\PYGZus{}size : int}
+\PYG{l+s+sd}{        Number of unique tokens in vocabulary.}
+\PYG{l+s+sd}{        Token index 0 is reserved for padding (not used here).}
+
+\PYG{l+s+sd}{    min\PYGZus{}half\PYGZus{}len : int}
+\PYG{l+s+sd}{        Minimum length of the left (and right) segment.}
+
+\PYG{l+s+sd}{    max\PYGZus{}half\PYGZus{}len : int}
+\PYG{l+s+sd}{        Maximum length of the left (and right) segment.}
+
+\PYG{l+s+sd}{    noise\PYGZus{}len : int}
+\PYG{l+s+sd}{        Number of random tokens inserted between left and right segments.}
+
+\PYG{l+s+sd}{    seed : int}
+\PYG{l+s+sd}{        Random seed for reproducibility.}
+
+
+\PYG{l+s+sd}{    Returns}
+\PYG{l+s+sd}{    sequences : List[torch.Tensor]}
+\PYG{l+s+sd}{        List of variable\PYGZhy{}length sequences.}
+
+\PYG{l+s+sd}{    labels : torch.Tensor}
+\PYG{l+s+sd}{        Tensor of shape (num\PYGZus{}samples,) containing class labels (0 or 1).}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+
+    \PYG{n}{random}\PYG{o}{.}\PYG{n}{seed}\PYG{p}{(}\PYG{n}{seed}\PYG{p}{)}
+    \PYG{n}{torch}\PYG{o}{.}\PYG{n}{manual\PYGZus{}seed}\PYG{p}{(}\PYG{n}{seed}\PYG{p}{)}
+
+    \PYG{n}{sequences} \PYG{o}{=} \PYG{p}{[]}
+    \PYG{n}{labels} \PYG{o}{=} \PYG{p}{[]}
+
+    \PYG{k}{for} \PYG{n}{\PYGZus{}} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{num\PYGZus{}samples}\PYG{p}{):}
+
+        \PYG{c+c1}{\PYGZsh{} Randomly choose length of left half}
+        \PYG{n}{half\PYGZus{}len} \PYG{o}{=} \PYG{n}{random}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{n}{min\PYGZus{}half\PYGZus{}len}\PYG{p}{,} \PYG{n}{max\PYGZus{}half\PYGZus{}len}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Generate left segment (avoid token 0 since it is padding)}
+        \PYG{n}{left} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{vocab\PYGZus{}size}\PYG{p}{,} \PYG{p}{(}\PYG{n}{half\PYGZus{}len}\PYG{p}{,))}
+
+        \PYG{c+c1}{\PYGZsh{} Generate small random noise segment}
+        \PYG{n}{noise} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{vocab\PYGZus{}size}\PYG{p}{,} \PYG{p}{(}\PYG{n}{noise\PYGZus{}len}\PYG{p}{,))}
+
+        \PYG{c+c1}{\PYGZsh{} Decide whether sample is Positive or Negative}
+        \PYG{k}{if} \PYG{n}{random}\PYG{o}{.}\PYG{n}{random}\PYG{p}{()} \PYG{o}{\PYGZlt{}} \PYG{n}{positive\PYGZus{}ratio}\PYG{p}{:}
+
+            \PYG{c+c1}{\PYGZsh{} Reverse the left sequence}
+            \PYG{n}{right} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{flip}\PYG{p}{(}\PYG{n}{left}\PYG{p}{,} \PYG{n}{dims}\PYG{o}{=}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{])}
+
+            \PYG{c+c1}{\PYGZsh{} Add small controlled perturbation}
+            \PYG{c+c1}{\PYGZsh{} This makes the task slightly harder and more realistic}
+            \PYG{n}{noise\PYGZus{}val} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{right}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{)}
+            \PYG{n}{right} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{clamp}\PYG{p}{(}\PYG{n}{right} \PYG{o}{+} \PYG{n}{noise\PYGZus{}val}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{vocab\PYGZus{}size} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)}
+
+            \PYG{n}{label} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+        \PYG{k}{else}\PYG{p}{:}
+            \PYG{c+c1}{\PYGZsh{} Negative Sample (Random)}
+            \PYG{c+c1}{\PYGZsh{} Generate completely random right half}
+            \PYG{n}{right} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{vocab\PYGZus{}size}\PYG{p}{,} \PYG{p}{(}\PYG{n}{half\PYGZus{}len}\PYG{p}{,))}
+            \PYG{n}{label} \PYG{o}{=} \PYG{l+m+mi}{0}
+
+        \PYG{c+c1}{\PYGZsh{} Final format: [left | noise | right]}
+        \PYG{n}{seq} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{cat}\PYG{p}{([}\PYG{n}{left}\PYG{p}{,} \PYG{n}{noise}\PYG{p}{,} \PYG{n}{right}\PYG{p}{])}
+
+        \PYG{n}{sequences}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{seq}\PYG{p}{)}
+        \PYG{n}{labels}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{label}\PYG{p}{)}
+
+    \PYG{n}{combined} \PYG{o}{=} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{sequences}\PYG{p}{,} \PYG{n}{labels}\PYG{p}{))}
+    \PYG{n}{random}\PYG{o}{.}\PYG{n}{shuffle}\PYG{p}{(}\PYG{n}{combined}\PYG{p}{)}
+    \PYG{n}{sequences}\PYG{p}{,} \PYG{n}{labels} \PYG{o}{=} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{o}{*}\PYG{n}{combined}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Convert labels to tensor}
+    \PYG{n}{labels} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{tensor}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{long}\PYG{p}{)}
+
+    \PYG{k}{return} \PYG{n+nb}{list}\PYG{p}{(}\PYG{n}{sequences}\PYG{p}{),} \PYG{n}{labels}
+
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{torch.utils.data}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Dataset}\PYG{p}{,} \PYG{n}{DataLoader}
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{SequenceDataset}\PYG{p}{(}\PYG{n}{Dataset}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Custom PyTorch Dataset for handling variable\PYGZhy{}length sequence data.}
+
+\PYG{l+s+sd}{    This dataset stores:}
+\PYG{l+s+sd}{        \PYGZhy{} sequences : list of token sequences (each sequence is a tensor)}
+\PYG{l+s+sd}{        \PYGZhy{} labels    : corresponding class labels for each sequence}
+
+\PYG{l+s+sd}{    It allows PyTorch DataLoader to efficiently sample and batch data}
+\PYG{l+s+sd}{    during training and evaluation.}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{sequences}\PYG{p}{,} \PYG{n}{labels}\PYG{p}{):}
+        
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{sequences} \PYG{o}{=} \PYG{n}{sequences}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{labels} \PYG{o}{=} \PYG{n}{labels}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}getitem\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{idx}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        idx : Index of the sample.}
+
+\PYG{l+s+sd}{        Returns}
+\PYG{l+s+sd}{        sequence : Token sequence at index idx.}
+
+\PYG{l+s+sd}{        label : Class label corresponding to the sequence.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{return} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{sequences}\PYG{p}{[}\PYG{n}{idx}\PYG{p}{],} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{labels}\PYG{p}{[}\PYG{n}{idx}\PYG{p}{]}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}len\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{):}
+\PYG{+w}{        }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{        Return the total number of samples in the dataset.}
+\PYG{l+s+sd}{        This allows DataLoader to know how many items exist.}
+\PYG{l+s+sd}{        \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+        \PYG{k}{return} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{labels}\PYG{p}{)}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{collate\PYGZus{}fn}\PYG{p}{(}\PYG{n}{batch}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Custom collate function used by DataLoader to create batches.}
+
+\PYG{l+s+sd}{    Since sequences have variable lengths, they cannot be directly stacked}
+\PYG{l+s+sd}{    into a tensor. This function:}
+\PYG{l+s+sd}{        1. Extracts sequences and labels from the batch}
+\PYG{l+s+sd}{        2. Computes the true length of each sequence}
+\PYG{l+s+sd}{        3. Pads sequences to the same length}
+\PYG{l+s+sd}{        4. Returns tensors suitable for RNN/LSTM models}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{c+c1}{\PYGZsh{} Separate sequences and labels from the batch}
+    \PYG{n}{sequences}\PYG{p}{,} \PYG{n}{labels} \PYG{o}{=} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{o}{*}\PYG{n}{batch}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Compute original sequence lengths before padding}
+    \PYG{n}{lengths} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{tensor}\PYG{p}{([}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{seq}\PYG{p}{)} \PYG{k}{for} \PYG{n}{seq} \PYG{o+ow}{in} \PYG{n}{sequences}\PYG{p}{],} \PYG{n}{dtype}\PYG{o}{=}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{long}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Pad sequences so they all have the same length}
+    \PYG{c+c1}{\PYGZsh{} padding\PYGZus{}value=0 corresponds to the padding token}
+    \PYG{n}{padded} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{utils}\PYG{o}{.}\PYG{n}{rnn}\PYG{o}{.}\PYG{n}{pad\PYGZus{}sequence}\PYG{p}{(}
+        \PYG{n}{sequences}\PYG{p}{,}
+        \PYG{n}{batch\PYGZus{}first}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,}
+        \PYG{n}{padding\PYGZus{}value}\PYG{o}{=}\PYG{l+m+mi}{0}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Convert labels to tensor}
+    \PYG{n}{labels} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{tensor}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{long}\PYG{p}{)}
+
+    \PYG{k}{return} \PYG{n}{padded}\PYG{p}{,} \PYG{n}{lengths}\PYG{p}{,} \PYG{n}{labels}
+
+\PYG{n}{sequences}\PYG{p}{,} \PYG{n}{labels} \PYG{o}{=} \PYG{n}{generate\PYGZus{}balanced\PYGZus{}symmetric\PYGZus{}dataset}\PYG{p}{(}
+    \PYG{n}{num\PYGZus{}samples}\PYG{o}{=}\PYG{l+m+mi}{10000}\PYG{p}{,}
+    \PYG{n}{vocab\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{60}
+\PYG{p}{)}
+
+\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{X\PYGZus{}val}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}val} \PYG{o}{=} \PYG{n}{train\PYGZus{}test\PYGZus{}split}\PYG{p}{(}
+        \PYG{n}{sequences}\PYG{p}{,}
+        \PYG{n}{labels}\PYG{p}{,}
+        \PYG{n}{test\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mf}{0.2}\PYG{p}{,}
+        \PYG{n}{stratify}\PYG{o}{=}\PYG{n}{labels}\PYG{p}{,}
+        \PYG{n}{random\PYGZus{}state}\PYG{o}{=}\PYG{l+m+mi}{42}
+    \PYG{p}{)}
+
+\PYG{n}{train\PYGZus{}ds} \PYG{o}{=} \PYG{n}{SequenceDataset}\PYG{p}{(}\PYG{n}{X\PYGZus{}train}\PYG{p}{,} \PYG{n}{y\PYGZus{}train}\PYG{p}{)}
+\PYG{n}{val\PYGZus{}ds} \PYG{o}{=} \PYG{n}{SequenceDataset}\PYG{p}{(}\PYG{n}{X\PYGZus{}val}\PYG{p}{,} \PYG{n}{y\PYGZus{}val}\PYG{p}{)}
+
+\PYG{n}{train\PYGZus{}loader} \PYG{o}{=} \PYG{n}{DataLoader}\PYG{p}{(}
+    \PYG{n}{train\PYGZus{}ds}\PYG{p}{,} \PYG{n}{batch\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{32}\PYG{p}{,} \PYG{n}{shuffle}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{collate\PYGZus{}fn}\PYG{o}{=}\PYG{n}{collate\PYGZus{}fn}
+\PYG{p}{)}
+\PYG{n}{val\PYGZus{}loader} \PYG{o}{=} \PYG{n}{DataLoader}\PYG{p}{(}
+    \PYG{n}{val\PYGZus{}ds}\PYG{p}{,} \PYG{n}{batch\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{32}\PYG{p}{,} \PYG{n}{shuffle}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{,} \PYG{n}{collate\PYGZus{}fn}\PYG{o}{=}\PYG{n}{collate\PYGZus{}fn}
+\PYG{p}{)}
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+
+\PYG{c+c1}{\PYGZsh{} Compute class distribution}
+\PYG{n}{unique}\PYG{p}{,} \PYG{n}{counts} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{unique}\PYG{p}{(}\PYG{n}{labels}\PYG{o}{.}\PYG{n}{numpy}\PYG{p}{(),} \PYG{n}{return\PYGZus{}counts}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{figure}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{6}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{))}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{bar}\PYG{p}{([}\PYG{l+s+s1}{\PYGZsq{}Class 0 (Dissimilar)\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}Class 1 (Similar)\PYGZsq{}}\PYG{p}{],} \PYG{n}{counts}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}salmon\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}skyblue\PYGZsq{}}\PYG{p}{])}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Class Distribution (Full Dataset)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Number of Samples\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Class 0 count: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{counts}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Class 1 count: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{counts}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Class 1 proportion: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{counts}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{/}\PYG{+w}{ }\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2\PYGZpc{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{lengths} \PYG{o}{=} \PYG{p}{[}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{seq}\PYG{p}{)} \PYG{k}{for} \PYG{n}{seq} \PYG{o+ow}{in} \PYG{n}{sequences}\PYG{p}{]}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{figure}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{6}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{))}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{hist}\PYG{p}{(}\PYG{n}{lengths}\PYG{p}{,} \PYG{n}{bins}\PYG{o}{=}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n+nb}{min}\PYG{p}{(}\PYG{n}{lengths}\PYG{p}{),} \PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{lengths}\PYG{p}{)} \PYG{o}{+} \PYG{l+m+mi}{2}\PYG{p}{),} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}purple\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.7}\PYG{p}{,} \PYG{n}{edgecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}black\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Sequence Length Distribution\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Sequence Length\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Frequency\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{n}{axis}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}y\PYGZsq{}}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}\PYGZhy{}\PYGZhy{}\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.7}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Average sequence length: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{mean}\PYG{p}{(}\PYG{n}{lengths}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Max sequence length: }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{lengths}\PYG{p}{)}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{pandas}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{pd}
+
+\PYG{n}{train\PYGZus{}labels} \PYG{o}{=} \PYG{n}{y\PYGZus{}train}\PYG{o}{.}\PYG{n}{numpy}\PYG{p}{()}
+\PYG{n}{val\PYGZus{}labels} \PYG{o}{=} \PYG{n}{y\PYGZus{}val}\PYG{o}{.}\PYG{n}{numpy}\PYG{p}{()}
+
+\PYG{n}{labels\PYGZus{}dist} \PYG{o}{=} \PYG{n}{pd}\PYG{o}{.}\PYG{n}{DataFrame}\PYG{p}{(\PYGZob{}}
+    \PYG{l+s+s1}{\PYGZsq{}Train\PYGZsq{}}\PYG{p}{:} \PYG{p}{[}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{train\PYGZus{}labels} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{),} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{train\PYGZus{}labels} \PYG{o}{==} \PYG{l+m+mi}{1}\PYG{p}{)],}
+    \PYG{l+s+s1}{\PYGZsq{}Val\PYGZsq{}}\PYG{p}{:}   \PYG{p}{[}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{val\PYGZus{}labels} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{),}   \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{val\PYGZus{}labels} \PYG{o}{==} \PYG{l+m+mi}{1}\PYG{p}{)]}
+\PYG{p}{\PYGZcb{},} \PYG{n}{index}\PYG{o}{=}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}Class 0\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}Class 1\PYGZsq{}}\PYG{p}{])}
+
+\PYG{n}{labels\PYGZus{}dist}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{kind}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bar\PYGZsq{}}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{7}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{),} \PYG{n}{color}\PYG{o}{=}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}orange\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}green\PYGZsq{}}\PYG{p}{])}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Train vs Validation Class Distribution\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Count\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xticks}\PYG{p}{(}\PYG{n}{rotation}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZhy{} Inspecting first 3 samples \PYGZhy{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{)}
+\PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{3}\PYG{p}{):}
+    \PYG{n}{seq} \PYG{o}{=} \PYG{n}{sequences}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}
+    \PYG{n}{lbl} \PYG{o}{=} \PYG{n}{labels}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{o}{.}\PYG{n}{item}\PYG{p}{()}
+    
+    \PYG{n}{mid} \PYG{o}{=} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{seq}\PYG{p}{)} \PYG{o}{//} \PYG{l+m+mi}{2}
+    \PYG{n}{left}  \PYG{o}{=} \PYG{n}{seq}\PYG{p}{[:}\PYG{n}{mid}\PYG{p}{]}
+    \PYG{n}{noise} \PYG{o}{=} \PYG{n}{seq}\PYG{p}{[}\PYG{n}{mid}\PYG{p}{:}\PYG{n}{mid}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{]}
+    \PYG{n}{right} \PYG{o}{=} \PYG{n}{seq}\PYG{p}{[}\PYG{n}{mid}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{:]}
+    
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Sample }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ | Label: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{lbl}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Left part:     }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{left}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{()}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Noise token:   }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{noise}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{()}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Right part:    }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{right}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{()}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Full sequence: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{seq}\PYG{o}{.}\PYG{n}{tolist}\PYG{p}{()}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{50}\PYG{p}{)}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{init\PYGZus{}orthogonal\PYGZus{}lstm}\PYG{p}{(}\PYG{n}{model}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Apply specialized weight initialization for LSTM\PYGZhy{}based models.}
+\PYG{l+s+sd}{    This function initializes LSTM parameters using}
+\PYG{l+s+sd}{    strategies that help prevent vanishing/exploding gradients and}
+\PYG{l+s+sd}{    improve convergence.}
+
+\PYG{l+s+sd}{    Initialization strategy:}
+\PYG{l+s+sd}{        • weight\PYGZus{}hh (Hidden\PYGZhy{}to\PYGZhy{}Hidden weights)}
+\PYG{l+s+sd}{            Initialized using Orthogonal Initialization.}
+\PYG{l+s+sd}{            This helps preserve gradient norms across time steps and}
+\PYG{l+s+sd}{            stabilizes long sequence training.}
+
+\PYG{l+s+sd}{        • weight\PYGZus{}ih (Input\PYGZhy{}to\PYGZhy{}Hidden weights)}
+\PYG{l+s+sd}{            Initialized using Xavier (Glorot) Uniform initialization.}
+\PYG{l+s+sd}{            This keeps the variance of activations stable across layers.}
+
+\PYG{l+s+sd}{        • bias terms}
+\PYG{l+s+sd}{            Initialized to zero for neutral starting conditions.}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{for} \PYG{n}{name}\PYG{p}{,} \PYG{n}{param} \PYG{o+ow}{in} \PYG{n}{model}\PYG{o}{.}\PYG{n}{named\PYGZus{}parameters}\PYG{p}{():}
+
+        \PYG{c+c1}{\PYGZsh{} Hidden\PYGZhy{}to\PYGZhy{}hidden recurrent weights of LSTM}
+        \PYG{k}{if} \PYG{l+s+s2}{\PYGZdq{}weight\PYGZus{}hh\PYGZdq{}} \PYG{o+ow}{in} \PYG{n}{name}\PYG{p}{:}
+            \PYG{n}{nn}\PYG{o}{.}\PYG{n}{init}\PYG{o}{.}\PYG{n}{orthogonal\PYGZus{}}\PYG{p}{(}\PYG{n}{param}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Input\PYGZhy{}to\PYGZhy{}hidden weights}
+        \PYG{k}{elif} \PYG{l+s+s2}{\PYGZdq{}weight\PYGZus{}ih\PYGZdq{}} \PYG{o+ow}{in} \PYG{n}{name}\PYG{p}{:}
+            \PYG{n}{nn}\PYG{o}{.}\PYG{n}{init}\PYG{o}{.}\PYG{n}{xavier\PYGZus{}uniform\PYGZus{}}\PYG{p}{(}\PYG{n}{param}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Bias terms for LSTM gates}
+        \PYG{k}{elif} \PYG{l+s+s2}{\PYGZdq{}bias\PYGZdq{}} \PYG{o+ow}{in} \PYG{n}{name}\PYG{p}{:}
+            \PYG{n}{nn}\PYG{o}{.}\PYG{n}{init}\PYG{o}{.}\PYG{n}{zeros\PYGZus{}}\PYG{p}{(}\PYG{n}{param}\PYG{p}{)}
+
+\PYG{n}{vocab\PYGZus{}size} \PYG{o}{=} \PYG{l+m+mi}{60}
+\PYG{n}{embedding\PYGZus{}dim} \PYG{o}{=} \PYG{l+m+mi}{64}
+\PYG{n}{hidden\PYGZus{}dim} \PYG{o}{=} \PYG{l+m+mi}{128}
+\PYG{n}{num\PYGZus{}layers} \PYG{o}{=} \PYG{l+m+mi}{3}
+\PYG{n}{num\PYGZus{}classes} \PYG{o}{=} \PYG{l+m+mi}{2}
+
+\PYG{n}{model} \PYG{o}{=} \PYG{n}{RobustBiLSTM}\PYG{p}{(}
+    \PYG{n}{vocab\PYGZus{}size}\PYG{o}{=}\PYG{n}{vocab\PYGZus{}size}\PYG{p}{,}
+    \PYG{n}{embedding\PYGZus{}dim}\PYG{o}{=}\PYG{n}{embedding\PYGZus{}dim}\PYG{p}{,}
+    \PYG{n}{hidden\PYGZus{}dim}\PYG{o}{=}\PYG{n}{hidden\PYGZus{}dim}\PYG{p}{,}
+    \PYG{n}{num\PYGZus{}layers}\PYG{o}{=}\PYG{n}{num\PYGZus{}layers}\PYG{p}{,}
+    \PYG{n}{num\PYGZus{}classes}\PYG{o}{=}\PYG{n}{num\PYGZus{}classes}\PYG{p}{,}
+    \PYG{n}{dropout}\PYG{o}{=}\PYG{l+m+mf}{0.3}
+\PYG{p}{)}
+
+\PYG{n}{init\PYGZus{}orthogonal\PYGZus{}lstm}\PYG{p}{(}\PYG{n}{model}\PYG{p}{)}
+
+\PYG{n}{device} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{device}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}cuda\PYGZdq{}} \PYG{k}{if} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{cuda}\PYG{o}{.}\PYG{n}{is\PYGZus{}available}\PYG{p}{()} \PYG{k}{else} \PYG{l+s+s2}{\PYGZdq{}cpu\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{criterion} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{CrossEntropyLoss}\PYG{p}{()}
+
+\PYG{n}{optimizer} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{optim}\PYG{o}{.}\PYG{n}{Adam}\PYG{p}{(}\PYG{n}{model}\PYG{o}{.}\PYG{n}{parameters}\PYG{p}{(),} \PYG{n}{lr}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}3}\PYG{p}{)}
+
+\PYG{n}{model}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{device}\PYG{p}{)}
+
+\PYG{n}{num\PYGZus{}epochs} \PYG{o}{=} \PYG{l+m+mi}{20}
+\PYG{n}{max\PYGZus{}grad\PYGZus{}norm} \PYG{o}{=} \PYG{l+m+mf}{4.0}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{detach\PYGZus{}hidden}\PYG{p}{(}\PYG{n}{hidden}\PYG{p}{):}
+    \PYG{k}{if} \PYG{n}{hidden} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{k}{return} \PYG{k+kc}{None}
+    \PYG{k}{return} \PYG{n+nb}{tuple}\PYG{p}{(}\PYG{n}{h}\PYG{o}{.}\PYG{n}{detach}\PYG{p}{()} \PYG{k}{for} \PYG{n}{h} \PYG{o+ow}{in} \PYG{n}{hidden}\PYG{p}{)}
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{time}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn.utils}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{utils}
+
+\PYG{n}{train\PYGZus{}losses} \PYG{o}{=} \PYG{p}{[]}
+\PYG{n}{val\PYGZus{}losses} \PYG{o}{=} \PYG{p}{[]}
+
+\PYG{k}{for} \PYG{n}{epoch} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{num\PYGZus{}epochs} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{):}
+
+    \PYG{n}{start\PYGZus{}time} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{time}\PYG{p}{()}
+
+    \PYG{n}{model}\PYG{o}{.}\PYG{n}{train}\PYG{p}{()}
+
+    \PYG{n}{running\PYGZus{}train\PYGZus{}loss} \PYG{o}{=} \PYG{l+m+mf}{0.0}
+    \PYG{n}{hidden} \PYG{o}{=} \PYG{k+kc}{None} 
+    \PYG{k}{for} \PYG{n}{batch\PYGZus{}idx}\PYG{p}{,} \PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{lengths}\PYG{p}{,} \PYG{n}{y}\PYG{p}{)} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{train\PYGZus{}loader}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{):}
+
+        \PYG{n}{x} \PYG{o}{=} \PYG{n}{x}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{device}\PYG{p}{)}
+        \PYG{n}{y} \PYG{o}{=} \PYG{n}{y}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{device}\PYG{p}{)}
+        \PYG{n}{lengths} \PYG{o}{=} \PYG{n}{lengths}\PYG{o}{.}\PYG{n}{cpu}\PYG{p}{()}
+
+        \PYG{n}{optimizer}\PYG{o}{.}\PYG{n}{zero\PYGZus{}grad}\PYG{p}{()}
+        \PYG{n}{hidden} \PYG{o}{=} \PYG{n}{detach\PYGZus{}hidden}\PYG{p}{(}\PYG{n}{hidden}\PYG{p}{)}
+        \PYG{n}{logits}\PYG{p}{,} \PYG{n}{hidden} \PYG{o}{=} \PYG{n}{model}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{lengths}\PYG{p}{,}\PYG{n}{hidden}\PYG{p}{)}
+        \PYG{n}{loss} \PYG{o}{=} \PYG{n}{criterion}\PYG{p}{(}\PYG{n}{logits}\PYG{p}{,} \PYG{n}{y}\PYG{p}{)}
+
+        \PYG{n}{loss}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{()}
+
+        \PYG{n}{utils}\PYG{o}{.}\PYG{n}{clip\PYGZus{}grad\PYGZus{}norm\PYGZus{}}\PYG{p}{(}\PYG{n}{model}\PYG{o}{.}\PYG{n}{parameters}\PYG{p}{(),} \PYG{n}{max\PYGZus{}grad\PYGZus{}norm}\PYG{p}{)}
+
+        \PYG{n}{optimizer}\PYG{o}{.}\PYG{n}{step}\PYG{p}{()}
+
+        \PYG{n}{running\PYGZus{}train\PYGZus{}loss} \PYG{o}{+=} \PYG{n}{loss}\PYG{o}{.}\PYG{n}{item}\PYG{p}{()}
+
+    \PYG{n}{avg\PYGZus{}train\PYGZus{}loss} \PYG{o}{=} \PYG{n}{running\PYGZus{}train\PYGZus{}loss} \PYG{o}{/} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{train\PYGZus{}loader}\PYG{p}{)}
+    \PYG{n}{train\PYGZus{}losses}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{avg\PYGZus{}train\PYGZus{}loss}\PYG{p}{)}
+
+    \PYG{n}{model}\PYG{o}{.}\PYG{n}{eval}\PYG{p}{()}
+
+    \PYG{n}{running\PYGZus{}val\PYGZus{}loss} \PYG{o}{=} \PYG{l+m+mf}{0.0}
+    \PYG{n}{correct} \PYG{o}{=} \PYG{l+m+mi}{0}
+    \PYG{n}{total} \PYG{o}{=} \PYG{l+m+mi}{0}
+
+    \PYG{k}{with} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{no\PYGZus{}grad}\PYG{p}{():}
+
+        \PYG{k}{for} \PYG{n}{x}\PYG{p}{,} \PYG{n}{lengths}\PYG{p}{,} \PYG{n}{y} \PYG{o+ow}{in} \PYG{n}{val\PYGZus{}loader}\PYG{p}{:}
+
+            \PYG{n}{x} \PYG{o}{=} \PYG{n}{x}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{device}\PYG{p}{)}
+            \PYG{n}{y} \PYG{o}{=} \PYG{n}{y}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{device}\PYG{p}{)}
+            \PYG{n}{lengths} \PYG{o}{=} \PYG{n}{lengths}\PYG{o}{.}\PYG{n}{cpu}\PYG{p}{()}
+
+            \PYG{n}{logits}\PYG{p}{,}\PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{model}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{lengths}\PYG{p}{,} \PYG{n}{hidden}\PYG{o}{=}\PYG{k+kc}{None}\PYG{p}{)}
+            \PYG{n}{loss} \PYG{o}{=} \PYG{n}{criterion}\PYG{p}{(}\PYG{n}{logits}\PYG{p}{,} \PYG{n}{y}\PYG{p}{)}
+
+            \PYG{n}{running\PYGZus{}val\PYGZus{}loss} \PYG{o}{+=} \PYG{n}{loss}\PYG{o}{.}\PYG{n}{item}\PYG{p}{()}
+
+            \PYG{n}{preds} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{argmax}\PYG{p}{(}\PYG{n}{logits}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+            \PYG{n}{correct} \PYG{o}{+=} \PYG{p}{(}\PYG{n}{preds} \PYG{o}{==} \PYG{n}{y}\PYG{p}{)}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{()}\PYG{o}{.}\PYG{n}{item}\PYG{p}{()}
+            \PYG{n}{total} \PYG{o}{+=} \PYG{n}{y}\PYG{o}{.}\PYG{n}{size}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{)}
+
+    \PYG{n}{avg\PYGZus{}val\PYGZus{}loss} \PYG{o}{=} \PYG{n}{running\PYGZus{}val\PYGZus{}loss} \PYG{o}{/} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{val\PYGZus{}loader}\PYG{p}{)}
+    \PYG{n}{val\PYGZus{}losses}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{avg\PYGZus{}val\PYGZus{}loss}\PYG{p}{)}
+
+    \PYG{n}{val\PYGZus{}acc} \PYG{o}{=} \PYG{l+m+mf}{100.0} \PYG{o}{*} \PYG{n}{correct} \PYG{o}{/} \PYG{n}{total}
+    \PYG{n}{elapsed} \PYG{o}{=} \PYG{n}{time}\PYG{o}{.}\PYG{n}{time}\PYG{p}{()} \PYG{o}{\PYGZhy{}} \PYG{n}{start\PYGZus{}time}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{80}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Epoch }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{epoch}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{num\PYGZus{}epochs}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Train Loss      : }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{avg\PYGZus{}train\PYGZus{}loss}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Validation Loss : }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{avg\PYGZus{}val\PYGZus{}loss}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Validation Acc  : }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{val\PYGZus{}acc}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Epoch Time      : }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{elapsed}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ sec\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{80}\PYG{p}{)}
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{figure}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{9}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{))}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{train\PYGZus{}losses}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Train Loss\PYGZdq{}}\PYG{p}{,} \PYG{n}{marker}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}o\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{val\PYGZus{}losses}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Validation Loss\PYGZdq{}}\PYG{p}{,} \PYG{n}{marker}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}s\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Epoch\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Loss\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Training \PYGZam{} Validation Loss\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+\end{MintedVerbatim}

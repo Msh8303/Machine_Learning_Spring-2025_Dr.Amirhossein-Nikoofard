@@ -1,0 +1,38 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{torch.nn}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{BottleneckBlock}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{in\PYGZus{}channels}\PYG{p}{,} \PYG{n}{mid\PYGZus{}channels}\PYG{p}{,} \PYG{n}{out\PYGZus{}channels}\PYG{p}{):}
+        \PYG{n+nb}{super}\PYG{p}{(}\PYG{n}{BottleneckBlock}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{p}{)}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+        \PYG{c+c1}{\PYGZsh{} Layer 1: 1x1 conv}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv1} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Conv2d}\PYG{p}{(}\PYG{n}{in\PYGZus{}channels}\PYG{p}{,} \PYG{n}{mid\PYGZus{}channels}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{bias}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{)}
+        \PYG{c+c1}{\PYGZsh{} Layer 2: 3x3 conv}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv2} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Conv2d}\PYG{p}{(}\PYG{n}{mid\PYGZus{}channels}\PYG{p}{,} \PYG{n}{mid\PYGZus{}channels}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{,} \PYG{n}{padding}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{bias}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{)}
+        \PYG{c+c1}{\PYGZsh{} Layer 3: 1x1 conv}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv3} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Conv2d}\PYG{p}{(}\PYG{n}{mid\PYGZus{}channels}\PYG{p}{,} \PYG{n}{out\PYGZus{}channels}\PYG{p}{,} \PYG{n}{kernel\PYGZus{}size}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{bias}\PYG{o}{=}\PYG{k+kc}{False}\PYG{p}{)}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+        \PYG{n}{out} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv1}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+        \PYG{n}{out} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv2}\PYG{p}{(}\PYG{n}{out}\PYG{p}{)}
+        \PYG{n}{out} \PYG{o}{=} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{conv3}\PYG{p}{(}\PYG{n}{out}\PYG{p}{)}
+        \PYG{k}{return} \PYG{n}{out}
+
+\PYG{n}{input\PYGZus{}tensor} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{randn}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{256}\PYG{p}{,} \PYG{l+m+mi}{14}\PYG{p}{,} \PYG{l+m+mi}{14}\PYG{p}{)}
+
+\PYG{n}{model\PYGZus{}64} \PYG{o}{=} \PYG{n}{BottleneckBlock}\PYG{p}{(}\PYG{l+m+mi}{256}\PYG{p}{,} \PYG{l+m+mi}{64}\PYG{p}{,} \PYG{l+m+mi}{256}\PYG{p}{)}
+\PYG{n}{params\PYGZus{}64} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n}{p}\PYG{o}{.}\PYG{n}{numel}\PYG{p}{()} \PYG{k}{for} \PYG{n}{p} \PYG{o+ow}{in} \PYG{n}{model\PYGZus{}64}\PYG{o}{.}\PYG{n}{parameters}\PYG{p}{())}
+\PYG{n}{output\PYGZus{}64} \PYG{o}{=} \PYG{n}{model\PYGZus{}64}\PYG{p}{(}\PYG{n}{input\PYGZus{}tensor}\PYG{p}{)}
+
+\PYG{n}{model\PYGZus{}32} \PYG{o}{=} \PYG{n}{BottleneckBlock}\PYG{p}{(}\PYG{l+m+mi}{256}\PYG{p}{,} \PYG{l+m+mi}{32}\PYG{p}{,} \PYG{l+m+mi}{256}\PYG{p}{)}
+\PYG{n}{params\PYGZus{}32} \PYG{o}{=} \PYG{n+nb}{sum}\PYG{p}{(}\PYG{n}{p}\PYG{o}{.}\PYG{n}{numel}\PYG{p}{()} \PYG{k}{for} \PYG{n}{p} \PYG{o+ow}{in} \PYG{n}{model\PYGZus{}32}\PYG{o}{.}\PYG{n}{parameters}\PYG{p}{())}
+\PYG{n}{output\PYGZus{}32} \PYG{o}{=} \PYG{n}{model\PYGZus{}32}\PYG{p}{(}\PYG{n}{input\PYGZus{}tensor}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Model with 64 filters:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Total Parameters: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{params\PYGZus{}64}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Output Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}64}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Model with 32 filters:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Total Parameters: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{params\PYGZus{}32}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Output Shape: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}32}\PYG{o}{.}\PYG{n}{shape}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\end{MintedVerbatim}

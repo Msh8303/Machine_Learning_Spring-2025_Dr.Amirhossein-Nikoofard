@@ -1,0 +1,126 @@
+\contentsline {section}{\numberline {1}پرسش 1 : شبکه متخاصم مولد}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}بارگذاری داده ها و شبکه \lr {ResNet}}{7}{subsection.1.1}%
+\contentsline {subsubsection}{\numberline {1.1.1}دادگان BreastMNIST}{7}{subsubsection.1.1.1}%
+\contentsline {paragraph}{مشخصات دادگان BreastMNIST}{7}{section*.11}%
+\contentsline {subsubsection}{\numberline {1.1.2}مدل \, \lr {ResNet18}}{7}{subsubsection.1.1.2}%
+\contentsline {paragraph}{بلوک‌های سازنده و ساختار داخلی \lr {ResNet18}}{8}{section*.12}%
+\contentsline {paragraph}{پیش‌پردازش داده‌ها}{8}{section*.13}%
+\contentsline {paragraph}{بصری‌سازی داده‌ها}{8}{section*.14}%
+\contentsline {paragraph}{مشاهده دسته‌بندی کلاس‌ها}{9}{section*.16}%
+\contentsline {paragraph}{جزئیات داده‌های پیش‌پردازش‌شده}{10}{section*.18}%
+\contentsline {paragraph}{تعریف مدل \lr {ResNet18}، تابع هزینه و بهینه‌ساز}{11}{section*.19}%
+\contentsline {paragraph}{جزئیات معماری \lr {ResNet18}}{14}{lstnumber.-1.90}%
+\contentsline {paragraph}{فرآیند آموزش و اعتبارسنجی}{15}{section*.21}%
+\contentsline {paragraph}{ارزیابی روی داده‌های Test}{15}{section*.22}%
+\contentsline {paragraph}{ماتریس آشفتگی}{16}{figure.caption.24}%
+\contentsline {paragraph}{نمودار آموزش و اعتبارسنجی}{16}{figure.caption.26}%
+\contentsline {paragraph}{نتایج مدل جدید}{17}{figure.caption.29}%
+\contentsline {subsection}{\numberline {1.2}شبکه \lr {Conditional DCGAN}}{17}{subsection.1.2}%
+\contentsline {subsubsection}{\numberline {1.2.1}بررسی ساختار شبکه اولیه}{17}{subsubsection.1.2.1}%
+\contentsline {paragraph}{۱. ساختار شبکه مولد (\lr {Generator})}{17}{section*.31}%
+\contentsline {paragraph}{۲. ساختار شبکه متمایزگر (\lr {Discriminator})}{18}{section*.32}%
+\contentsline {paragraph}{۳. توابع زیان و بهینه‌سازی}{18}{section*.33}%
+\contentsline {paragraph}{بررسی نتایج و تحلیل تصاویر تولید شده توسط شبکه اولیه}{19}{figure.caption.36}%
+\contentsline {subsubsection}{\numberline {1.2.2}بررسی ساختار شبکه بهبود یافته (رویکرد میانی)}{22}{subsubsection.1.2.2}%
+\contentsline {paragraph}{۱. بازطراحی معماری شبکه: ایجاد بوم فضایی و بازگشت به ابعاد ذاتی}{22}{section*.37}%
+\contentsline {paragraph}{۲. بکارگیری تکنیک هموارسازی برچسب‌ها (\lr {Label Smoothing})}{22}{section*.38}%
+\contentsline {paragraph}{جمع‌بندی دستاوردهای معماری میانی}{23}{section*.39}%
+\contentsline {paragraph}{بررسی نتایج و تحلیل خروجی‌های معماری میانی}{23}{figure.caption.41}%
+\contentsline {subsubsection}{\numberline {1.2.3}بررسی ساختار شبکه نهایی (\lr {Final cDCGAN Architecture})}{24}{subsubsection.1.2.3}%
+\contentsline {paragraph}{۱. جایگزینی \lr {BatchNorm} با نرمال‌سازی طیفی (\lr {Spectral Normalization})}{25}{section*.44}%
+\contentsline {paragraph}{۲. تداخل تنظیمی و حذف هموارسازی برچسب‌ها (\lr {Label Smoothing Removal})}{25}{section*.45}%
+\contentsline {paragraph}{۳. کنترل واگرایی با قاعده به‌روزرسانی دو مقیاسی (\lr {TTUR})}{26}{section*.46}%
+\contentsline {paragraph}{۴. اعمال دراپ‌اوت نامتقارن (\lr {Asymmetric Dropout})}{26}{section*.47}%
+\contentsline {paragraph}{۵. مقداردهی اولیه استاندارد و کنترل‌شده (\lr {Custom Weight Initialization})}{26}{section*.48}%
+\contentsline {paragraph}{۶. تزریق شرط و تقویت داده‌ها (\lr {Conditional Embedding \& Data Augmentation})}{26}{section*.49}%
+\contentsline {subsubsection}{\numberline {1.2.4}بررسی دقیق ساختار شبکه‌های نهایی}{26}{subsubsection.1.2.4}%
+\contentsline {paragraph}{۱. شبکه مولد (\lr {Generator})}{27}{figure.caption.51}%
+\contentsline {paragraph}{۲. شبکه متمایزگر (\lr {Discriminator})}{27}{figure.caption.53}%
+\contentsline {subsubsection}{\numberline {1.2.5}بررسی فرایند آموزش و استراتژی ارزیابی شبکه}{29}{subsubsection.1.2.5}%
+\contentsline {paragraph}{۱. پروتکل آماده‌سازی و تقویت داده‌ها (\lr {Data Augmentation \& Transformation})}{29}{section*.54}%
+\contentsline {paragraph}{۲. ساختار حلقه آموزش متخاصم}{29}{section*.55}%
+\contentsline {paragraph}{۳. طراحی معیار ارزیابی اختصاصی: امتیاز تعادل (\lr {Balance Score})}{30}{section*.56}%
+\contentsline {paragraph}{۴. استراتژی ذخیره‌سازی وضعیت (\lr {Checkpointing Strategy})}{30}{section*.57}%
+\contentsline {subsubsection}{\numberline {1.2.6}بررسی نتایج نهایی مدل}{31}{subsubsection.1.2.6}%
+\contentsline {paragraph}{۱. تحلیل پویایی توابع زیان (\lr {Loss Dynamics Analysis})}{31}{figure.caption.59}%
+\contentsline {paragraph}{۲. ارزیابی کیفی خروجی‌های بصری (\lr {Visual Quality Assessment})}{31}{figure.caption.61}%
+\contentsline {subsubsection}{\numberline {1.2.7}تولید 2000 داده‌های مصنوعی و توازن‌بخشی به مجموعه داده آموزش}{32}{subsubsection.1.2.7}%
+\contentsline {paragraph}{۱. استراتژی تولید استخر داده‌ها (تولید ۲۰۰۰ نمونه)}{33}{section*.62}%
+\contentsline {paragraph}{۲. استراتژی توازن‌بخشی اولویت‌محور (\lr {Target-Driven Balancing})}{33}{section*.63}%
+\contentsline {paragraph}{۳. منطق محدودسازی تقویت داده‌ها صرفاً به فاز آموزش}{33}{section*.64}%
+\contentsline {paragraph}{۴. تحلیل توزیع کلاس‌ها و بررسی کیفی داده‌های ترکیبی}{33}{figure.caption.66}%
+\contentsline {subsubsection}{\numberline {1.2.8}ارزیابی نهایی: تحلیل عملکرد طبقه‌بند \lr {ResNet} (داده‌های اصیل در برابر داده‌های افزوده با \lr {GAN})}{35}{subsubsection.1.2.8}%
+\contentsline {paragraph}{۱. دستاورد بالینی: افزایش حساسیت در تشخیص سرطان (کلاس بدخیم)}{35}{section*.69}%
+\contentsline {paragraph}{۲. مصالحه آماری (\lr {Trade-off}): افت \lr {Recall} در کلاس خوش‌خیم}{35}{section*.70}%
+\contentsline {paragraph}{۳. ارتقای دقت پیش‌بینی کلاس خوش‌خیم}{36}{section*.71}%
+\contentsline {paragraph}{جمع‌بندی}{36}{section*.72}%
+\contentsline {subsection}{\numberline {1.3} کد کامل سوال اول}{37}{subsection.1.3}%
+\contentsline {section}{\numberline {2}پرسش 2: شبکه های رمزگذار - رمزگشا مولد}{70}{section.2}%
+\contentsline {subsection}{\numberline {2.1}مجموعه دادگان}{70}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}معرفی مجموعه داده CIFAR-10}{70}{subsubsection.2.1.1}%
+\contentsline {paragraph}{ویژگی‌های کلیدی:}{70}{section*.73}%
+\contentsline {subsection}{\numberline {2.2}انجام \lr {PCA} و \lr {ISOMAP}}{70}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}الگوریتم \lr {PCA (Principal Component Analysis)}}{70}{subsubsection.2.2.1}%
+\contentsline {paragraph}{شیوه عملکرد}{70}{section*.74}%
+\contentsline {paragraph}{مزایا}{70}{section*.75}%
+\contentsline {paragraph}{معایب}{71}{section*.76}%
+\contentsline {subsubsection}{\numberline {2.2.2}الگوریتم \lr {ISOMAP (Isometric Mapping)}}{71}{subsubsection.2.2.2}%
+\contentsline {paragraph}{شیوه عملکرد}{71}{section*.77}%
+\contentsline {paragraph}{مراحل اجرای الگوریتم \lr {ISOMAP}}{71}{section*.78}%
+\contentsline {paragraph}{۱. تشکیل گراف همسایگی}{71}{section*.79}%
+\contentsline {paragraph}{۲. محاسبه فواصل ژئودزیک}{71}{section*.80}%
+\contentsline {paragraph}{۳. اعمال الگوریتم \lr {MDS}}{72}{section*.81}%
+\contentsline {paragraph}{مزایا}{72}{section*.82}%
+\contentsline {paragraph}{معایب}{73}{section*.83}%
+\contentsline {subsubsection}{\numberline {2.2.3}ارزیابی الگوریتم‌های کاهش ابعاد \lr {(PCA و ISOMAP)} به همراه طبقه‌بند \lr {KNN}}{73}{subsubsection.2.2.3}%
+\contentsline {paragraph}{آماده‌سازی داده‌ها و انتخاب زیرمجموعه}{73}{section*.84}%
+\contentsline {paragraph}{روند آزمایش}{73}{section*.85}%
+\contentsline {paragraph}{دلیل استفاده از فاصله اقلیدسی در KNN}{73}{section*.86}%
+\contentsline {paragraph}{نتایج به‌دست‌آمده و گزارش دسته‌بندی}{75}{section*.87}%
+\contentsline {paragraph}{تحلیل و مقایسه نتایج: دلیل دقت پایین مدل‌ها}{76}{section*.90}%
+\contentsline {paragraph}{چرا عملکرد \lr {ISOMAP} ضعیف‌تر از \lr {PCA} بود؟}{76}{section*.91}%
+\contentsline {subsubsection}{\numberline {2.2.4}بهینه‌سازی مدل‌ها با استفاده از جستجوی تصادفی \lr {(Random Search)} و \lr {Pipeline}}{76}{subsubsection.2.2.4}%
+\contentsline {paragraph}{روند پیاده‌سازی و استفاده از Pipeline}{76}{section*.92}%
+\contentsline {paragraph}{تحلیل بهترین پارامترهای یافت شده برای PCA}{77}{section*.93}%
+\contentsline {paragraph}{تحلیل بهترین پارامترهای یافت شده برای ISOMAP}{77}{section*.94}%
+\contentsline {paragraph}{جداول نتایج به‌دست‌آمده پس از بهینه‌سازی}{77}{section*.95}%
+\contentsline {paragraph}{مقایسه نتایج قبل و بعد از بهینه‌سازی}{78}{section*.98}%
+\contentsline {subsubsection}{\numberline {2.2.5}اعمال \lr {PCA} بر روی کل مجموعه داده‌ها}{79}{subsubsection.2.2.5}%
+\contentsline {subsection}{\numberline {2.3}رمزگذار-رمزگشا \lr {(Autoencoder)}}{81}{subsection.2.3}%
+\contentsline {subsubsection}{\numberline {2.3.1}استخراج ویژگی با استفاده از شبکه‌های خودرمزگذار (\lr {Autoencoders})}{81}{subsubsection.2.3.1}%
+\contentsline {paragraph}{خودرمزگذار متراکم (\lr {Dense Autoencoder}) و از دست رفتن فواصل مکانی}{81}{section*.100}%
+\contentsline {paragraph}{خودرمزگذار کانولوشنی (\lr {CNN Autoencoder}) و کیفیت بازسازی}{82}{section*.101}%
+\contentsline {paragraph}{چرا عملکرد \lr {KNN} روی ویژگی‌های \lr {CNN} ضعیف‌تر شد؟}{82}{section*.102}%
+\contentsline {paragraph}{جداول نتایج طبقه‌بندی}{84}{section*.103}%
+\contentsline {subsection}{\numberline {2.4}خود رمزگذار متغیر \lr {(Variational Auto Encoder)}}{87}{subsection.2.4}%
+\contentsline {subsubsection}{\numberline {2.4.1}مروری بر خودرمزگذارهای متغیر (\lr {Variational Autoencoders - VAEs})}{87}{subsubsection.2.4.1}%
+\contentsline {paragraph}{معماری و شیوه عملکرد}{87}{section*.109}%
+\contentsline {paragraph}{ترفند بازپارامترسازی (\lr {Reparameterization Trick})}{87}{section*.110}%
+\contentsline {paragraph}{تابع زیان (\lr {Loss Function})}{88}{section*.111}%
+\contentsline {subsubsection}{\numberline {2.4.2}پیاده‌سازی معماری‌های \lr {VAE}}{88}{subsubsection.2.4.2}%
+\contentsline {paragraph}{معماری \lr {DenseVAE}}{88}{section*.112}%
+\contentsline {paragraph}{معماری \lr {CNN\_VAE}}{89}{section*.113}%
+\contentsline {subsubsection}{\numberline {2.4.3}نتایج طبقه‌بندی با \lr {KNN} روی فضای پنهان}{90}{subsubsection.2.4.3}%
+\contentsline {subsubsection}{\numberline {2.4.4}تحلیل و مقایسه نتایج}{93}{subsubsection.2.4.4}%
+\contentsline {paragraph}{۱. مقایسه \lr {Dense VAE} با \lr {Dense AE}}{93}{section*.118}%
+\contentsline {paragraph}{۲. مقایسه \lr {CNN VAE} و \lr {Dense VAE}}{93}{section*.119}%
+\contentsline {paragraph}{۳. تأثیر ابعاد فضای پنهان}{93}{section*.120}%
+\contentsline {paragraph}{مقایسه معماری‌ها}{94}{section*.122}%
+\contentsline {paragraph}{تأثیر ابعاد فضای پنهان}{94}{section*.123}%
+\contentsline {subsection}{\numberline {2.5}کاوش در فضای \lr {latent}}{94}{subsection.2.5}%
+\contentsline {subsubsection}{\numberline {2.5.1}تحلیل نمودار پراکندگی فضای پنهان مدل \lr {ConvVAE} (فضای ۱۰۰ بعدی)}{94}{subsubsection.2.5.1}%
+\contentsline {paragraph}{۱. تأثیر واگرایی کولبک-لایبلر (\lr {KL Divergence}) و مرکزیت داده‌ها}{95}{section*.125}%
+\contentsline {paragraph}{۲. هم‌پوشانی شدید کلاس‌ها (فقدان جدایی‌پذیری خطی)}{95}{section*.126}%
+\contentsline {paragraph}{۳. محدودیت تصویرسازی دو بُعد از صد بُعد (\lr {Dimensionality Projection})}{95}{section*.127}%
+\contentsline {paragraph}{۴. ارتباط تصویر با افت دقت طبقه‌بند \lr {KNN}}{95}{section*.128}%
+\contentsline {subsubsection}{\numberline {2.5.2}تحلیل تولید منیفولد (\lr {Manifold Generation}) و پیمایش فضای پنهان}{95}{subsubsection.2.5.2}%
+\contentsline {paragraph}{۱. منطق کد و نحوه‌ی پیمایش فضا}{96}{section*.130}%
+\contentsline {paragraph}{۲. پیوستگی و تغییرات هموار (\lr {Smooth Interpolation})}{96}{section*.131}%
+\contentsline {paragraph}{۳. دلیل محو بودن و عدم وضوح تصاویر تولید شده}{96}{section*.132}%
+\contentsline {paragraph}{۴. نتیجه‌گیری}{97}{section*.133}%
+\contentsline {subsubsection}{\numberline {2.5.3}کد کامل}{97}{subsubsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.6}مدل های انتشار \lr {(Diffusion Models)}}{119}{subsection.2.6}%
+\contentsline {subsubsection}{\numberline {2.6.1}مدل‌های انتشار (\lr {Diffusion Models}) و مقایسه آن‌ها با \lr {VAE}}{119}{subsubsection.2.6.1}%
+\contentsline {paragraph}{نحوه عملکرد مدل‌های انتشار (\lr {Diffusion Models})}{119}{section*.135}%
+\contentsline {paragraph}{مدل‌های انتشار پنهان (\lr {Latent Diffusion Models})}{120}{section*.136}%
+\contentsline {paragraph}{مقایسه جامع \lr {VAE} و \lr {Diffusion Models}}{120}{section*.137}%

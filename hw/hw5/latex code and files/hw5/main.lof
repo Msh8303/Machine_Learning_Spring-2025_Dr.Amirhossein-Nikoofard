@@ -1,0 +1,30 @@
+\contentsline {figure}{\numberline {1}{\ignorespaces مقایسه سرعت اجرای \lr {JIT} و نمایش خروجی \lr {VMAP} برای محاسبه نُرم ردیف‌ها}}{8}{figure.caption.16}%
+\contentsline {figure}{\numberline {2}{\ignorespaces اثر تغییر پارامتر دما بر توزیع احتمالات \lr {Softmax}}}{9}{figure.caption.21}%
+\contentsline {figure}{\numberline {3}{\ignorespaces فراوانی کاراکترها و توزیع طول خطوط در مجموعه داده شکسپیر}}{11}{figure.caption.25}%
+\contentsline {figure}{\numberline {4}{\ignorespaces تقسیم پیکره به بخش‌های آموزش و اعتبارسنجی}}{14}{figure.caption.32}%
+\contentsline {figure}{\numberline {5}{\ignorespaces رابطه جابجایی یک گام به چپ میان ورودی $x$ و هدف $y$ برای عبارت \lr {"To be or"}}}{15}{figure.caption.35}%
+\contentsline {figure}{\numberline {6}{\ignorespaces نمودار حرارتی \lr {(Heatmap)} از یک بچ نمونه شامل ۱۲ ردیف و ۲۴ ستون توکن}}{18}{figure.caption.41}%
+\contentsline {figure}{\numberline {7}{\ignorespaces ماتریس احتمالات انتقال بیگرام: محور عمودی کاراکتر فعلی و محور افقی کاراکتر بعدی را نشان می‌دهد.}}{19}{figure.caption.44}%
+\contentsline {figure}{\numberline {8}{\ignorespaces مقایسه توزیع وزن‌های توجه در دو حالت بدون ماسک (چپ) و با اعمال ماسک علّی (راست)}}{25}{figure.caption.61}%
+\contentsline {figure}{\numberline {9}{\ignorespaces نمودار سمت چپ رشد خطی واریانس ضرب نقطه‌ای خام با افزایش بعد را نشان می‌دهد، در حالی که نمودار سمت راست پایداری واریانس حول مقدار ۱ را پس از مقیاس‌گذاری به تصویر می‌کشد}}{28}{figure.caption.70}%
+\contentsline {figure}{\numberline {10}{\ignorespaces نقشه حرارتی ماتریس کدگذاری موقعیتی سینوسی (سمت چپ) و رفتار نوسانی ابعاد مختلف مدل بر حسب موقعیت با فرکانس‌های گوناگون (سمت راست).}}{32}{figure.caption.83}%
+\contentsline {figure}{\numberline {11}{\ignorespaces نقشه حرارتی ماتریس توجه برای عبارت نمونه. ساختار پایین مثلثی ماتریس به وضوح نشان‌دهنده اعمال موفقیت‌آمیز ماسک علی است.}}{36}{figure.caption.93}%
+\contentsline {figure}{\numberline {12}{\ignorespaces نمودار آنتروپی توجه به ازای هر کاراکتر ورودی. خط‌چین نارنجی مرز تئوریک آنتروپی (توزیع کاملاً یکنواخت) و ستون‌های آبی، آنتروپی واقعی مدل را نشان می‌دهند.}}{38}{figure.caption.99}%
+\contentsline {figure}{\numberline {13}{\ignorespaces متوسط فاصله بازگشت به عقب توجه در مقایسه با مرجع یکنواخت بر روی یک توالی به طول ۴۸ توکن.}}{40}{figure.caption.105}%
+\contentsline {figure}{\numberline {14}{\ignorespaces نقشه حرارتی یک سر توجه علّی (\lr {Single Causal Attention Head}). ساختار پایین‌مثلثی، نشان‌دهنده اعمال صحیح محدودیت‌های علّی است.}}{53}{figure.caption.153}%
+\contentsline {figure}{\numberline {15}{\ignorespaces نقشه حرارتی توجه علّی به ازای هر سر (\lr {Per-head}) روی یک قطعه متن ثابت. به دلیل تصادفی بودن وزن‌های اولیه (\lr {Random Init})، الگوها در تمام سرها تقریباً یکنواخت و فاقد معنای زبانی هستند، اما ساختار علّی (ماسک پایین‌مثلثی) در تمامی آن‌ها به شدت رعایت شده است.}}{62}{figure.caption.171}%
+\contentsline {figure}{\numberline {16}{\ignorespaces مقایسه رفتار توابع فعال‌ساز \lr {GELU}، \lr {ReLU} و \lr {tanh}. تابع \lr {GELU} (آبی) برخلاف \lr {ReLU} (نارنجی) یک منحنی نرم است که اجازه عبور مقادیر منفیِ کوچک را می‌دهد.}}{64}{figure.caption.178}%
+\contentsline {figure}{\numberline {17}{\ignorespaces هیستوگرام توزیع مقادیر فعال‌سازی. سمت چپ: پیش از نرمال‌سازی (پراکنده و دارای انحراف). سمت راست: پس از نرمال‌سازی (متمرکز حول صفر با واریانس واحد).}}{66}{figure.caption.185}%
+\contentsline {figure}{\numberline {18}{\ignorespaces نمودار توزیع پارامترها در زیرماژول‌های مختلف یک بلوک ترنسفورمر (مجموعاً ۱۲,۶۰۸ پارامتر). بخش عمده‌ای از ظرفیت یادگیری به شبکه پیش‌خور (\lr {MLP}) اختصاص یافته است.}}{69}{figure.caption.191}%
+\contentsline {figure}{\numberline {19}{\ignorespaces رشد میانگین نُرم \lr {L2} در جریان میان‌بر با افزایش تعداد بلوک‌های ترنسفورمر در حالت مقداردهی اولیه تصادفی.}}{70}{figure.caption.195}%
+\contentsline {figure}{\numberline {20}{\ignorespaces نمودار بودجه‌بندی پارامترها در معماری \lr {MiniGPT}. بیش از ۹۸٪ از ظرفیت مدل در بلوک‌های ترنسفورمر متمرکز شده است.}}{81}{figure.caption.224}%
+\contentsline {figure}{\numberline {21}{\ignorespaces نمودار زمان‌بندی نرخ یادگیری. بخش اول (شیب تند مثبت) مرحله \lr {Warmup} و بخش دوم (منحنی نرم) مرحله \lr {Cosine Decay} است.}}{84}{figure.caption.232}%
+\contentsline {figure}{\numberline {22}{\ignorespaces نمودارهای تشخیصی: منحنی زیان (چپ)، نُرم گرادیان (وسط) و توزیع وزن‌های نهایی (راست).}}{88}{figure.caption.244}%
+\contentsline {figure}{\numberline {23}{\ignorespaces نقشه حرارتی توجهِ ۶ سر مختلف در بلوک اول. هر سر یک الگوی جستجوی خاص را در متن شکسپیر یاد گرفته است.}}{90}{figure.caption.249}%
+\contentsline {figure}{\numberline {24}{\ignorespaces تصویرسازی بردارهای تعبیه کلمات در فضای ۲-بعدی با \lr {PCA}. گروه‌بندیِ خودکارِ حروف صدادار (قرمز)، بی‌صدا (سبز) و علائم نگارشی (آبی) بدون هیچ آموزشِ زبان‌شناختی.}}{91}{figure.caption.252}%
+\contentsline {figure}{\numberline {25}{\ignorespaces خطای آموزش minigpt}}{103}{figure.caption.259}%
+\contentsline {figure}{\numberline {26}{\ignorespaces نمودار احتمالاتی توکن های بعد از کاراکتر ROMEO:}}{103}{figure.caption.261}%
+\contentsline {figure}{\numberline {27}{\ignorespaces نمودار تعداد کاراکتر های متمایز استفاده شده در متن براساس پارامتر Temperature}}{104}{figure.caption.263}%
+\contentsline {figure}{\numberline {28}{\ignorespaces مقایسه تعداد پارامتر های miniGPT با سایر مدل های مشهور}}{104}{figure.caption.265}%
+\contentsline {figure}{\numberline {29}{\ignorespaces مقایسه دو رویکرد ساده و بهینه برای کاهش محاسبات تکراری}}{105}{figure.caption.267}%
+\contentsline {figure}{\numberline {30}{\ignorespaces نمودار بررسی عملکرد فیلتر های Top-k، Top-p و حالت بدون فیلتر}}{105}{figure.caption.269}%

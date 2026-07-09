@@ -1,0 +1,122 @@
+\contentsline {section}{\numberline {1}اسنپ - مبانی و توکن سازی}{5}{section.1}%
+\contentsline {subsection}{\numberline {1.1}مرور کلی تمرین}{5}{subsection.1.1}%
+\contentsline {paragraph}{اهمیت این مرحله}{5}{section*.5}%
+\contentsline {paragraph}{تعریف کوتاه GPT}{6}{section*.8}%
+\contentsline {subsection}{\numberline {1.2}بارگذاری کتابخانه‌ها و آماده‌سازی محیط}{6}{subsection.1.2}%
+\contentsline {paragraph}{خروجی کد}{7}{section*.11}%
+\contentsline {subsection}{\numberline {1.3}بررسی قابلیت‌های کلیدی \lr {JAX}: \lr {grad}، \lr {jit} و \lr {vmap}}{7}{subsection.1.3}%
+\contentsline {paragraph}{تحلیل عملکرد:}{7}{section*.14}%
+\contentsline {subsection}{\numberline {1.4}پیاده‌سازی \lr {Softmax} پایدار عددی}{8}{subsection.1.4}%
+\contentsline {paragraph}{تحلیل اثر دما (\lr {Temperature}):}{9}{section*.20}%
+\contentsline {subsection}{\numberline {1.5}بارگذاری و تحلیل مقدماتی پیکره متنی شکسپیر}{10}{subsection.1.5}%
+\contentsline {subsection}{\numberline {1.6}ساخت توکنایزر کاراکتری}{11}{subsection.1.6}%
+\contentsline {subsection}{\numberline {1.7}تقسیم داده به مجموعۀ آموزش و اعتبارسنجی}{13}{subsection.1.7}%
+\contentsline {subsection}{\numberline {1.8}هدف پیش‌بینی توکن بعدی و ساخت مینی‌بچ‌ها}{14}{subsection.1.8}%
+\contentsline {paragraph}{تفسیر نمودار:}{15}{section*.36}%
+\contentsline {subsection}{\numberline {1.9}ارزیابی عملکرد تولید بچ‌ها \lr {(Batch Generation)}}{16}{subsection.1.9}%
+\contentsline {paragraph}{تفسیر نمودار حرارتی:}{17}{section*.42}%
+\contentsline {subsection}{\numberline {1.10}تحلیل آماری روابط کاراکترها \lr {(Bigram Transition Matrix)}}{18}{subsection.1.10}%
+\contentsline {subsection}{\numberline {1.11}تحلیل بصری \lr {(Heatmap)}}{19}{subsection.1.11}%
+\contentsline {subsection}{\numberline {1.12}بررسی یک نمونه: بعد از فضای خالی \lr {(Space)}}{19}{subsection.1.12}%
+\contentsline {paragraph}{تفسیر آماری:}{19}{section*.45}%
+\contentsline {section}{\numberline {2}دیجیکالا - مکانیزم توجه}{20}{section.2}%
+\contentsline {subsection}{\numberline {2.1}بخش دوم: پیاده‌سازی مکانیزم خود‌توجهی \lr {(Self-Attention)} در دیجی‌کالا}{20}{subsection.2.1}%
+\contentsline {paragraph}{۱. مخلوط کردن اطلاعات بین توکن‌ها \lr {(Information Mixing)}:}{20}{section*.48}%
+\contentsline {paragraph}{۲. فرمول توجه ضرب نقطه‌ای مقیاس‌گذاری شده \lr {(Scaled Dot-Product)}:}{20}{section*.49}%
+\contentsline {paragraph}{۳. ماسک علّی \lr {(The Causal Mask)}:}{21}{section*.50}%
+\contentsline {paragraph}{۴. کدگذاری موقعیتی سینوسی \lr {(Sinusoidal Positional Encoding)}:}{21}{section*.51}%
+\contentsline {subsection}{\numberline {2.2}\lr {Scaled Dot-Product Attention} و ماسک علّی}{21}{subsection.2.2}%
+\contentsline {paragraph}{توضیح کد:}{22}{section*.55}%
+\contentsline {paragraph}{تحلیل تست:}{23}{section*.57}%
+\contentsline {subsection}{\numberline {2.3}بصری‌سازی ماتریس توجه: تقابل حالت آزاد و علّی}{24}{subsection.2.3}%
+\contentsline {paragraph}{۱. تحلیل نمودار \lr {Full Attention} (سمت چپ):}{25}{section*.62}%
+\contentsline {paragraph}{۲. تحلیل نمودار \lr {Causal Attention} (سمت راست):}{25}{section*.63}%
+\contentsline {subsection}{\numberline {2.4}چرا امتیازهای توجه را بر $\sqrt {d_{\mathrm {head}}}$ تقسیم می‌کنیم؟}{25}{subsection.2.4}%
+\contentsline {paragraph}{توضیح خط‌به‌خط کد پیاده‌سازی:}{27}{section*.66}%
+\contentsline {paragraph}{تحلیل نتایج عددی:}{28}{section*.68}%
+\contentsline {paragraph}{تحلیل بصری نمودارها:}{28}{section*.71}%
+\contentsline {subsection}{\numberline {2.5}کدگذاری موقعیتی سینوسی (\lr {Sinusoidal Positional Encoding})}{29}{subsection.2.5}%
+\contentsline {paragraph}{توضیح خط‌به‌خط منطق پیاده‌سازی:}{30}{section*.74}%
+\contentsline {paragraph}{تحلیل تست و نتایج:}{30}{section*.76}%
+\contentsline {paragraph}{توضیح خط‌به‌خط کد بصری‌سازی:}{31}{section*.79}%
+\contentsline {paragraph}{تحلیل نقشه حرارتی (نمودار سمت چپ):}{32}{section*.81}%
+\contentsline {paragraph}{تحلیل نمودار نوسانات ابعاد منفرد (نمودار سمت راست):}{32}{section*.82}%
+\contentsline {subsection}{\numberline {2.6}خود-توجهی تک‌سره (\lr {Single-head Self-attention})}{33}{subsection.2.6}%
+\contentsline {paragraph}{توضیح کد:}{33}{section*.86}%
+\contentsline {paragraph}{تحلیل ابعاد و ویژگی‌ها:}{34}{section*.89}%
+\contentsline {paragraph}{توضیح تکنیک‌های پیاده‌سازی:}{35}{section*.91}%
+\contentsline {paragraph}{تحلیل الگوهای بصری:}{35}{section*.94}%
+\contentsline {subsection}{\numberline {2.7}تحلیل رفتار توجه: آنتروپی توزیع توجه تحت ماسک علی}{36}{subsection.2.7}%
+\contentsline {paragraph}{توضیح کد پیاده‌سازی:}{37}{section*.97}%
+\contentsline {paragraph}{تحلیل و تفسیر نمودار:}{38}{section*.100}%
+\contentsline {subsection}{\numberline {2.8}تحلیل رفتار توجه: متوسط فاصله بازگشت به عقب (\lr {Average Look-Back Distance})}{39}{subsection.2.8}%
+\contentsline {paragraph}{توضیح کد پیاده‌سازی:}{40}{section*.103}%
+\contentsline {paragraph}{تحلیل و تفسیر نتایج نمودار:}{40}{section*.106}%
+\contentsline {section}{\numberline {3}تپسی - توجه چندسر و بلوک ترنسفورمر}{41}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Flax \pLRE {nn.Module} (\lr {init / apply} و \lr {PyTrees} پارامترها)}{41}{subsection.3.1}%
+\contentsline {paragraph}{1. مرحله Initialization (\pLRE {init})}{42}{section*.109}%
+\contentsline {paragraph}{2. مرحله Apply (\pLRE {apply})}{42}{section*.110}%
+\contentsline {subsection}{\numberline {3.2}Multi-Head Attention (توجه چندسری)}{43}{subsection.3.2}%
+\contentsline {paragraph}{1. تولید Q، K و V}{44}{section*.117}%
+\contentsline {subsection}{\numberline {3.3}\lr {GELU} و \lr {MLP} در هر موقعیت (\lr {Position-wise MLP})}{46}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}\lr {Layer Normalization} (نرمال‌سازی لایه‌ای)}{48}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}اتصالات باقیمانده (\lr {Residual Connections}) و \lr {Pre-Norm} در \lr {Transformer}}{50}{subsection.3.5}%
+\contentsline {paragraph}{1. بلوک Attention}{52}{section*.146}%
+\contentsline {paragraph}{2. بلوک MLP}{52}{section*.147}%
+\contentsline {subsection}{\numberline {3.6} توجه علّی}{52}{subsection.3.6}%
+\contentsline {paragraph}{کالبدشکافی تصویر:}{54}{section*.154}%
+\contentsline {subsection}{\numberline {3.7}آشنایی با جریان کاری \lr {Flax}: الگوی \lr {Init / Apply}}{54}{subsection.3.7}%
+\contentsline {paragraph}{۱. دکوراتور جادویی \lr {@nn.compact}:}{55}{section*.157}%
+\contentsline {paragraph}{۲. تابع \lr {init} (تولید وزن‌ها):}{55}{section*.158}%
+\contentsline {paragraph}{۳. تابع \lr {apply} (اجرای شبکه):}{55}{section*.159}%
+\contentsline {paragraph}{تحلیل ساختار وزن‌ها (\lr {Pytree}):}{56}{section*.161}%
+\contentsline {paragraph}{تحلیل ابعاد خروجی:}{56}{section*.162}%
+\contentsline {subsection}{\numberline {3.8}طراحی ماژول توجه چندسر علّی (\lr {Causal Multi-Head Self-Attention}) در \lr {Flax}}{56}{subsection.3.8}%
+\contentsline {paragraph}{تحلیل بخش‌های کلیدی کد:}{58}{section*.165}%
+\contentsline {paragraph}{تحلیل خروجی تست:}{60}{section*.167}%
+\contentsline {subsection}{\numberline {3.9}هر سرِ توجه به چه چیزی نگاه می‌کند؟ نقشه‌های توجه مجزا (\lr {Per-head Attention Maps})}{60}{subsection.3.9}%
+\contentsline {paragraph}{روند استخراج اطلاعات در کد بالا:}{61}{section*.169}%
+\contentsline {paragraph}{کالبدشکافی و تحلیل نمودارها:}{62}{section*.172}%
+\contentsline {subsection}{\numberline {3.10}توابع فعال‌ساز در شبکه‌های پیش‌خور: مقایسه \lr {GELU}، \lr {ReLU} و \lr {tanh}}{63}{subsection.3.10}%
+\contentsline {paragraph}{۱. تابع \lr {tanh} (تانژانت هیپربولیک):}{63}{section*.174}%
+\contentsline {paragraph}{۲. تابع \lr {ReLU (Rectified Linear Unit)}:}{63}{section*.175}%
+\contentsline {paragraph}{۳. تابع \lr {GELU (Gaussian Error Linear Unit)}:}{63}{section*.176}%
+\contentsline {paragraph}{تحلیل نمودار:}{63}{section*.179}%
+\contentsline {subsection}{\numberline {3.11}پیاده‌سازی دستی نرمال‌سازی لایه‌ای (\lr {Layer Normalization})}{65}{subsection.3.11}%
+\contentsline {paragraph}{نکات کلیدی کد:}{66}{section*.183}%
+\contentsline {paragraph}{تحلیل نمودارها:}{66}{section*.186}%
+\contentsline {subsection}{\numberline {3.12}مونتاژ بلوک کامل ترنسفورمر با معماری پیش‌نرمال‌سازی (\lr {Pre-Norm Transformer Block})}{67}{subsection.3.12}%
+\contentsline {paragraph}{تحلیل خطوط کد:}{68}{section*.189}%
+\contentsline {paragraph}{کالبدشکافی دقیق اعداد در نمودار:}{69}{section*.192}%
+\contentsline {subsection}{\numberline {3.13}تحلیل تکمیلی: نحوه رشد جریان میان‌بر (\lr {Residual Stream}) با افزایش عمق شبکه}{70}{subsection.3.13}%
+\contentsline {paragraph}{کالبدشکافی و تحلیل رفتار شبکه:}{70}{section*.196}%
+\contentsline {section}{\numberline {4}کوئرا - ساخت و آموزش \lr {MiniGPT}}{72}{section.4}%
+\contentsline {subsection}{\numberline {4.1}از بلوک‌ها تا مدل کامل: \lr {Embeddingها} و \lr {Head} خروجی}{72}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}تابع هزینه Cross-Entropy در پیش‌بینی توکن بعدی}{74}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}بهینه‌سازی آموزش: \pLRE {AdamW}، برش گرادیان و زمان‌بندی نرخ یادگیری}{76}{subsection.4.3}%
+\contentsline {paragraph}{1. Warmup (افزایش اولیه)}{78}{section*.215}%
+\contentsline {paragraph}{2. Cosine Decay (کاهش تدریجی)}{78}{section*.216}%
+\contentsline {subsection}{\numberline {4.4}مونتاژ معماری کلان: ماژول \lr {MiniGPT}}{79}{subsection.4.4}%
+\contentsline {paragraph}{تحلیل ابعاد \lr {Logits}:}{80}{section*.222}%
+\contentsline {paragraph}{تحلیل نمودار بودجه‌بندی پارامترها:}{81}{section*.223}%
+\contentsline {subsection}{\numberline {4.5}تابع زیان آنتروپی متقاطع (\lr {Cross-Entropy Loss})}{81}{subsection.4.5}%
+\contentsline {paragraph}{تحلیل پارامترها و نکات کلیدی:}{82}{section*.226}%
+\contentsline {paragraph}{تحلیل نتیجه:}{83}{section*.228}%
+\contentsline {subsection}{\numberline {4.6}زمان‌بندی نرخ یادگیری: \lr {Warmup-Cosine Decay}}{83}{subsection.4.6}%
+\contentsline {paragraph}{تحلیل پارامترها:}{84}{section*.230}%
+\contentsline {subsection}{\numberline {4.7}گام آموزش و کامپایل \lr {JIT} در \lr {JAX}}{85}{subsection.4.7}%
+\contentsline {paragraph}{توضیح مراحل:}{85}{section*.234}%
+\contentsline {paragraph}{تحلیل نتیجه:}{86}{section*.237}%
+\contentsline {subsection}{\numberline {4.8}آموزش مدل و تولید متن (\lr {Training and Inference})}{87}{subsection.4.8}%
+\contentsline {paragraph}{بررسی نتایج:}{87}{section*.241}%
+\contentsline {paragraph}{نکته کلیدی در تحلیل خروجی:}{88}{section*.243}%
+\contentsline {subsection}{\numberline {4.9}تحلیل نهایی و عیب‌یابی مدل (\lr {Diagnostics})}{88}{subsection.4.9}%
+\contentsline {subsection}{\numberline {4.10}تحلیل نهایی: مدل چه چیزی آموخته است؟ (\lr {What did the trained model learn?})}{89}{subsection.4.10}%
+\contentsline {paragraph}{تحلیل رفتاری سرها:}{90}{section*.250}%
+\contentsline {paragraph}{تحلیلِ قدرتِ یادگیری مدل:}{90}{section*.253}%
+\contentsline {section}{\numberline {5}دیوار - تولید متن و مقیاس }{92}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Temperature}{92}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Top-k}{92}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Top-p}{92}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}کد بخش 5}{93}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}خروجی های نهایی}{101}{subsection.5.5}%

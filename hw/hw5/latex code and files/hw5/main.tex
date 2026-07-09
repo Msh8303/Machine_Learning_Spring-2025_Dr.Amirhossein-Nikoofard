@@ -1,0 +1,3990 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage[sorting=none]{biblatex}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+%\usepackage{subfigure}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{lmodern} % فونت بهتر برای لاتین
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage{fvextra}
+\usepackage{multirow}
+\usepackage{booktabs}
+\setminted{
+	linenos,
+	breaklines=true,
+	breakanywhere=true,
+	encoding=utf8,
+	autogobble=true,
+	fontsize=\small,
+	frame=single,
+	tabsize=4,
+	obeytabs=true,
+	mathescape=false,
+	texcomments=false
+}
+\usepackage{amssymb}
+\usepackage{longtable} % برای جداول طولانی
+\usepackage{enumitem} % برای کنترل لیست‌ها
+\usepackage{booktabs} % برای جداول حرفه‌ای
+\hypersetup{
+	colorlinks=true,
+	linkcolor=teal,
+	filecolor=magenta,      
+	urlcolor=teal,
+	citecolor=teal
+}
+\usepackage{xepersian}
+
+
+
+
+\setlength\headheight{28pt} 
+\addbibresource{bibliography.bib}
+\settextfont[Path={./font/}, Scale=1.3]{IRLotus}
+\setlatintextfont[Scale=1]{Times New Roman}
+\renewcommand{\baselinestretch}{1.5}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{تمرین سری پنجم یادگیری ماشین}
+\chead{\includegraphics[width=1cm]{img/Logo.png}}
+\rhead{\thepage}
+
+\rfoot{محمدامین محمدیون شبستری}
+\cfoot{آرین خوشنویس}
+\lfoot{محمدسبحان سخایی}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+\AtBeginDocument{
+	\def\chapterautorefname{فصل}%
+	\def\sectionautorefname{پاسخ سوال}%
+	\def\subsectionautorefname{بخش}%
+	\def\subsubsectionautorefname{بخش}%
+	\def\equationautorefname{رابطهٔ}%
+    \def\lstlistingautorefname{برنامۀ}%
+}
+\renewcommand{\lstlistingname}{Code}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},   
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=5pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=2
+}
+
+
+
+\lstset{style=mystyle}
+
+\begin{document}
+\input{titlepage}
+
+\tableofcontents \clearpage
+\listoffigures \clearpage
+\newpage
+\section{اسنپ - مبانی و توکن سازی}
+\subsection{مرور کلی تمرین}
+
+این تمرین آغاز یک زنجیرۀ پنج‌قسمتی برای ساخت یک مدل زبانی کوچک به سبک GPT در محیط JAX است. نقطه شروع تبدیل متن خام به تنسورهای عددی است؛ زیربنایی که تمام بخش‌های بعدی مدل بر آن بنا می‌شوند.
+
+\subsubsection*{داستان اولیه}
+در این مرحله، تمرکز بر فهم دقیق فرآیند پایه‌ای مدل‌های زبانی است: تبدیل کاراکترها به اعداد. دلیل این کار کنترل کامل بر مدل و جلوگیری از تبدیل سیستم به یک جعبه‌سیاه در مراحل بعدی است. داده‌ی آموزشی شامل مجموعه آثار شکسپیر است که ساختاری کافی برای تمرین یک مدل کوچک فراهم می‌کند.
+
+\paragraph{اهمیت این مرحله}
+این بخش زیربنای کل تمرین است و خروجی آن یعنی تنسورهای صحیح‌شده‌ی کاراکتری، مستقیماً در بخش توجه (Attention) و سپس کل شبکه‌ی ترنسفورمر استفاده می‌شوند. بدون این پایه‌گذاری، بخش‌های بعدی قابل اتکا نخواهند بود.
+
+\subsubsection*{ماموریت بخش اول}
+هدف‌های اصلی عبارت‌اند از:
+\begin{itemize}
+	\item آشنایی با تفاوت‌های \lr{JAX} و \lr{NumPy}، از جمله عدم تغییرپذیری داده و تابع‌محور بودن.
+	\item پیاده‌سازی نسخه‌ی پایدار عددی \lr{Softmax}.
+	\item ساخت توکنایزر کاراکتری از متن خام.
+	\item تولید داده‌های آموزشی به صورت جفت‌های ورودی–هدف برای پیش‌بینی توکن بعدی.
+\end{itemize}
+
+این موارد پایه‌هایی هستند که در بخش‌های بعدی برای ساخت \lr{Attention}، \lr{Multi-Head Attention}، بلاک ترنسفورمر و در نهایت آموزش مدل استفاده خواهند شد.
+
+\subsubsection*{معماری موردنظر}
+مدلی که در این تمرین ساخته می‌شود نسخه‌ی ساده‌شده‌ای از ترنسفورمر مقاله‌ی
+\lr{Attention Is All You Need}
+است که تنها ستون «دیکودر با \lr{Masked Self-Attention}» را حفظ می‌کند. این معماری همان چیزی است که در مدل‌های GPT استفاده می‌شود: پیش‌بینی توکن بعدی با استفاده از تمام توکن‌های قبلی، بدون مشاهده آینده.
+
+\paragraph{تعریف کوتاه GPT}
+GPT یک مدل زبانی است که توزیع احتمالات توکن بعدی را بر اساس توکن‌های قبلی تعیین می‌کند. این مدل:
+\begin{itemize}
+	\item \textbf{تولیدگر} است چون می‌تواند متن جدید تولید کند،
+	\item \textbf{پیش‌آموزش‌دیده} است چون ابتدا روی یک مجموعه بزرگ الگوهای زبان را یاد می‌گیرد.
+	\item \textbf{ترنسفورمر-محور} است چون تمرکز آن بر مکانیزم Self-Attention است.
+	\item و \textbf{فقط دیکودر} است چون بخش رمزگذار را حذف می‌کند و تنها اجازه نگاه به گذشته را دارد.
+\end{itemize}
+
+\subsubsection*{چرا \lr{JAX}؟}
+JAX محیطی شبیه NumPy فراهم می‌کند اما سه قابلیت حیاتی برای ساخت مدل‌های یادگیری عمیق دارد:
+\begin{itemize}
+	\item \lr{jax.grad} برای محاسبه خودکار گرادیان.
+	\item \lr{jax.jit} برای اجرای بهینه‌شده با کامپایلر \lr{XLA}.
+	\item \lr{jax.vmap} برای بردارسازی خودکار و ساخت Batch داده.
+\end{itemize}
+
+غیرقابل‌تغییر بودن آرایه‌ها و تابع‌محور بودن JAX امکان تکرارپذیری آزمایش‌ها و اجرای یکسان کد روی  \lr{GPU} ،\lr{CPU} و \lr{TPU} را بدون تغییر فراهم می‌کند.
+\subsection{بارگذاری کتابخانه‌ها و آماده‌سازی محیط}
+
+در ابتدای کار، مجموعه‌ای از کتابخانه‌های موردنیاز برای پروژه وارد شدند. این کتابخانه‌ها شامل ابزارهای استاندارد پایتون برای کار با فایل‌ها، زمان، ریاضیات و همچنین کتابخانه‌های یادگیری ماشین موردنیاز برای ساخت مدل در محیط JAX هستند. توضیح بخش‌های اصلی کد به صورت زیر است:
+
+\begin{itemize}
+	\item \textbf{NumPy} و \textbf{Matplotlib}: برای کار با آرایه‌ها و رسم نمودارها.
+	\item \textbf{JAX} و \textbf{jax.numpy}: هسته اصلی محاسبات عددی و خودکارسازی گرادیان‌ها.
+	\item \textbf{Flax.linen}: چارچوب ساخت لایه‌های مدل و معماری شبکه.
+	\item \textbf{Optax}: کتابخانه‌ای برای بهینه‌سازی پارامترهای مدل.
+\end{itemize}
+
+در ادامه تنظیمات اولیه برای نمایش نمودارها از طریق Matplotlib اعمال شده است تا خروجی‌ها خواناتر باشند. همچنین دقت چاپ آرایه‌های NumPy تنظیم شده تا مقادیر با حداکثر چهار رقم اعشار و بدون نمایش نمایی چاپ شوند.
+
+\subsubsection*{چاپ نسخه‌ها و دستگاه محاسباتی}
+در پایان، نسخه JAX و Flax همراه با لیست دستگاه‌هایی که JAX می‌تواند روی آن‌ها اجرا شود نمایش داده می‌شود. این مرحله کمک می‌کند تا محیط اجرای محاسبات تأیید شود و بدانیم که مدل روی CPU یا GPU در حال اجرا است.
+
+\paragraph{خروجی کد}
+خروجی چاپ‌شده از کد به صورت زیر است:
+\begin{latin}
+	\begin{verbatim}
+		JAX 0.7.2 | Flax  | devices: [CpuDevice(id=0)]
+	\end{verbatim}
+\end{latin}
+این خروجی نشان می‌دهد که:
+\begin{itemize}
+	\item نسخه JAX برابر با \lr{0.7.2} است.
+	\item نسخه Flax چاپ نشده که طبیعی است زیرا Flax نسخه تعبیه‌شده در linen را در برخی محیط‌ها نمایش نمی‌دهد.
+	\item اجرای برنامه روی یک \textbf{CPU} انجام می‌شود، یعنی هنوز GPU یا TPU در دسترس نیست.
+\end{itemize}
+
+این اطلاعات برای شروع توسعه مدل حیاتی است، زیرا مشخص می‌کند بهینه‌سازی و محاسبات در چه سخت‌افزاری انجام خواهد شد.
+
+\subsection{بررسی قابلیت‌های کلیدی \lr{JAX}: \lr{grad}، \lr{jit} و \lr{vmap}}
+
+پیش از ورود به معماری ترنسفورمر، لازم است سه ستون اصلی JAX که تفاوت آن را با کتابخانه‌های دیگر رقم می‌زنند، در عمل آزمایش شوند. این سه قابلیت اجازه می‌دهند کدهای پایتونی به برنامه‌هایی سریع، مشتق‌پذیر و برداری تبدیل شوند.
+
+\subsubsection*{محاسبه خودکار مشتق (\lr{grad})}
+در این آزمایش، مشتق تابع $f(x) = x^3$ در نقطۀ $x=2$ محاسبه شده است. مشتق ریاضی این تابع برابر با $3x^2$ است که در نقطۀ ۲ مقدار ۱۲ را نشان می‌دهد. JAX بدون نیاز به فرمول‌های دستی و تنها با استفاده از \lr{jax.grad}، مقدار دقیق را محاسبه می‌کند.
+
+خروجی کد:
+
+\begin{latin}
+	\begin{verbatim}
+		grad of x^3 at x=2: 12.0  (exact 3*2^2 = 12)
+	\end{verbatim}
+\end{latin}
+
+
+\subsubsection*{کامپایل سریع (\lr{jit})}
+قابلیت \lr{Just-In-Time (jit)}، تابع را با استفاده از کامپایلر \lr{XLA} بهینه‌سازی می‌کند. در کد بالا، یک تابع سنگین (\lr{heavy}) که شامل ۶۰ تکرار محاسباتی است، تعریف شده است. تفاوت سرعت بین اجرای معمولی (\lr{eager}) و اجرای کامپایل‌شده (\lr{jit}) اندازه‌گیری شد.
+
+\paragraph{تحلیل عملکرد:} همان‌طور که در نمودار خروجی مشاهده می‌شود، نسخه \lr{jit} حدود \textbf{۲ برابر سریع‌تر} از نسخه معمولی عمل کرده است. این بهینه‌سازی با ترکیب عملیات‌ها (\lr{Operator Fusion}) و کاهش سربار فراخوانی‌های پایتون به دست می‌آید.
+
+\subsubsection*{بردارسازی خودکار (\lr{vmap})}
+قابلیت \lr{vmap} به ما اجازه می‌دهد تابعی که برای یک بردار واحد نوشته شده است را بدون استفاده از حلقه‌های \lr{for} صریح، روی یک \lr{Batch} از داده‌ها اعمال کنیم. در این مثال، نُرم $L2$ برای ردیف‌های یک ماتریس $(4,3)$ محاسبه شده است.
+
+% محل قرارگیری تصویر خروجی
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/velocity.png}
+	\caption{مقایسه سرعت اجرای \lr{JIT} و نمایش خروجی \lr{VMAP} برای محاسبه نُرم ردیف‌ها}
+	\label{fig:jax_features}
+\end{figure}
+
+\subsubsection*{تحلیل نهایی خروجی‌های تصویری}
+نمودارهای تولید شده (شکل \ref{fig:jax_features}) به خوبی مفاهیم بالا را تایید می‌کنند:
+\begin{itemize}
+	\item \textbf{نمودار سمت چپ \lr{(JIT Speed-up)}:} کاهش زمان اجرای ۲۰ فراخوانی را نشان می‌دهد. در حالی که حالت \lr{eager} بیش از \lr{1.1} ثانیه زمان برده، حالت \lr{jit} در حدود \lr{0.6} ثانیه به پایان رسیده است.
+	\item \textbf{نمودار سمت راست \lr{(vmap)}:} نُرم محاسبه شده برای هر یک از ۴ ردیف ماتریس ورودی را نشان می‌دهد. مقادیر به‌دست‌آمده نشان‌دهنده دقت اجرای عملیات برداری روی دسته‌های داده (\lr{batching}) است.
+\end{itemize}
+
+\subsection{پیاده‌سازی \lr{Softmax} پایدار عددی}
+
+تابع \lr{Softmax} وظیفه تبدیل برداری از امتیازات خام (\lr{scores}) به یک توزیع احتمالی را بر عهده دارد. با این حال، پیاده‌سازی مستقیم آن به دلیل ماهیت نمایی \lr{(Exponential)}، با اعداد بزرگ دچار سرریز (\lr{overflow}) می‌شود. برای رفع این مشکل از یک ترفند ریاضی استفاده می‌کنیم: کم کردن مقدار ماکزیمم از تمام درایه‌ها. این کار باعث می‌شود بزرگترین توان، صفر شود ($e^0 = 1$) و مقادیر دیگر همگی کوچک‌تر از یک شوند، که از سرریز جلوگیری می‌کند.
+
+\subsubsection*{کد پیاده‌سازی}
+در قطعه‌کد زیر، با استفاده از \lr{keepdims=True}، امکان اعمال عملیات به صورت دسته‌ای (\lr{batching}) فراهم شده است تا کد هم برای یک بردار و هم برای ماتریسی از داده‌ها کار کند:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		def stable_softmax(z, axis=-1):
+		
+		max_z = jnp.max(z, axis=axis, keepdims=True)
+		shifted_z = z - max_z
+		
+		
+		ez = jnp.exp(shifted_z)
+		sum_ez = jnp.sum(ez, axis=axis, keepdims=True)
+		return ez / sum_ez
+	\end{lstlisting}
+\end{latin}
+\subsubsection*{تأیید صحت و تحلیل دما (\lr{Temperature})}
+برای اطمینان از عملکرد صحیح، تابعی نوشته شد که ورودی‌های بسیار بزرگ (که در حالت عادی باعث \lr{inf} می‌شوند) را پردازش کرده و نتیجه را با پیاده‌سازی استاندارد \lr{jax.nn.softmax} مقایسه می‌کند.
+
+خروجی تست:
+\begin{latin}
+	\begin{verbatim}
+		OK: stable_softmax matches jax.nn.softmax and survives huge inputs
+	\end{verbatim}
+\end{latin}
+
+این نتیجه نشان می‌دهد که پیاده‌سازی ما علاوه بر سازگاری با توابع داخلی \lr{JAX}، در مواجهه با مقادیر بحرانی نیز پایداری خود را حفظ کرده است.
+
+\paragraph{تحلیل اثر دما (\lr{Temperature}):}
+پارامتر دما ($T$) بر شکل توزیع تأثیر می‌گذارد:
+\begin{itemize}
+	\item \textbf{دماهای پایین (مثلاً \lr{0.3}):} توزیع را تیزتر (\lr{sharpen}) کرده و احتمال توکن‌های برتر را بسیار بالا می‌برند.
+	\item \textbf{دماهای بالا (مثلاً \lr{3.0}):} توزیع را هموارتر (\lr{flatten}) کرده و احتمال‌ها را به سمت یکنواختی می‌برند.
+\end{itemize}
+
+% در اینجا تصویر خروجی را اضافه کنید
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/softmaxtemp.png}
+	\caption{اثر تغییر پارامتر دما بر توزیع احتمالات \lr{Softmax}}
+	\label{fig:softmax_temp}
+\end{figure}
+
+همان‌طور که در نمودار (شکل \ref{fig:softmax_temp}) دیده می‌شود، با افزایش دما، اختلاف احتمالات بین توکن‌ها کمتر شده و منحنی به سمت یک خط صاف میل می‌کند.
+
+\subsection{بارگذاری و تحلیل مقدماتی پیکره متنی شکسپیر}
+
+قبل از شروع آموزش مدل، بررسی اولیه داده‌ها امری حیاتی است تا از کیفیت و ساختار پیکره متنی اطمینان حاصل شود. در این مرحله، از مجموعه آثار کامل شکسپیر استفاده شده است که یک استاندارد کلاسیک در یادگیری ماشین برای مدل‌های زبانی است.
+
+\subsubsection*{فرآیند بارگذاری داده‌ها}
+کد پیاده‌سازی‌شده ابتدا سعی می‌کند فایل \lr{tiny\_shakespeare.txt} را به صورت محلی پیدا کند. در صورتی که فایل وجود نداشته باشد، آن را به طور خودکار از مخزن گیت‌هاب مربوطه دانلود می‌کند. این رویکرد باعث تکرارپذیری آزمایش می‌شود.
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		def load_tiny_shakespeare():
+		for path in ("data/tiny_shakespeare.txt", "tiny_shakespeare.txt", "../data/tiny_shakespeare.txt"):
+		if os.path.exists(path):
+		return open(path, encoding="utf-8").read()
+		url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+		os.makedirs("data", exist_ok=True)
+		urllib.request.urlretrieve(url, "data/tiny_shakespeare.txt")
+		return open("data/tiny_shakespeare.txt", encoding="utf-8").read()
+		
+		text = load_tiny_shakespeare()
+		print(f"Corpus length: {len(text):,} characters")
+		print(repr(text[:180]))
+		
+		fig, ax = plt.subplots(1, 2, figsize=(12, 3.4))
+		from collections import Counter
+		counts = Counter(text)
+		common = counts.most_common(20)
+		ax[0].bar([repr(c)[1:-1] for c, _ in common], [n for _, n in common], color="#0099cc")
+		ax[0].set_title("20 most frequent characters"); ax[0].tick_params(axis="x", rotation=60)
+		line_lengths = [len(line) for line in text.split("\n")]
+		ax[1].hist(line_lengths, bins=40, color="#0099cc", edgecolor="black")
+		ax[1].set_title("Distribution of line lengths"); ax[1].set_xlabel("characters per line")
+		plt.tight_layout(); plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{تحلیل خروجی متنی}
+پس از بارگذاری، طول پیکره نمایش داده شد تا مقیاس محاسباتی مدل مشخص شود. خروجی متنی به شرح زیر است:
+\begin{latin}
+	\begin{verbatim}
+		Corpus length: 1,115,394 characters
+		'First Citizen:\nBefore we proceed any further, hear me speak.\n\nAll:\nSpeak, speak.
+		\n\nFirst Citizen:\nYou are all resolved rather to die than to famish?\n\nAll:\nResolved. 
+		resolved.\n\nFirst'
+	\end{verbatim}
+\end{latin}
+
+تفسیر نتایج متنی:
+\begin{itemize}
+	\item \textbf{حجم داده:} حدود ۱.۱ میلیون کاراکتر. این حجم برای آموزش یک مدل زبانی کوچک در یک محیط آموزشی بسیار مناسب است، زیرا به اندازه کافی غنی است تا الگوهای زبانی را یاد بگیرد و به اندازه کافی کوچک است تا در سخت‌افزارهای معمولی به سرعت آموزش ببیند.
+	\item \textbf{فرمت:} نمونه متن نمایش داده شده نشان می‌دهد که داده‌ها شامل نام شخصیت‌ها (مانند \lr{First Citizen})، کاراکترهای جداکننده مانند \lr{newline} (\textbackslash n) و دیالوگ‌ها هستند. این یعنی مدل ما باید علاوه بر کلمات، نحوه نگارش ساختار درام‌نویسی را نیز یاد بگیرد.
+\end{itemize}
+
+\subsubsection*{تحلیل نمودارهای توزیع \lr{(EDA)}}
+دو نمودار برای شناخت بهتر داده‌ها ترسیم شدند:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/distribution.png}
+	\caption{فراوانی کاراکترها و توزیع طول خطوط در مجموعه داده شکسپیر}
+	\label{fig:data_eda}
+\end{figure}
+
+تفسیر نمودارها:
+\begin{itemize}
+	\item \textbf{فراوانی کاراکترها (نمودار سمت چپ):} همان‌طور که انتظار می‌رفت، کاراکتر \lr{space} بیشترین تکرار را دارد. حروف رایج در زبان انگلیسی مانند 'e'، 't' و 'o' نیز در رتبه‌های اول قرار دارند. این توزیع به ما اطمینان می‌دهد که توکنایزر کاراکتری ما با داده‌های متعادلی روبرو خواهد شد.
+	\item \textbf{توزیع طول خطوط (نمودار سمت راست):} این نمودار یک توزیع دووجهی (\lr{Bimodal}) را نشان می‌دهد:
+	\begin{itemize}
+		\item پیک اول نزدیک به صفر مربوط به خطوط خالی و نام شخصیت‌ها است.
+		\item پیک دوم در حدود ۴۰ تا ۵۰ کاراکتر نشان‌دهنده طول دیالوگ‌های استاندارد در نمایشنامه است.
+	\end{itemize}
+\end{itemize}
+
+این تحلیل‌ها به ما کمک می‌کند تا درک کنیم مدل با چه ساختار متنی (از نظر طول و توزیع کاراکترها) درگیر خواهد بود.
+
+\subsection{ساخت توکنایزر کاراکتری}
+
+شبکه‌های عصبی تنها قادر به پردازش اعداد هستند. بنابراین، گام اول در هر مدل زبانی، تبدیل متن به تنسورهای عددی است. در حالی که مدل‌های بزرگ صنعتی از روش‌های پیشرفته مانند \lr{Byte-Pair Encoding (BPE)} برای مدیریت کلمات استفاده می‌کنند، ما در این تمرین از \textbf{توکنایزر کاراکتری} استفاده می‌کنیم. این رویکرد به دلیل سادگی، شفافیت و نیاز نداشتن به کتابخانه‌های جانبی، برای یادگیری مکانیسم‌های زیرین ترنسفورمر بسیار مناسب است.
+
+\subsubsection*{پیاده‌سازی توکنایزر}
+هدف اصلی ایجاد یک نگاشت دوطرفه بین کاراکترها و شناسه‌های عددی (\lr{Integer IDs}) است. برای تضمین رفتار قطعی (\lr{Deterministic}) مدل، لیست کاراکترها را ابتدا مرتب کرده‌ایم.
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		chars = sorted(list(set(text)))
+		vocab_size = len(chars)
+		
+		
+		stoi = {ch:i for i,ch in enumerate(chars)}
+		itos = {i:ch for i,ch in enumerate(chars)}
+		
+		
+		def encode(s):
+		return [stoi[c] for c in s]
+		
+		def decode(ids):
+		return ''.join(itos[int(i)] for i in ids)
+		
+		
+		data = np.array(encode(text), dtype=np.int32)
+	\end{lstlisting}
+\end{latin}
+
+
+\subsubsection*{ارزیابی و تأیید صحت (Self-Check)}
+برای اطمینان از صحت عملکرد نگاشت، کدهای زیر را اجرا کردیم که بازگشت‌پذیر بودن (\lr{Round-trip}) تبدیل‌ها را آزمایش می‌کند:
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		assert decode(encode("Snapp loves JAX!")) == "Snapp loves JAX!"
+		assert vocab_size == len(set(text)) and len(stoi) == vocab_size == len(itos)
+		assert data.dtype == np.int32 and len(data) == len(text)
+		
+		print("OK: vocab_size =", vocab_size)
+		print("first 20 chars:", repr(text[:20]))
+		print("first 20 ids  :", data[:20].tolist())
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{تحلیل خروجی‌ها}
+خروجی اجرای کد در کنسول به صورت زیر است:
+\begin{latin}
+	\begin{verbatim}
+		OK: vocab_size = 65
+		first 20 chars: 'First Citizen:\nBefor'
+		first 20 ids  : [18, 47, 56, 57, 58, 1, 15, 47, 58, 47, 64, 43, 52, 10, 0, 14, 43, 44, 53, 56]
+	\end{verbatim}
+\end{latin}
+
+تحلیل نتایج:
+\begin{itemize}
+	\item \lr{Vocab Size}: عدد ۶۵ نشان می‌دهد که زبان انگلیسی استفاده شده در آثار شکسپیر، تنها شامل ۶۵ کاراکتر یکتا (شامل حروف بزرگ/کوچک، علائم نگارشی و کاراکتر فاصله) است. این دامنه کوچک، مدل را از پیچیدگی‌های توکن‌های زیرکلمه‌ای (که ده‌ها هزار توکن دارند) دور نگه می‌دارد.
+	\item \textbf{نگاشت \lr{(Mapping)}:} خروجی \lr{first 20 ids} نمایش‌دهندۀ نحوۀ تبدیل متن به تنسورهای \lr{int32} است. برای مثال، کاراکتر 'F' (اندیس ۱۸ در لیست ما) به عدد ۱۸ تبدیل شده است.
+	\item \textbf{بازگشت‌پذیری:} با دستور \lr{assert}، اطمینان حاصل کردیم که اگر متنی را انکود کنیم، حتماً با دکود کردن آن به متن اصلی برمی‌گردیم؛ این موضوع برای عملکرد مدل در زمان \lr{Inference} (تولید متن) حیاتی است.
+\end{itemize}
+
+\subsection{تقسیم داده به مجموعۀ آموزش و اعتبارسنجی}
+
+برای ارزیابی صحیح عملکرد مدل و تشخیص بیش‌برازش (\lr{Overfitting})، پیکرۀ متنی به دو بخش \textbf{آموزش} و \textbf{اعتبارسنجی} تقسیم می‌شود. در این تمرین، ۹۰\% ابتدایی متن برای آموزش و ۱۰\% انتهایی برای اعتبارسنجی در نظر گرفته شده است. این نوع تقسیم، یک روش ساده و مناسب برای داده‌های ترتیبی (\lr{Sequential Data}) است، زیرا ترتیب طبیعی متن حفظ می‌شود و از نشت اطلاعات از آینده به گذشته جلوگیری می‌گردد.
+
+\subsubsection*{پیاده‌سازی تقسیم داده}
+در کد زیر، ابتدا نقطۀ جداسازی بر اساس ۹۰ درصد طول کل دادۀ محاسبه شده و سپس آرایۀ اصلی به دو بخش مجزا تقسیم می‌شود:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		n = int(0.9 * len(data))
+		train_data, val_data = data[:n], data[n:]
+		print(f"train: {len(train_data):,} tokens | val: {len(val_data):,} tokens")
+		
+		fig, ax = plt.subplots(figsize=(10, 1.4))
+		ax.barh([0], [len(train_data)], color="#0099cc", label="train (90%)")
+		ax.barh([0], [len(val_data)], left=[len(train_data)], color="#ffb347", label="val (10%)")
+		ax.set_yticks([]); ax.set_xlabel("character position in corpus"); ax.legend(loc="upper right")
+		ax.set_title("Train / validation split"); plt.tight_layout(); plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{خروجی عددی}
+پس از اجرای کد، اندازۀ دو بخش به صورت زیر گزارش شد:
+\begin{latin}
+	\begin{verbatim}
+		train: 1,003,854 tokens | val: 111,540 tokens
+	\end{verbatim}
+\end{latin}
+
+تحلیل خروجی عددی:
+\begin{itemize}
+	\item \textbf{بخش آموزش:} شامل ۱٬۰۰۳٬۸۵۴ توکن است که معادل ۹۰ درصد کل پیکره می‌باشد.
+	\item \textbf{بخش اعتبارسنجی:} شامل ۱۱۱٬۵۴۰ توکن است که معادل ۱۰ درصد باقی‌مانده است.
+	\item \textbf{جمع کل:} مجموع این دو مقدار برابر با طول کل داده‌ها است و نشان می‌دهد که تقسیم‌بندی بدون از دست‌رفتن یا تکرار داده انجام شده است.
+\end{itemize}
+
+\subsubsection*{تحلیل نمودار}
+
+نمودار پایین یک \textbf{نوار افقی انباشته} (\lr{Horizontal Stacked Bar}) را نشان می‌دهد که کل پیکره را بر حسب \textit{موقعیت کاراکترها در متن} به دو بخش تقسیم می‌کند:
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/trainval.png}
+	\caption{تقسیم پیکره به بخش‌های آموزش و اعتبارسنجی}
+	\label{fig:train_val_split}
+\end{figure}
+
+\begin{itemize}
+	\item بخش آبی با برچسب \lr{train (90\%)} نشان‌دهنده‌ی داده‌های آموزشی است.
+	\item بخش نارنجی با برچسب \lr{val (10\%)} نشان‌دهنده‌ی داده‌های اعتبارسنجی است.
+\end{itemize}
+
+تفسیر بصری نمودار:
+\begin{itemize}
+	\item محور افقی با برچسب \lr{character position in corpus} نمایش داده شده و مقیاس آن با ضریب علمی \lr{1e6} مشخص شده است؛ بنابراین اعداد \lr{0.0} تا \lr{1.0} روی محور، در واقع به میلیون‌ها کاراکتر اشاره دارند .
+	\item نوار آبی تقریباً تا ابتدای عدد \lr{1.0 }میلیون کاراکتر امتداد دارد و بیانگر ۹۰\% نخست داده است.
+	\item بخش نارنجی بلافاصله پس از آن قرار گرفته و تا حدود  \lr{1.11}میلیون کاراکتر ادامه می‌یابد که همان ۱۰\% پایانی داده است.
+\end{itemize}
+
+چرا این نوع تقسیم مهم است؟
+\begin{itemize}
+	\item \textbf{پیشگیری از نشت اطلاعات:} در داده‌های متنی ترتیبی، اگر داده‌ها به‌صورت تصادفی مخلوط شوند، ممکن است اطلاعات آینده به آموزش وارد شود. تقسیم ترتیبی این مشکل را برطرف می‌کند.
+	\item \textbf{تشخیص بیش‌برازش:} با نگه‌داشتن بخشی از داده‌ها برای اعتبارسنجی، می‌توان بررسی کرد که آیا مدل فقط متن آموزش را حفظ کرده یا واقعاً الگوهای زبانی را یاد گرفته است.
+	\item \textbf{استاندارد بودن:} این نوع split یک روش رایج در آموزش مدل‌های زبانی کاراکتری و توالی‌محور است.
+\end{itemize}
+
+\subsection{هدف پیش‌بینی توکن بعدی و ساخت مینی‌بچ‌ها}
+
+اساس آموزش مدل‌های ترنسفورمر تولیدگر (مانند سری \lr{GPT})، حل یک مسئله ساده اما بسیار کارآمد است: \textbf{پیش‌بینی توکن بعدی}. مدل با دیدن توالی کاراکترهای گذشته، باید احتمال کاراکتر بعدی را بیشینه کند. این ویژگی باعث می‌شود که مدل به صورت خودبرگشت‌دهنده (\lr{Autoregressive}) رفتار کرده و قادر به تولید متن‌های طولانی و منسجم باشد.
+
+\subsubsection*{مفهوم پیش‌بینی توکن بعدی (\lr{Next-Token Prediction})}
+در این فاز، کل پیکره متنی به زیرتوالی‌هایی با طول مشخص به نام \lr{block\_size} (یا پنجره محتوا - \lr{Context Window}) تقسیم می‌شود. برای هر قطعه از ورودی ($x$)، متناظر با آن یک قطعه هدف ($y$) تعریف می‌شود که دقیقاً همان توالی است، اما به اندازه \textbf{یک گام به سمت چپ} جابجا شده است.
+
+این طراحی هوشمندانه به ما اجازه می‌دهد که از یک پنجره به طول $N$، تعداد $N$ مسئله پیش‌بینی مستقل استخراج کنیم:
+\begin{itemize}
+	\item در موقعیت زمان $t = 0$، مدل کاراکتر $x[0]$ را می‌بیند و باید هدف $y[0] = x[1]$ را پیش‌بینی کند.
+	\item در موقعیت زمان $t = 1$، مدل کاراکترهای $x[0, 1]$ را می‌بیند و باید هدف $y[1] = x[2]$ را پیش‌بینی کند.
+	\item به طور کلی در هر گام $t$، پیش‌بینی بر اساس توالی گذشته $x[:t+1]$ انجام می‌شود و مدل حق دیدن آینده را ندارد. این محدودیت با استفاده از \textbf{توجه علّی} (\lr{Causal Attention}) در ساختار ترنسفورمر اعمال خواهد شد.
+\end{itemize}
+
+\subsubsection*{تحلیل بصری رابطه جابجایی \lr{(Shift Relationship)}}
+برای درک ملموس‌تر این ساختار، نمونه کوتاه متنی \lr{"To be or"} تصویرسازی شده است:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/xy.png}
+	\caption{رابطه جابجایی یک گام به چپ میان ورودی $x$ و هدف $y$ برای عبارت \lr{"To be or"}}
+	\label{fig:shift_relationship}
+\end{figure}
+
+\paragraph{تفسیر نمودار:}
+همان‌طور که در شکل~\ref{fig:shift_relationship} مشخص است:
+\begin{itemize}
+	\item \textbf{رشته ورودی ($x$):} شامل کاراکترهای \lr{['T', 'o', ' ', 'b', 'e', ' ', 'o', 'r']} در قالب جعبه‌های آبی‌رنگ است.
+	\item \textbf{رشته هدف ($y$):} شامل کاراکترهای \lr{['o', ' ', 'b', 'e', ' ', 'o', 'r']} در قالب جعبه‌های نارنجی‌رنگ است که نسبت به $x$ یک واحد به چپ شیفت پیدا کرده‌اند.
+	\item برای مثال، ورودی اولین خانه در $x$ برابر با \lr{'T'} است و مدل باید یاد بگیرد که توکن بعدی یعنی \lr{'o'} (اولین خانه در $y$) را پیش‌بینی کند. اگر ورودی تا اندیس دوم یعنی \lr{"To "} باشد، هدف بعدی کاراکتر \lr{'b'} خواهد بود.
+\end{itemize}
+
+\subsubsection*{پیاده‌سازی تابع تولید بچ (\lr{get\_batch}) در JAX}
+در \lr{JAX}، بر خلاف فریمورک‌هایی مثل \lr{PyTorch}، مدیریت حالت‌های تصادفی با استفاده از کلیدهای صریح (\lr{PRNGKey}) انجام می‌شود تا محاسبات کاملاً خالص (\lr{Pure}) و تکرارپذیر باشند. تابع \lr{get\_batch} وظیفه دارد به صورت تصادفی اندیس‌های شروع را انتخاب کرده و بچ‌هایی از جفت‌های ورودی-هدف بسازد:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		import jax
+		import jax.numpy as jnp
+		import numpy as np
+		
+		def get_batch(key, source, batch_size, block_size):
+		
+		ix_key, key = jax.random.split(key)
+		ix = jax.random.randint(ix_key, (batch_size,), 0, len(source) - block_size - 1)
+		
+		
+		ix_np = np.asarray(ix)
+		
+		
+		x = jnp.stack([source[i : i + block_size] for i in ix_np])
+		y = jnp.stack([source[i + 1 : i + 1 + block_size] for i in ix_np])
+		
+		return x, y
+	\end{lstlisting}
+\end{latin}
+
+تفسیر فنی پیاده‌سازی:
+\begin{itemize}
+	\item \textbf{تابع \lr{jax.random.randint}:} تولید اندیس‌ها با استفاده از معماری تولید عدد تصادفی بدون‌حالت (\lr{Stateless}) در JAX صورت می‌گیرد. هر بار که این تابع صدا زده می‌شود، باید یک کلید منحصربه‌فرد (\lr{key}) به آن پاس داده شود.
+	\item \textbf{محدوده مجاز اندیس‌ها:} بازه انتخاب اندیس‌ها بین $0$ تا $L - N - 1$ است (که در آن $L$ طول کل آرایه داده و $N$ برابر با \lr{block\_size} است). این کار تضمین می‌کند که اسلایس $x[i:i+N]$ و اسلایس شیفت‌یافته $y[i+1:i+1+N]$ از مرز انتهای آرایه فراتر نروند.
+	\item \textbf{شکل داده خروجی:} تنسورهای خروجی دارای ابعاد \lr{(batch\_size, block\_size)} خواهند بود. این ساختار دو بعدی کارآمد، به طور همزمان فرآیند آموزش را روی کل بچ و در طول کل پنجره محتوا به موازات پیش می‌برد.
+\end{itemize}
+
+\subsection{ارزیابی عملکرد تولید بچ‌ها \lr{(Batch Generation)}}
+
+پس از پیاده‌سازی تابع \lr{get\_batch}، برای اطمینان از اینکه داده‌ها به درستی و طبق منطق «پیش‌بینی توکن بعدی» تولید می‌شوند، یک مرحله ارزیابی دقیق اجرا کردیم. این بررسی شامل صحت‌سنجی انطباق ورودی-هدف و مشاهده بصری یک بچ واقعی از داده‌هاست.
+
+\subsubsection*{کد ارزیابی (Self-Check)}
+کد زیر با استفاده از یک بذر تصادفی ثابت (\lr{PRNGKey})، یک بچ کوچک ایجاد کرده و زنجیره پیش‌بینی‌ها را گام‌به‌گام چاپ می‌کند تا صحت انتقال اطلاعات بررسی شود:
+
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		xb, yb = get_batch(jax.random.PRNGKey(1), train_data, 4, 8)
+		
+		
+		assert xb.shape == yb.shape == (4, 8)
+		
+		
+		print("context x[0]:", repr(decode(xb[0])))
+		print("target  y[0]:", repr(decode(yb[0])))
+		
+		
+		for t in range(8):
+		print(f"  given {repr(decode(xb[0][:t+1])):<12} -> predict {repr(decode([yb[0][t]]))}")
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{خروجی نتایج و تحلیل منطق پیش‌بینی}
+خروجی کنسول به شرح زیر است:
+\begin{latin}
+	\begin{verbatim}
+		context x[0]: 'the ice,'
+		target  y[0]: 'he ice,\n'
+		given 't'          -> predict 'h'
+		given 'th'         -> predict 'e'
+		given 'the'        -> predict ' '
+		given 'the '       -> predict 'i'
+		given 'the i'      -> predict 'c'
+		given 'the ic'     -> predict 'e'
+		given 'the ice'    -> predict ','
+		given 'the ice,'   -> predict '\n'
+	\end{verbatim}
+\end{latin}
+
+تفسیر نتایج:
+همان‌طور که مشاهده می‌شود، برای هر ورودی (\lr{given}), مدل باید کاراکتر بعدی (\lr{predict}) را پیش‌بینی کند. دقت کنید که در گام آخر، مدل باید کاراکتر\texttt{\textbackslash n} را پیش‌بینی کند، که نشان می‌دهد تابع \lr{get\_batch} به‌خوبی توالی را به درستی شیفت داده است. این رابطۀ ۱ به ۱ دقیقاً همان چیزی است که برای آموزش مدل نیاز داریم.
+
+\subsubsection*{تحلیل بصری بچ داده‌ها}
+برای درک بهتر توزیع شناسه‌های توکن در یک بچ بزرگتر (۱۲ ردیف در ۲۴ ستون)، نمودار حرارتی (\lr{Heatmap}) زیر رسم شد:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/tokenids.png}
+	\caption{نمودار حرارتی \lr{(Heatmap)} از یک بچ نمونه شامل ۱۲ ردیف و ۲۴ ستون توکن}
+	\label{fig:batch_heatmap}
+\end{figure}
+
+\paragraph{تفسیر نمودار حرارتی:}
+\begin{itemize}
+	\item \textbf{محورها:} محور افقی نشان‌دهنده موقعیت در طول پنجره (\lr{position}) و محور عمودی نشان‌دهنده ردیف‌های بچ (\lr{row}) است.
+	\item \textbf{رنگ‌ها:} رنگ‌ها نشان‌دهنده \lr{token id} هستند. تنوع رنگی بالا در نمودار (از بنفش تیره تا زرد روشن) نشان می‌دهد که توکن‌ها به‌صورت تصادفی و در سراسر دامنه واژگان (۶۵ کاراکتر) توزیع شده‌اند.
+	\item \textbf{کاربرد:} این نمایش بصری به ما اطمینان می‌دهد که \lr{get\_batch} نمونه‌های متنوعی از سراسر پیکره متنی انتخاب کرده است و مدل در حین آموزش با داده‌های یکنواخت و تکراری مواجه نمی‌شود. این تنوع برای جلوگیری از بیش‌برازش و بهبود تعمیم‌پذیری مدل بسیار حیاتی است.
+\end{itemize}
+
+\subsection{تحلیل آماری روابط کاراکترها \lr{(Bigram Transition Matrix)}}
+
+برای درک اینکه مدل دقیقاً چه چیزی را باید «یاد بگیرد»، ما از مدل ساده بیگرام استفاده کردیم. مدل بیگرام فرض می‌کند احتمال کاراکتر بعدی فقط به کاراکتر فعلی بستگی دارد. این تحلیل، دیدی از ساختار آماری داده‌های متنی به ما می‌دهد.
+
+\subsubsection*{کد پیاده‌سازی و استخراج احتمالات}
+کد زیر یک ماتریس $65 \times 65$ ایجاد می‌کند که فراوانی هر کاراکتر نسبت به کاراکتر قبلی خود را شمارش کرده و سپس آن را نرمال می‌کند:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		bigram = np.zeros((vocab_size, vocab_size))
+		ids = data[:200000]
+		np.add.at(bigram, (ids[:-1], ids[1:]), 1)
+		bigram_norm = bigram / (bigram.sum(axis=1, keepdims=True) + 1e-9)
+		fig, ax = plt.subplots(figsize=(7, 6))
+		im = ax.imshow(bigram_norm, cmap="magma")
+		ax.set_title("Bigram transition probabilities P(next char | current char)")
+		ax.set_xlabel("next character id"); ax.set_ylabel("current character id")
+		fig.colorbar(im, ax=ax); plt.tight_layout(); plt.show()
+		# a concrete row: what usually follows a space?
+		sp = stoi[" "]
+		top = np.argsort(-bigram_norm[sp])[:8]
+		print("after a space, most likely next chars:", [(itos[int(t)], round(float(bigram_norm[sp, t]), 3)) for t in top])
+	\end{lstlisting}
+\end{latin}
+
+\subsection{تحلیل بصری \lr{(Heatmap)}}
+تصویر حاصل (شکل \ref{fig:bigram_heatmap}) توزیع احتمالات انتقال را نشان می‌دهد:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{img/BIGRAM.png}
+	\caption{ماتریس احتمالات انتقال بیگرام: محور عمودی کاراکتر فعلی و محور افقی کاراکتر بعدی را نشان می‌دهد.}
+	\label{fig:bigram_heatmap}
+\end{figure}
+
+\textbf{تحلیل تصویر:}
+\begin{itemize}
+	\item \textbf{نقاط روشن:} نشان‌دهنده «قوانین» زبان هستند. جفت‌هایی که در زبان انگلیسی شکسپیر بسیار رایج‌اند (مثل ترکیب حروف در کلمات).
+	\item \textbf{پس‌زمینه سیاه:} نشان‌دهنده ترکیب‌های ممنوع یا بسیار نادر است (احتمال نزدیک به صفر).
+	\item \textbf{ساختار مورب:} نشان‌دهنده همبستگی محلی است که مدل ترنسفورمر در آینده با استفاده از مکانیزم \lr{Attention}، آن‌ها را در مقیاس بسیار وسیع‌تری فرا خواهد گرفت.
+\end{itemize}
+
+\subsection{بررسی یک نمونه: بعد از فضای خالی \lr{(Space)}}
+برای درک ملموس، بررسی کردیم که بعد از کاراکتر فضای خالی (\texttt{' '}) چه کاراکترهایی بیشترین احتمال را دارند:
+\begin{latin}
+	\begin{verbatim}
+		
+		[('t', 0.146), ('a', 0.08), ('h', 0.079), ('s', 0.066), 
+		('w', 0.065), ('m', 0.056), ('b', 0.048), ('o', 0.045)]
+	\end{verbatim}
+\end{latin}
+
+\paragraph{تفسیر آماری:} 
+خروجی بالا کاملاً با ساختار زبان انگلیسی همخوانی دارد. از آنجا که فضای خالی نشان‌دهنده شروع کلمه جدید است، احتمال بالایی وجود دارد که کلمه جدید با حروف پرکاربردی مثل 't' (شروع کلماتی مثل \lr{the}, \lr{to}) یا 'a' شروع شود. این تحلیل ثابت می‌کند که متن، تصادفی نیست و مدل با یادگیری این احتمالات می‌تواند «پیش‌بینی» کند.
+
+\section{دیجیکالا - مکانیزم توجه}
+
+\subsection{بخش دوم: پیاده‌سازی مکانیزم خود‌توجهی \lr{(Self-Attention)} در دیجی‌کالا}
+
+در این گام از توسعه مدل، سناریو به سمت تیم جست‌وجوی دیجی‌کالا و چالش پیش‌بینی عبارات در کادر جست‌وجوی بالای سایت متمایل می‌شود. مسئله اصلی، عبور از سیستم‌های سنتی تطابق پیشوند (\lr{Prefix Matching}) و رسیدن به یک سیستم مبتنی بر بافتار (\lr{Context-Aware Autocomplete}) است که بتواند تفاوت معنایی کلمات مشابه در بافت‌های مختلف (مانند تفاوت کلمه \lr{``case''} بعد از \lr{``phone''} با بعد از \lr{``court''}) را تشخیص دهد. کلید حل این مسئله، مکانیزم خود‌توجهی (\lr{Self-Attention}) است.
+
+\subsubsection*{مأموریت و منطق شهودی مکانیزم توجه \lr{(The Soft Dictionary Lookup)}}
+هسته اصلی این تمرین، شبیه‌سازی مکانیزم توجه به عنوان یک \textbf{جست‌وجوی نرم در دیکشنری (\lr{Soft Dictionary Lookup})} است. 
+در یک دیکشنری معمولی (سخت)، ما یک کلید (\lr{Query}) داریم، دقیقاً یک تطابق صریح پیدا می‌کنیم و مقدار (\lr{Value}) مربوط به آن را می‌خوانیم. اما در مکانیزم توجه:
+\begin{itemize}
+	\item هر موقعیت (توکن) یک پرس‌وجو (\lr{Query} یا $Q$) صادر می‌کند.
+	\item این پرس‌وجو با کلید (\lr{Key} یا $K$) تمام توکن‌های دیگر مقایسه می‌شود.
+	\item حاصل این مقایسه پس از عبور از لایۀ \lr{Softmax}، وزن‌های توجه را می‌سازد.
+	\item در نهایت، خروجی هر توکن از ترکیب خطی و نرم تمام مقادیر (\lr{Value} یا $V$) متناسب با وزن‌های به دست آمده محاسبه می‌شود. این کار اجازه می‌دهد اطلاعات توکن‌های دورتر (مثلاً کلمه \lr{phone}) بر روی توکن فعلی اثر بگذارد.
+\end{itemize}
+
+\subsubsection*{اجزای اصلی پیاده‌سازی در این تمرین}
+این تمرین عملی بر روی پنج ستون اصلی از ساختار لایه خود‌توجهی تک‌سر (\lr{Single-Head Attention}) تمرکز دارد:
+
+\paragraph{۱. مخلوط کردن اطلاعات بین توکن‌ها \lr{(Information Mixing)}:}
+توکن‌ها در ابتدای ورود به مدل، بردارهایی ایزوله هستند. مکانیزم توجه وظیفه دارد این بردارهای مستقل را بر اساس میزان ارتباط معنایی‌شان با یکدیگر ترکیب کند. بر خلاف شبکه پیچشی (\lr{CNN}) که محدوده دید محلی و ثابتی دارد، یا شبکه‌های بازگشتی (\lr{RNN}) که پردازش متوالی و کندی دارند، خود‌توجهی امکان ارتباط مستقیم توکن ابتدا و انتهای یک متن طولانی را در یک گام محاسباتی فراهم می‌سازد که برای اجرا روی شتاب‌دهنده‌ها با استفاده از کامپایل درجا در جکس (\lr{\texttt{jax.jit}}) فوق‌العاده بهینه است.
+
+\paragraph{۲. فرمول توجه ضرب نقطه‌ای مقیاس‌گذاری شده \lr{(Scaled Dot-Product)}:}
+رابطه ریاضی زیر اساس محاسبات این بخش است:
+\[
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_{\text{head}}}}\right) V
+\]
+یکی از نکات کلیدی این تمرین، درک علت تقسیم بر $\sqrt{d_{\text{head}}}$ است. اگر ابعاد بردارها ($d_{\text{head}}$) بزرگ باشد، ضرب نقطه‌ای $Q K^T$ مقادیر بسیار بزرگی تولید می‌کند. این مقادیر بزرگ، تابع \lr{Softmax} را به نواحی اشباع (نزدیک به صفر و یک) سوق می‌دهند که باعث ناپدید شدن گرادیان‌ها (\lr{Vanishing Gradients}) می‌شود. تقسیم بر جذر ابعاد، واریانس خروجی را به حدود $1$ بازمی‌گرداند و پایداری آموزش را تضمین می‌کند.
+
+\paragraph{۳. ماسک علّی \lr{(The Causal Mask)}:}
+برای مدل‌های خودهمبسته تولیدی (\lr{Autoregressive/Decoder-only}) مانند \lr{GPT}، مدل نباید اجازه داشته باشد در حین آموزش به توکن‌های آینده نگاه کند (پدیده \lr{Peeking at the future}). این محدودیت با اعمال یک ماتریس پایین مثلثی انجام می‌شود. پیش از اعمال لایۀ \lr{Softmax}، وزن‌های مربوط به موقعیت‌های آینده را با یک مقدار منفی بسیار بزرگ (مثلاً $-\infty$ یا $-1e9$) جایگزین می‌کنیم تا پس از \lr{Softmax} سهم آن‌ها دقیقاً صفر شود:
+\[
+M_{i, j} = 
+\begin{cases} 
+	0 & j \le i \\ 
+	-\infty & j > i 
+\end{cases}
+\]
+
+\paragraph{۴. کدگذاری موقعیتی سینوسی \lr{(Sinusoidal Positional Encoding)}:}
+از آنجا که مکانیزم توجه نسبت به ترتیب توکن‌ها متقارن یا جابه‌جایی‌پذیر (\lr{Permutation-Equivariant}) است (یعنی جابه‌جا کردن ترتیب ورودی‌ها صرفاً ترتیب خروجی‌ها را جابه‌جا می‌کند بدون اینکه ماهیت محاسبات تغییر کند)، باید اطلاعات موقعیت قرارگیری هر توکن را به صورت صریح به آن تزریق کنیم. در این بخش از فرکانس‌های سینوسی و کسینوسی با دوره‌های تناوب متفاوت استفاده می‌شود تا شناسه‌ای منحصربه‌فرد، کران‌دار بین $[-1, 1]$ و مستقل از طول توالی ایجاد شده به بردار امبدینگ توکن‌ها اضافه گردد:
+\[
+PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{\frac{2i}{d}}}\right), \quad PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{\frac{2i}{d}}}\right)
+\]
+
+\subsubsection*{اهداف خروجی تمرین}
+در پایان این سناریو، هدف پیاده‌سازی و صحت‌سنجی یک لایه خود‌توجهی تک‌سر (\lr{Single-Head Attention}) کاملاً کارآمد در \lr{JAX} است که ورودی‌های سه‌بعدی به فرمت \lr{\texttt{[batch\_size, seq\_len, d\_model]}} را دریافت کرده و پس از اعمال تصویرسازی‌های خطی، مقیاس‌گذاری ضرب نقطه‌ای، ماسک علّی و تزریق بردارهای موقعیت، خروجی اصلاح‌شده و بافت‌دار را محاسبه کند. این لایه سنگ بنای اصلی بلوک‌های \lr{Transformer} بزرگتر در بخش‌های بعدی خواهد بود.
+
+
+\subsection{\lr{Scaled Dot-Product Attention} و ماسک علّی}
+
+در این بخش، هدف پیاده‌سازی هسته اصلی مکانیزم توجه در ترنسفورمرها یعنی تابع \lr{scaled\_dot\_product\_attention} و همچنین تولید ماسک علّی با استفاده از تابع \lr{causal\_mask} است. این قسمت مهم‌ترین بخش دفترچه محسوب می‌شود زیرا منطق اصلی \lr{Self-Attention}، یعنی محاسبه امتیازهای توجه، مقیاس‌گذاری آن‌ها، اعمال ماسک زمانی و تولید وزن‌های نهایی توجه.
+
+\subsubsection*{توضیح سازوکار توجه}
+
+فرمول اصلی توجه به صورت زیر تعریف می‌شود:
+
+\[
+\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\left( \frac{QK^T}{\sqrt{d_{\mathrm{head}}}} \right) V
+\]
+
+در این فرمول:
+\begin{itemize}
+	\item ابتدا شباهت بین \lr{Query} و \lr{Key} با استفاده از ضرب ماتریسی $QK^T$ محاسبه می‌شود.
+	\item سپس این مقادیر بر $\sqrt{d_{\mathrm{head}}}$ تقسیم می‌شوند تا از اشباع شدن تابع \lr{softmax} و در نتیجه صفر شدن گرادیان‌ها جلوگیری شود.
+	\item اگر ماسک علّی وجود داشته باشد، امتیازهای مربوط به موقعیت‌های آینده با یک مقدار بسیار بزرگ منفی جایگزین می‌شوند تا وزن آن‌ها بعد از اعمال تابع \lr{softmax} دقیقاً به صفر میل کند.
+	\item در نهایت، وزن‌های توجه به ماتریس \lr{Value} ضرب می‌شوند تا خروجی نهایی حاصل شود.
+\end{itemize}
+
+\subsubsection*{کد پیاده‌سازی توابع \lr{causal\_mask} و \lr{scaled\_dot\_product\_attention}}
+
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		def causal_mask(T):
+		# lower triangular matrix
+		mask = jnp.tril(jnp.ones((T, T), dtype=bool))
+		return mask
+		
+		
+		def scaled_dot_product_attention(q, k, v, mask=None):
+		
+		# dimension of head
+		d_head = q.shape[-1]
+		
+		# compute attention scores
+		scores = jnp.matmul(q, jnp.swapaxes(k, -2, -1))
+		
+		# scale
+		scores = scores / jnp.sqrt(d_head)
+		
+		# apply mask if provided
+		if mask is not None:
+		scores = jnp.where(mask, scores, -1e9)
+		
+		# softmax to get attention weights
+		attn = jax.nn.softmax(scores, axis=-1)
+		
+		# weighted sum of values
+		out = jnp.matmul(attn, v)
+		
+		return out, attn
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح کد:}
+\begin{itemize}
+	\item تابع \lr{causal\_mask} با استفاده از دستور \lr{jnp.tril} یک ماتریس بولی پایین‌مثلثی به ابعاد $T\times T$ تولید می‌کند تا دسترسی و نگاه به آینده در توالی غیرمجاز شود.
+	\item در تابع \lr{scaled\_dot\_product\_attention}:
+	\begin{itemize}
+		\item بعد ویژگی‌های هر هد یا همان \lr{d\_head} از روی آخرین محور متغیر \lr{q} استخراج می‌شود.
+		\item امتیازهای توجه با ضرب ماتریسی دسته‌ای بین \lr{q} و ترانهادهٔ تعویض‌شدهٔ \lr{k} با استفاده از \lr{jnp.swapaxes} محاسبه می‌گردد.
+		\item امتیازها برای حفظ پایداری گرادیان بر $\sqrt{d_{\mathrm{head}}}$ تقسیم می‌شوند.
+		\item در صورت فعال بودن ماسک، موقعیت‌هایی که مقدار آن‌ها در ماسک برابر \lr{False} است، با مقدار منفی بسیار بزرگ (\lr{-1e9}) پر می‌شوند.
+		\item در نهایت پس از اعمال تابع \lr{jax.nn.softmax} روی محور آخر، ضرب وزن‌های توجه در ماتریس \lr{v} خروجی نهایی را تشکیل می‌دهد.
+	\end{itemize}
+\end{itemize}
+
+\subsubsection*{کد تست و اعتبارسنجی پیاده‌سازی}
+
+برای بررسی صحت عملکرد مکانیزم توجه و ماسک علّی از تست خودکار زیر استفاده شده است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# Self-check: rows of the attention matrix are probabilities, and the mask zeros the future.
+		_k = jax.random.PRNGKey(0)
+		q = jax.random.normal(jax.random.fold_in(_k, 11), (5, 8))
+		k = jax.random.normal(jax.random.fold_in(_k, 12), (5, 8))
+		v = jax.random.normal(jax.random.fold_in(_k, 13), (5, 8))
+		
+		m = causal_mask(5)
+		assert m.shape == (5, 5) and m.dtype == jnp.bool_
+		assert bool(m[0, 0]) and not bool(m[0, 4]) and bool(m[4, 0])
+		
+		out_nomask, attn_nomask = scaled_dot_product_attention(q, k, v)
+		out_mask, attn_mask = scaled_dot_product_attention(q, k, v, m)
+		assert out_mask.shape == (5, 8) and attn_mask.shape == (5, 5)
+		assert jnp.allclose(attn_nomask.sum(axis=-1), 1.0, atol=1e-6)
+		assert jnp.allclose(attn_mask.sum(axis=-1), 1.0, atol=1e-6)
+		assert float(jnp.max(jnp.triu(attn_mask, k=1))) < 1e-6   # nothing above the diagonal
+		print("OK: attention rows sum to 1; the causal mask zeros every future position")
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل تست:}
+این تست صحت موارد زیر را تضمین می‌کند:
+\begin{itemize}
+	\item خروجی تابع تولید ماسک علّی دارای فرمت بولی و ابعاد کاملاً صحیح $5\times 5$ باشد و مقادیر بالای قطر  صفر باشند.
+	\item مجموع مقادیر توزیع احتمال در هر سطر از ماتریس توجه (هم در حالت با ماسک و هم بدون ماسک) با خطای بسیار کوچک عددی دقیقاً برابر با $1.0$ باشد.
+	\item با اعمال ماسک علّی، مقادیر بخش‌های آینده (بالای قطر اصلی) دقیقاً صفر شده و هیچ داده‌ای از آینده نشت نکند.
+\end{itemize}
+
+\subsubsection*{خروجی اجرای تست}
+\begin{latin}
+	\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+		OK: attention rows sum to 1; the causal mask zeros every future position
+	\end{lstlisting}
+\end{latin}
+
+این خروجی گواهی بر این است که:
+\begin{itemize}
+	\item فرآیند بهنجارسازی به درستی عمل کرده است.
+	\item ماسک علّی تمام درایه‌های غیرمجاز بالا‌مثلثی را پیش از اعمال لایه نرم‌بیشینه فیلتر نموده است.
+	\item توابع پیاده‌سازی شده در چارچوب \lr{JAX} از کارایی عددی و دقت ریاضی موردنیاز برخوردار هستند.
+\end{itemize}
+
+
+
+\subsection{بصری‌سازی ماتریس توجه: تقابل حالت آزاد و علّی}
+
+پس از پیاده‌سازی محاسباتی، برای درک بهتر نحوه توزیع وزن‌ها و تأثیر ماسک، ماتریس‌های توجه خروجی را با استفاده از کتابخانه \lr{matplotlib} به صورت نقشه حرارتی (\lr{Heatmap}) ترسیم می‌کنیم. این بصری‌سازی به ما اجازه می‌دهد تا ببینیم هر توکن (\lr{Query}) به کدام توکن‌های دیگر (\lr{Key}) توجه کرده است.
+
+\subsubsection*{کد تولید نمودارهای مقایسه‌ای}
+
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 1 - attention heatmaps, with and without the causal mask, side by side.
+		fig, ax = plt.subplots(1, 2, figsize=(11, 4.2))
+		
+		# Full attention (no mask)
+		im0 = ax[0].imshow(np.array(attn_nomask), cmap="viridis", vmin=0, vmax=1)
+		ax[0].set_title("Full attention (no mask)")
+		ax[0].set_xlabel("key position (attended to)")
+		ax[0].set_ylabel("query position")
+		fig.colorbar(im0, ax=ax[0], fraction=0.046)
+		
+		# Causal attention (lower triangular)
+		im1 = ax[1].imshow(np.array(attn_mask), cmap="viridis", vmin=0, vmax=1)
+		ax[1].set_title("Causal attention (lower triangular)")
+		ax[1].set_xlabel("key position (attended to)")
+		ax[1].set_ylabel("query position")
+		fig.colorbar(im1, ax=ax[1], fraction=0.046)
+		
+		plt.tight_layout()
+		plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{تحلیل و تفسیر خروجی بصری}
+
+تصویر حاصل از اجرای کد بالا (شکل پایین)، تفاوت بنیادی بین مکانیزم توجه آزاد و مکانیزم توجه در مدل‌های مولد (\lr{Generative}) را نشان می‌دهد:
+
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/cf.png}
+	\caption{مقایسه توزیع وزن‌های توجه در دو حالت بدون ماسک (چپ) و با اعمال ماسک علّی (راست)}
+	\label{fig:attention_heatmap}
+\end{figure}
+
+\paragraph{۱. تحلیل نمودار \lr{Full Attention} (سمت چپ):}
+در این حالت، هیچ محدودیتی برای نگاه به آینده وجود ندارد. همان‌طور که در تصویر مشخص است، تمام خانه‌های ماتریس (حتی بخش بالای قطر اصلی) دارای رنگ و مقدار هستند. این یعنی مثلاً توکن شماره ۱ می‌تواند به اطلاعات توکن شماره ۴ دسترسی داشته باشد. این ساختار برای مدل‌های \lr{Encoder-only} (مانند \lr{BERT}) مناسب است که کل متن را یکباره می‌بینند.
+
+\paragraph{۲. تحلیل نمودار \lr{Causal Attention} (سمت راست):}
+در این نمودار، تأثیر تابع \lr{causal\_mask} به وضوح دیده می‌شود. ماتریس توجه به یک ماتریس \textbf{پایین‌مثلثی} تبدیل شده است.
+\begin{itemize}
+	\item \textbf{ناحیه تیره (بنفش تیره):} تمام درایه‌های بالای قطر اصلی که مقدار آن‌ها توسط ماسک به $-\infty$ میل کرده بود، پس از عبور از \lr{softmax} به صفر تبدیل شده‌اند (رنگ بنفش تیره در نوار \lr{colorbar} معادل مقدار $0.0$ است).
+	\item \textbf{بافتار علّی:} هر سطر (موقعیت \lr{query}) فقط مجاز است به ستون‌هایی (موقعیت‌های \lr{key}) توجه کند که اندیس آن‌ها کوچکتر یا مساوی خودش است. برای مثال، سطر ۲ فقط در ستون‌های ۰، ۱ و ۲ دارای مقدار است.
+	\item \textbf{تمرکز توجه:} رنگ‌های روشن‌تر (زرد و سبز) نشان‌دهنده وزن‌های بالاتر هستند که نشان می‌دهد مدل در هر مرحله بر روی کدام کلمات قبلی تمرکز بیشتری دارد.
+\end{itemize}
+
+این بصری‌سازی تأیید می‌کند که مدل ما به درستی محدود شده است تا در هنگام آموزش، جواب (توکن بعدی) را "تقلب" نکند و صرفاً بر اساس تاریخچه گذشته یاد بگیرد. این همان ویژگی اصلی است که امکان تولید متن به صورت خود‌بازگشتی (\lr{Autoregressive}) را در مدل‌های خانواده \lr{GPT} فراهم می‌کند.
+
+\subsection{چرا امتیازهای توجه را بر $\sqrt{d_{\mathrm{head}}}$ تقسیم می‌کنیم؟}
+
+یکی از ارکان حیاتی در مکانیزم توجه ضرب نقطه‌ای، مقیاس‌گذاری (\lr{Scaling}) امتیازها پیش از اعمال تابع \lr{softmax} است. در این بخش، منطق تئوریک پشت این تقسیم را با یک تحلیل ریاضی شروع کرده و سپس با اجرای یک آزمایش تجربی در \lr{JAX} صحت آن را اثبات می‌کنیم.
+
+\subsubsection*{تحلیل و اثبات ریاضی اثر بعد هد بر واریانس}
+
+فرض کنید دو بردار پرس‌وجو ($q$) و کلید ($k$) به طول $d$ (همان $d_{\mathrm{head}}$) داشته باشیم که درایه‌های آن‌ها به صورت مستقل و هم‌توزیع (\lr{i.i.d.}) از یک توزیع نرمال استاندارد با میانگین صفر و واریانس یک نمونه‌برداری شده‌اند:
+\[
+q_i, k_i \sim \mathcal{N}(0, 1) \quad \Rightarrow \quad E[q_i] = E[k_i] = 0, \quad \mathrm{Var}(q_i) = \mathrm{Var}(k_i) = 1
+\]
+
+ضرب نقطه‌ای این دو بردار به صورت زیر تعریف می‌شود:
+\[
+q \cdot k = \sum_{i=1}^{d} q_i k_i
+\]
+
+با توجه به مستقل بودن مؤلفه‌ها، میانگین این ضرب نقطه‌ای برابر است با:
+\[
+E[q \cdot k] = \sum_{i=1}^{d} E[q_i] E[k_i] = 0
+\]
+
+برای محاسبه واریانس هر سهم $q_i k_i$ داریم:
+\[
+\mathrm{Var}(q_i k_i) = E[q_i^2 k_i^2] - (E[q_i k_i])^2 = E[q_i^2] E[k_i^2] - 0 = (1)(1) = 1
+\]
+
+از آنجا که تمام جملات مجموع مستقل هستند، واریانس کلِ ضرب نقطه‌ای برابر با مجموع واریانس تک‌تک جملات خواهد بود:
+\[
+\mathrm{Var}(q \cdot k) = \sum_{i=1}^{d} \mathrm{Var}(q_i k_i) = d
+\]
+
+بنابراین، واریانس ضرب نقطه‌ای خام به طور خطی با بعد بردار ($d$) افزایش می‌یابد. 
+
+وقتی $d$ بزرگ باشد (مثلاً ۲۵۶)، مقادیر ضرب نقطه‌ای می‌توانند بسیار بزرگ (مثبت یا منفی) شوند. هنگام اعمال تابع \lr{softmax}، این مقادیر بزرگ باعث می‌شوند که خروجی لایه به یک توزیع شبه‌تک‌مقداری (\lr{One-hot}) تبدیل شده و در نتیجه، گرادیان در بیشتر نقاط به شدت به صفر نزدیک شود (\lr{Vanishing Gradients}).
+
+برای حل این مشکل، ضرب نقطه‌ای بر $\sqrt{d}$ تقسیم می‌شود. واریانس متغیر جدید برابر خواهد بود با:
+\[
+\mathrm{Var}\left( \frac{q \cdot k}{\sqrt{d}} \right) = \frac{1}{d} \mathrm{Var}(q \cdot k) = \frac{d}{d} = 1
+\]
+
+این تقسیم هوشمندانه تضمین می‌کند که واریانس ورودی‌های تابع \lr{softmax} همواره در حدود $1.0$ باقی بماند؛ صرف‌نظر از اینکه بعد هد چقدر بزرگ انتخاب شده باشد.
+
+\subsubsection*{پیاده‌سازی آزمایش تجربی در \lr{JAX}}
+
+کد زیر برای تولید بردارهای تصادفی در ابعاد مختلف ($d \in \{4, 16, 64, 256\}$) و محاسبه تجربی واریانس در دو حالت خام و مقیاس‌گذاری‌شده نوشته شده است:
+
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 2 - variance of q.k grows ~d, but q.k / sqrt(d) stays ~1.
+		dims = [4, 16, 64, 256]
+		raw_var, scaled_var = [], []
+		key = jax.random.PRNGKey(2)
+		
+		for d in dims:
+		key, k1, k2 = jax.random.split(key, 3)
+		qd = jax.random.normal(k1, (20000, d))
+		kd = jax.random.normal(k2, (20000, d))
+		dots = jnp.sum(qd * kd, axis=-1)           # one dot product per row
+		raw_var.append(float(jnp.var(dots)))
+		scaled_var.append(float(jnp.var(dots / jnp.sqrt(d))))
+		
+		fig, ax = plt.subplots(1, 2, figsize=(11, 3.6))
+		ax[0].plot(dims, raw_var, "-o", color="#0099cc", label="Var(q.k)")
+		ax[0].plot(dims, dims, "--", color="#999", label="y = d (reference)")
+		ax[0].set_title("Raw dot-product variance grows with d")
+		ax[0].set_xlabel("d_head"); ax[0].set_ylabel("variance"); ax[0].legend()
+		
+		ax[1].plot(dims, scaled_var, "-o", color="#ff8a00", label="Var(q.k / sqrt(d))")
+		ax[1].axhline(1.0, ls="--", color="#999", label="y = 1 (reference)")
+		ax[1].set_title("Scaled dot-product variance stays ~1")
+		ax[1].set_xlabel("d_head"); ax[1].set_ylabel("variance"); ax[1].set_ylim(0, 2); ax[1].legend()
+		
+		plt.tight_layout()
+		plt.show()
+		
+		print("raw variances :", [round(x, 1) for x in raw_var])
+		print("scaled vars   :", [round(x, 3) for x in scaled_var])
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح خط‌به‌خط کد پیاده‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{dims = [4, 16, 64, 256]}}: تعریف ابعاد مختلف هد جهت ارزیابی تأثیر اندازه بعد بر رفتار واریانس.
+	\item \lr{\texttt{jax.random.split(key, 3)}}: تقسیم کلید تصادفی در جکس به ۳ کلید جدید برای حفظ خاصیت بدون‌حالت بودن (\lr{Stateless}) تولید اعداد تصادفی.
+	\item \lr{\texttt{jax.random.normal(..., (20000, d))}}: ایجاد ۲۰,۰۰۰ نمونه بردار جفت پرس‌وجو و کلید به طول $d$ برای به دست آوردن تخمین آماری دقیق و بدون نویز.
+	\item \lr{\texttt{jnp.sum(qd * kd, axis=-1)}}: انجام ضرب نقطه‌ای سطر به سطر (محاسبه مقدار روی محور آخر).
+	\item \lr{\texttt{jnp.var(...)}}: محاسبه واریانس تجربی مقادیر ضرب نقطه‌ای حاصل برای کل نمونه‌ها.
+	\item ترسیم نمودارها در قالب دو زیرنمودار (\lr{subplots}) جهت مقایسه مستقیم رشد خطی واریانس خام در برابر ثبات واریانس مقیاس‌گذاری‌شده.
+\end{itemize}
+
+\subsubsection*{خروجی عددی آزمایش}
+
+پس از اجرای کد بالا، نتایج عددی زیر حاصل شد:
+\begin{latin}
+	\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+		raw variances : [4.0, 15.8, 63.8, 264.3]
+		scaled vars   : [0.989, 0.987, 0.997, 1.033]
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل نتایج عددی:}
+\begin{itemize}
+	\item \textbf{واریانس خام (\lr{raw variances}):} برای ابعاد ۴، ۱۶، ۶۴ و ۲۵۶، واریانس‌های تجربی به ترتیب برابر با $4.0$، $15.8$، $63.8$ و $264.3$ شده‌اند. این مقادیر تطابق شگفت‌انگیزی با پیش‌بینی تئوری ($Var = d$) دارند و روند رشد کاملاً خطی را نشان می‌دهند.
+	\item \textbf{واریانس مقیاس‌گذاری‌شده (\lr{scaled vars}):} با اعمال تقسیم بر $\sqrt{d}$، واریانس برای تمام ابعاد در محدوده بسیار نزدیک به عدد یک ($0.989$ تا $1.033$) ثابت مانده است. این نشان می‌دهد فرآیند نرمال‌سازی با موفقیت اثر بعد بر روی شدت تغییرات خروجی را خنثی کرده است.
+\end{itemize}
+
+\subsubsection*{درج و تحلیل نمودارهای خروجی}
+
+نمودارهای حاصل از این شبیه‌سازی در شکل زیر نمایش داده شده‌اند:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/variance.png}
+	\caption{نمودار سمت چپ رشد خطی واریانس ضرب نقطه‌ای خام با افزایش بعد را نشان می‌دهد، در حالی که نمودار سمت راست پایداری واریانس حول مقدار ۱ را پس از مقیاس‌گذاری به تصویر می‌کشد}
+	\label{fig:variance_scaling}
+\end{figure}
+
+\paragraph{تحلیل بصری نمودارها:}
+\begin{itemize}
+	\item \textbf{نمودار سمت چپ (واریانس خام - آبی):} خط پیوستهٔ واریانس حاصل از محاسبات ما کاملاً بر روی خط‌چین خاکستری مرجع ($y = d$) منطبق شده است. این یعنی با بزرگ شدن ابعاد لایه‌ها در ترنسفورمرهای بزرگ، دامنه عددی خروجی لایه توجه پیش از \lr{softmax} به شدت گسترده و غیرقابل کنترل می‌شود.
+	\item \textbf{نمودار سمت راست (واریانس مقیاس‌گذاری‌شده - نارنجی):} منحنی نارنجی رنگ به صورت یک خط کاملاً افقی و پایدار، منطبق بر خط مرجع $y = 1$ قرار گرفته است. این یعنی مستقل از اینکه ابعاد مدل چقدر تغییر کند، لایهٔ \lr{softmax} ورودی‌هایی با مقیاس عددی ثابت دریافت خواهد کرد.
+\end{itemize}
+
+این آزمایش تجربی به وضوح نشان می‌دهد که تقسیم امتیازها بر جذر بعد هد ($\sqrt{d_{\mathrm{head}}}$) ضامن پایداری عددی شبکه‌های عمیق ترنسفورمر بوده و از بروز پدیده ناپدید شدن گرادیان‌ها در لایه توجه جلوگیری می‌نماید.
+
+\subsection{کدگذاری موقعیتی سینوسی (\lr{Sinusoidal Positional Encoding})}
+
+مکانیزم توجه ترنسفورمر به دلیل ماهیت جایگشت‌پذیری (\lr{Permutation Equivariance})، هیچ درکی از ترتیب توکن‌ها ندارد. برای رفع این نقیصه، باید اطلاعات موقعیتی هر توکن به صورت برداری منحصر‌به‌فرد به بردار ویژگی‌های ورودی آن اضافه گردد. در این بخش، بر اساس فرمول ارائه شده در مقاله اصلی ترنسفورمر (\lr{Attention Is All You Need})، کدگذاری موقعیتی سینوسی را پیاده‌سازی و تحلیل می‌کنیم.
+
+\subsubsection*{فرمولاسیون ریاضی کدگذاری موقعیتی}
+
+برای یک توالی به طول $T$ و بعد مدل $d$، بردار موقعیت برای توکن در موقعیت $pos$ ($0 \le pos < T$) در بعد ویژگی $i$ ($0 \le i < d$) به صورت زیر محاسبه می‌شود:
+
+\[
+PE_{(pos, 2k)} = \sin\left(\frac{pos}{10000^{\frac{2k}{d}}}\right)
+\]
+\[
+PE_{(pos, 2k+1)} = \cos\left(\frac{pos}{10000^{\frac{2k}{d}}}\right)
+\]
+
+در این فرمول، شاخص $2k$ نشان‌دهندۀ ابعاد زوج و $2k+1$ نشان‌دهندۀ ابعاد فرد است. رابطۀ بالا را می‌توان به کمک متغیر نرخ زاویه (\lr{angle rate}) بازنویسی کرد:
+
+\[
+\theta_{pos, i} = pos \cdot \omega_i \quad , \quad \omega_i = \frac{1}{10000^{\frac{2 \lfloor i/2 \rfloor}{d}}}
+\]
+
+دلیل جفت کردن فرکانس ابعاد مجاور ($2 \lfloor i/2 \rfloor$) این است که بردارهای زوج و فرد مجاور فرکانس یکسانی را به اشتراک بگذارند. این ویژگی باعث می‌شود که بردارهای موقعیت‌های نسبی ($pos + k$) به صورت خطی از روی بردار موقعیت فعلی ($pos$) قابل بازیابی و یادگیری توسط شبکه باشند.
+
+\subsubsection*{پیاده‌سازی برداری در \lr{JAX} (بدون استفاده از حلقه)}
+
+برای پیاده‌سازی بهینه این الگوریتم روی شتاب‌دهنده‌ها، از قابلیت پخش (\lr{Broadcasting}) در کتابخانه \lr{JAX} استفاده شده است تا محاسبات بدون نیاز به حلقه‌های پایتونی سنگین انجام پذیرد:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		def positional_encoding(T, d):
+		# column vector of positions (T, 1)
+		pos = jnp.arange(T)[:, None]
+		
+		# row vector of dimension indices (1, d)
+		i = jnp.arange(d)[None, :]
+		
+		# compute angle rates
+		angle_rates = 1.0 / (10000 ** ((2 * (i // 2)) / d))
+		
+		# compute angles via broadcasting -> shape (T, d)
+		angles = pos * angle_rates
+		
+		# apply sin to even indices, cos to odd indices
+		pe = jnp.where(i % 2 == 0,
+		jnp.sin(angles),
+		jnp.cos(angles))
+		return pe
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح خط‌به‌خط منطق پیاده‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{pos = jnp.arange(T)[:, None]}}: ایجاد یک بردار ستونی به ابعاد $T \times 1$ شامل اندیس موقعیت‌ها.
+	\item \lr{\texttt{i = jnp.arange(d)[None, :]}}: ایجاد یک بردار سطری به ابعاد $1 \times d$ شامل اندیس ویژگی‌ها.
+	\item \lr{\texttt{angle\_rates}}: محاسبه نرخ فرکانس با فرمول ریاضی فوق به گونه‌ای که برای هر دو بعد متوالی زوج و فرد (با استفاده از \lr{\texttt{i // 2}})، یک نرخ زاویه یکسان به دست آید.
+	\item \lr{\texttt{angles = pos * angle\_rates}}: با استفاده از ویژگی پخش (\lr{Broadcasting}) در جکس، بردار ستونی $T \times 1$ در بردار سطری $1 \times d$ ضرب خارجی شده و ماتریسی با ابعاد $T \times d$ تولید می‌کند که درایه $(pos, i)$ آن برابر حاصل‌ضرب موقعیت در نرخ فرکانس است.
+	\item \lr{\texttt{jnp.where(i \% 2 == 0, ...)}}: بررسی زوج بودن اندیس بعد. اگر اندیس زوج باشد، تابع سینوس روی زاویه اعمال می‌شود و اگر فرد باشد، کسینوس اعمال می‌گردد. خروجی نهایی ماتریسی به ابعاد $T \times d$ خواهد بود.
+\end{itemize}
+
+\subsubsection*{تست درستی عملکرد کدگذاری موقعیتی}
+
+جهت اعتبارسنجی ابعاد ماتریس خروجی و قرارگیری مقادیر در محدوده مجاز توابع مثلثاتی (بازه $[-1, 1]$)، از اسکریپت ارزیابی زیر استفاده شد:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# Self-check: shape is (T, d) and every value lies in [-1, 1].
+		pe = positional_encoding(32, 16)
+		assert pe.shape == (32, 16)
+		assert float(jnp.max(jnp.abs(pe))) <= 1.0 + 1e-6
+		print("OK: positional_encoding has shape", pe.shape, "and |values| <= 1")
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل تست و نتایج:}
+این تست بررسی می‌کند که:
+\begin{itemize}
+	\item ابعاد ماتریس خروجی برای توالی به طول ۳۲ و بعد مدل ۱۶ دقیقاً برابر با $32 \times 16$ باشد.
+	\item با توجه به خواص توابع سینوس و کسینوس، قدر مطلق تمام مقادیر موجود در ماتریس کوچک‌تر یا مساوی $1.0$ باشد (با در نظر گرفتن خطای اعشار عددی \lr{1e-6}).
+\end{itemize}
+
+\subsubsection*{خروجی اجرای تست}
+
+پس از اجرای تست فوق، خروجی زیر چاپ گردید:
+\begin{latin}
+	\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+		OK: positional_encoding has shape (32, 16) and |values| <= 1
+	\end{lstlisting}
+\end{latin}
+
+این خروجی تأیید می‌کند که ماتریس کدگذاری موقعیتی بدون خطا ساخته شده، از ابعاد موردانتظار برخوردار بوده و کران‌های مقادیر عددی خروجی کاملاً با خواص تئوری توابع مثلثاتی همخوانی دارد.
+
+\subsubsection*{بصری‌سازی و تحلیل نمودارهای کدگذاری موقعیتی}
+
+برای درک عمیق‌تر نحوه رفتار فرکانس‌ها و نحوه رمزگذاری اطلاعات موقعیتی، ماتریس کدگذاری موقعیتی را برای توالی به طول $T=100$ و بعد مدل $d=64$ ترسیم و تحلیل می‌کنیم. کد زیر جهت تولید نقشه حرارتی (\lr{Heatmap}) کل ماتریس و رسم نمودار تغییرات مقدار چند بعد خاص بر حسب موقعیت استفاده شده است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 3 - the positional-encoding table as a heatmap, plus a few sinusoid columns.
+		pe_big = np.array(positional_encoding(100, 64))
+		fig, ax = plt.subplots(1, 2, figsize=(12, 4.0))
+		im = ax[0].imshow(pe_big, cmap="RdBu", aspect="auto", vmin=-1, vmax=1)
+		ax[0].set_title("Sinusoidal positional encoding (100 x 64)")
+		ax[0].set_xlabel("embedding dimension"); ax[0].set_ylabel("position")
+		fig.colorbar(im, ax=ax[0], fraction=0.046)
+		
+		for dim in [0, 4, 8, 20, 40]:
+		ax[1].plot(pe_big[:, dim], label=f"dim {dim}")
+		ax[1].set_title("Individual dimensions oscillate at different frequencies")
+		ax[1].set_xlabel("position"); ax[1].set_ylabel("value"); ax[1].legend(fontsize=8)
+		plt.tight_layout()
+		plt.show()
+	\end{lstlisting}
+\end{latin}
+
+
+\paragraph{توضیح خط‌به‌خط کد بصری‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{pe\_big = np.array(positional\_encoding(100, 64))}}: تولید ماتریس کدگذاری موقعیتی با ابعاد $100 \times 64$ و تبدیل آن به آرایه نامپای جهت سازگاری کامل با کتابخانه ترسیم نمودار.
+	\item \lr{\texttt{ax[0].imshow(..., cmap="RdBu", vmin=-1, vmax=1)}}: رسم ماتریس به صورت نقشه حرارتی با پالت رنگی متقارن قرمز-سفید-آبی (\lr{RdBu}) که در آن مقادیر نزدیک به $-1$ با رنگ قرمز تیره، مقادیر صفر با رنگ سفید و مقادیر نزدیک به $+1$ با رنگ آبی تیره نمایش داده می‌شوند.
+	\item \lr{\texttt{ax[1].plot(pe\_big[:, dim], ...)}}: ترسیم تغییرات مقدار مولفه در راستای طول توالی (از موقعیت $0$ تا $99$) برای چند بعد خاص ($0$، $4$، $8$، $20$ و $40$) به صورت مجزا .
+\end{itemize}
+
+\subsubsection*{تحلیل و ارزیابی نمودارهای خروجی}
+
+نمودار حاصل از اجرای کد بالا در صفحۀ بعد آورده شده است.
+
+
+\paragraph{تحلیل نقشه حرارتی (نمودار سمت چپ):}
+\begin{itemize}
+	\item \textbf{روند تغییر فرکانس:} در ابعاد اولیه (سمت چپ نقشه حرارتی، نزدیک به صفر)، تغییرات رنگ به صورت نوارهای بسیار باریک و متناوب قرمز و آبی دیده می‌شود. این امر نشان‌دهنده فرکانس بالای نوسانات در ابعاد پایین است که اطلاعات موقعیتی با جزئیات دقیق (\lr{Fine-grained}) را ثبت می‌کنند.
+	\item \textbf{گذار به فرکانس‌های پایین:} با حرکت به سمت ابعاد بزرگتر (راستِ نقشه حرارتی)، طول موج‌ها به شدت افزایش یافته و رنگ‌ها یکنواخت‌تر می‌شوند. در ابعاد انتهایی (نزدیک به ۶۴)، تغییرات رنگ به سختی در طول ۱۰۰ توکن رخ می‌دهد که نشان‌دهنده ثبت اطلاعات موقعیتی کلی و در ابعاد بزرگ (\lr{Coarse-grained}) است.
+\end{itemize}
+
+\paragraph{تحلیل نمودار نوسانات ابعاد منفرد (نمودار سمت راست):}
+\begin{itemize}
+	\item \textbf{بعد 0 (\lr{dim 0} - آبی):} دارای کوتاه‌ترین طول موج و بالاترین فرکانس نوسان است. این موج سینوسی به سرعت بین مقادیر $+1$ و $-1$ نوسان می‌کند و برای تفکیک توکن‌های بسیار نزدیک به کار می‌رود.
+	\item \textbf{ابعاد میانی (\lr{dim 4}، \lr{dim 8} و \lr{dim 20}):} با افزایش شاخص بعد، طول موج‌ها به تدریج بزرگتر می‌شوند. به عنوان مثال، بعد ۲۰ (\lr{dim 20} - قرمز) تنها یک سیکل نوسان کامل را در طول کل ۱۰۰ توکن تجربه می‌کند.
+	\item \textbf{بعد 40 (\lr{dim 40} - بنفش):} فرکانس بسیار پایینی دارد، به طوری که در طول ۱۰۰ توکن حتی نیمی از یک دوره تناوب را هم طی نکرده و رفتاری تقریباً خطی و صعودی ملایم از صفر تا حدود $0.3$ را نشان می‌دهد. این ابعاد برای درک روابط فواصل دوردست در متن‌های طولانی کاربرد دارند.
+\end{itemize}
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\textwidth]{img/dim.png}
+	\caption{نقشه حرارتی ماتریس کدگذاری موقعیتی سینوسی (سمت چپ) و رفتار نوسانی ابعاد مختلف مدل بر حسب موقعیت با فرکانس‌های گوناگون (سمت راست).}
+	\label{fig:positional_encoding_visual}
+\end{figure}
+
+این ساختار فرکانسی چندگانه تضمین می‌کند که ترنسفورمر قادر است روابط وابستگی محلی (توکن‌های مجاور با ابعاد فرکانس بالا) و روابط ساختاری بلندمدت (ابعاد فرکانس پایین) را به طور هم‌زمان و با دقت بالا یاد بگیرد.
+
+
+\subsection{خود-توجهی تک‌سره (\lr{Single-head Self-attention})}
+
+اکنون با در اختیار داشتن تمام اجزای حیاتی (مکانیزم توجه، ماسک علی و کدگذاری موقعیتی)، می‌توانیم لایه اصلی خود-توجهی را بنا کنیم. در یک لایه خود-توجهی، هر سه مؤلفه پرس‌وجو ($Q$)، کلید ($K$) و مقدار ($V$) از یک ورودی واحد ($x$) مشتق می‌شوند. این کار از طریق تصویر کردن بردار ورودی $x$ در فضاهای مختلف با استفاده از ماتریس‌های وزن یادگیری‌پذیر انجام می‌شود.
+
+\subsubsection*{ساختار لایه خود-توجهی}
+
+فرض کنید ورودی ما $x$ با ابعاد $(T, C)$ باشد (طول توالی $T$ و بعد مدل $C$). فرآیند محاسبه در این لایه به شرح زیر است:
+\begin{enumerate}
+	\item \textbf{تصویرسازی خطی (\lr{Linear Projections}):} ورودی $x$ با استفاده از سه ماتریس وزن $W_Q, W_K, W_V$ به فضاهای جدید نگاشت می‌شود:
+	\[ Q = x \cdot W_Q, \quad K = x \cdot W_K, \quad V = x \cdot W_V \]
+	\item \textbf{ایجاد ماسک علی (\lr{Causal Masking}):} یک ماسک  پایین مثلثی  به اندازه $T \times T$ ایجاد می‌شود تا از نشت اطلاعات آینده به گذشته جلوگیری کند.
+	\item \textbf{محاسبه توجه مقیاس‌گذاری‌شده:} با استفاده از تابع \lr{\texttt{scaled\_dot\_product\_attention}} که پیش‌تر پیاده‌سازی شد، خروجی و ماتریس توجه محاسبه می‌شوند.
+\end{enumerate}
+
+\subsubsection*{پیاده‌سازی در \lr{JAX}}
+
+کد زیر لایه خود-توجهی را با استفاده از توابع قبلی پیاده‌سازی می‌کند:
+
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		def self_attention(x, Wq, Wk, Wv):
+		# project x into q, k, v
+		q, k, v = x @ Wq, x @ Wk, x @ Wv
+		
+		# build a causal mask of size T = x.shape[0]
+		mask = causal_mask(x.shape[0])
+		
+		# run scaled_dot_product_attention and return (out, attn)
+		out, attn = scaled_dot_product_attention(q, k, v, mask)
+		
+		return out, attn
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح کد:}
+\begin{itemize}
+	\item عملیات ضرب ماتریسی \lr{\texttt{x @ W}} ویژگی‌های ورودی را به فضاهای اختصاصی توجه منتقل می‌کند.
+	\item تابع \lr{\texttt{causal\_mask(x.shape[0])}} به صورت پویا و بر اساس طول توالی ورودی، محدودیت دسترسی به آینده را اعمال می‌کند.
+	\item خروجی نهایی \lr{\texttt{out}} دارای همان ابعاد ورودی ($T \times C$) است که اکنون شامل اطلاعات متنی غنی‌تری است.
+\end{itemize}
+
+\subsubsection*{تست واحد بر روی قطعه متن واقعی}
+
+برای اطمینان از صحت عملکرد، لایه را بر روی عبارت معروف شکسپیر (\lr{"To be, or not to be"}) آزمایش می‌کنیم. در این تست، ابتدا متن کدگذاری شده (\lr{Encode})، سپس با بردارهای تعبیه تصادفی ترکیب شده و در نهایت اطلاعات موقعیتی به آن اضافه می‌شود:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# Self-check on a real Shakespeare snippet
+		snippet = "To be, or not to be"
+		ids = jnp.array(encode(snippet))
+		T = len(snippet)
+		C = 32
+		_sk = jax.random.PRNGKey(3)
+		
+		# Initializing weights and embeddings
+		emb = jax.random.normal(jax.random.fold_in(_sk, 1), (vocab_size, C)) * 0.2
+		x_demo = emb[ids] + positional_encoding(T, C)
+		Wq = jax.random.normal(jax.random.fold_in(_sk, 2), (C, C)) * 0.3
+		Wk = jax.random.normal(jax.random.fold_in(_sk, 3), (C, C)) * 0.3
+		Wv = jax.random.normal(jax.random.fold_in(_sk, 4), (C, C)) * 0.3
+		
+		# Running self-attention
+		sa_demo_out, sa_demo_attn = self_attention(x_demo, Wq, Wk, Wv)
+		
+		# Assertions for validation
+		assert sa_demo_out.shape == (T, C) and sa_demo_attn.shape == (T, T)
+		assert float(jnp.max(jnp.triu(sa_demo_attn, k=1))) < 1e-6 
+		print("OK: self_attention output", sa_demo_out.shape, "| attention", sa_demo_attn.shape)
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{تحلیل نتایج و خروجی}
+
+پس از اجرای تست، خروجی زیر حاصل شد:
+\begin{latin}
+	\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+		OK: self_attention output (19, 32) | attention (19, 19)
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل ابعاد و ویژگی‌ها:}
+\begin{itemize}
+	\item \textbf{ابعاد خروجی (19, 32):} عبارت ورودی دارای ۱۹ کاراکتر (توکن) است. بعد مدل نیز ۳۲ انتخاب شده بود. خروجی $(19, 32)$ نشان می‌دهد که لایه خود-توجهی، ساختار ابعاد داده را حفظ کرده است.
+	\item \textbf{ماتریس توجه (19, 19):} یک ماتریس مربعی تولید شده که در آن هر توکن می‌تواند به تمام ۱۹ توکن دیگر (با رعایت محدودیت زمان) توجه کند.
+	\item \textbf{تأیید خاصیت علی (\lr{Causality Check}):} دستور \lr{\texttt{jnp.triu(..., k=1)}} بخش مثلثی بالای ماتریس (آینده) را استخراج می‌کند. مقدار \lr{\texttt{max}} نزدیک به صفر ($< 1e-6$) تضمین می‌کند که هیچ توکنی اطلاعاتی از کلمات بعدی خود دریافت نکرده است.
+\end{itemize}
+
+این پیاده‌سازی موفقیت‌آمیز، واحد پایه ساختاری (\lr{Building Block}) برای بلاک‌های پیچیده‌تر ترنسفورمر را فراهم می‌کند.
+
+\subsubsection*{بصری‌سازی ماتریس خود-توجهی بر روی متن نمونه}
+
+برای درک شهودی از نحوه تخصیص وزن‌های توجه بین توکن‌های مختلف در یک توالی واقعی، ماتریس توجه حاصل از لایه \lr{self-attention} را برای عبارت \lr{"To be, or not to be"} رسم می‌کنیم. در این نمودار، هر سطر نشان‌دهنده یک «پرس‌وجو» (\lr{Query}) و هر ستون نشان‌دهنده یک «کلید» (\lr{Key}) است.
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 4 - attention heatmap on "To be, or not to be" with character tick labels.
+		labels = [repr(c)[1:-1] for c in snippet]
+		fig, ax = plt.subplots(figsize=(7.5, 6.5))
+		im = ax.imshow(np.array(sa_demo_attn), cmap="magma", vmin=0)
+		
+		ax.set_xticks(range(T)); ax.set_xticklabels(labels)
+		ax.set_yticks(range(T)); ax.set_yticklabels(labels)
+		ax.set_title('Causal self-attention on "To be, or not to be"')
+		ax.set_xlabel("key character (attended to)"); ax.set_ylabel("query character")
+		
+		fig.colorbar(im, ax=ax, fraction=0.046, label="attention weight")
+		plt.tight_layout()
+		plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح تکنیک‌های پیاده‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{labels = [repr(c)[1:-1] for c in snippet]}}: استخراج کاراکترها به عنوان برچسب محورها. استفاده از \lr{\texttt{repr}} باعث می‌شود کاراکترهای خاص (مثل فاصله) نیز قابل رویت باشند.
+	\item \lr{\texttt{cmap="magma"}}: استفاده از پالت رنگی \lr{magma} که کنتراست بالایی بین مقادیر نزدیک به صفر (سیاه) و مقادیر بالا (زرد/سفید) ایجاد می‌کند و برای نمایش توزیع احتمال \lr{softmax} بسیار مناسب است.
+	\item \lr{\texttt{ax.set\_xticklabels(labels)}}: تنظیم برچسب‌های محور افقی و عمودی با حروف تشکیل‌دهنده متن جهت انطباق مستقیم هر درایه ماتریس با کاراکتر مربوطه.
+\end{itemize}
+
+\subsubsection*{تحلیل و ارزیابی ماتریس توجه علی}
+
+خروجی بصری این لایه در شکل زیر نمایش داده شده است:
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.6\textwidth]{img/causal.png}
+	\caption{نقشه حرارتی ماتریس توجه برای عبارت نمونه. ساختار پایین مثلثی ماتریس به وضوح نشان‌دهنده اعمال موفقیت‌آمیز ماسک علی است.}
+	\label{fig:causalattention_heatmap}
+\end{figure}
+
+\paragraph{تحلیل الگوهای بصری:}
+\begin{itemize}
+	\item \textbf{ساختار مثلثی (\lr{Causal Structure}):} بارزترین ویژگی این نمودار، سیاه بودن کامل بخش مثلثی بالای قطر اصلی است. این موضوع تأیید می‌کند که مکانیزم \lr{Causal Mask} به درستی عمل کرده و هیچ کاراکتری (در محور $y$) اجازه نداشته است به کاراکترهای بعد از خود (در محور $x$) توجه کند.
+	\item \textbf{ستون اول (کاراکتر \lr{'T'}):} مشاهده می‌شود که بسیاری از کاراکترهای بعدی، وزن توجه بالایی را به کاراکتر اول ('T') اختصاص داده‌اند (ستون اول روشن است). این یک رفتار رایج در مدل‌های زبانی است که اولین توکن اغلب به عنوان یک «نقطه اتکا» یا «مخزن اطلاعاتی» برای کل توالی عمل می‌کند.
+	\item \textbf{تمرکز موضعی (\lr{Local Attention}):} روشنایی درایه‌های روی قطر اصلی و مجاور آن نشان می‌دهد که هر کاراکتر به شدت به خودش و کاراکترهای بلافاصله قبل از خود وابسته است تا بتواند ساختار کلمات را حفظ کند.
+	\item \textbf{تکرار الگوها:} با توجه به تکرار عبارت \lr{"to be"} در متن، می‌توان دید که وقتی مدل به دومین عبارت \lr{"to be"} می‌رسد، الگوهای توجه مشابهی با بخش اول تکرار می‌شوند که نشان‌دهنده توانایی مدل در شناسایی ساختارهای تکرار شونده است.
+\end{itemize}
+
+این تصویرسازی ثابت می‌کند که لایه خود-توجهی ما نه تنها از نظر ابعادی درست عمل می‌کند، بلکه به درستی محدودیت‌های زمانی (\lr{Temporal Constraints}) را رعایت کرده و آماده است تا به عنوان بلوک سازنده در معماری کامل ترنسفورمر مورد استفاده قرار گیرد.
+
+\subsection{تحلیل رفتار توجه: آنتروپی توزیع توجه تحت ماسک علی}
+
+یک معیار تشخیصی بسیار مفید برای درک عمیق‌تر رفتار مکانیزم خود-توجهی، محاسبه \textbf{آنتروپی شانون (\lr{Entropy})} توزیع توجه برای هر موقعیت پرس‌وجو (\lr{Query}) است. 
+
+آنتروپی توزیع توجه نشان‌دهنده میزان متمرکز یا پراکنده بودن توجه مدل است:
+\begin{itemize}
+	\item \textbf{آنتروپی پایین:} نشان می‌دهد که پرس‌وجو توجه خود را به شدت روی تعداد بسیار کمی از کلیدها (مثلاً یک یا دو کاراکتر خاص) متمرکز کرده است.
+	\item \textbf{آنتروپی بالا:} نشان می‌دهد که توجه به طور یکنواخت و گسترده روی بسیاری از کلیدهای در دسترس پخش شده است.
+\end{itemize}
+
+تحت یک ماسک علی، اولین توکن ($t=1$) تنها می‌تواند به خودش توجه کند؛ بنابراین توزیع توجه آن یک تک‌پله (\lr{Delta Function}) با احتمال $1.0$ است و آنتروپی آن لزوماً باید صفر باشد. با جلوتر رفتن در توالی، تعداد کلیدهای در دسترس (مرئی) افزایش می‌یابد و بیشینه آنتروپی نظری ممکن برای توکن $i$-ام برابر با $\ln(i)$ خواهد بود (که متناظر با توزیع کاملاً یکنواخت روی $i$ کلید است).
+
+\subsubsection*{فرمولاسیون ریاضی}
+
+آنتروپی توجه برای پرس‌وجوی $i$ به صورت زیر محاسبه می‌شود:
+\[ H(A_i) = - \sum_{j=1}^{T} A_{i,j} \ln(A_{i,j}) \]
+که در آن $A_{i,j}$ وزن توجه اختصاص یافته از پرس‌وجوی $i$ به کلید $j$ است. برای جلوگیری از خطای عددی حاصل از محاسبه $\ln(0)$، مقدار کوچک $\epsilon = 10^{-12}$ به احتمالات مثبت اضافه می‌شود و مقادیر صفر نادیده گرفته می‌شوند.
+
+بیشینه آنتروپی ممکن در موقعیت $i$ (به دلیل وجود ماسک علی که تنها $i$ کلید اول را مجاز می‌شمارد) برابر است با:
+\[ H_{\max}(i) = \ln(i) \]
+
+\subsubsection*{پیاده‌سازی در \lr{Python} و \lr{JAX}}
+
+کد زیر آنتروپی توزیع توجه را محاسبه کرده و آن را در مقایسه با بیشینه آنتروپی نظری رسم می‌کند:
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 5 - entropy of each query's attention distribution (causal).
+		attn_np = np.array(sa_demo_attn)
+		# Avoid log(0) by masking or adding epsilon
+		ent = -np.sum(np.where(attn_np > 0, attn_np * np.log(attn_np + 1e-12), 0.0), axis=-1)
+		max_ent = np.log(np.arange(1, T + 1))  # max possible entropy given #visible keys
+		
+		fig, ax = plt.subplots(figsize=(10, 3.6))
+		ax.bar(range(T), ent, color="#0099cc", label="attention entropy")
+		ax.plot(range(T), max_ent, "--o", color="#ff8a00", label="max entropy = log(#visible keys)")
+		
+		ax.set_xticks(range(T)); ax.set_xticklabels(labels)
+		ax.set_title("Per-query attention entropy under the causal mask")
+		ax.set_xlabel("query character"); ax.set_ylabel("entropy (nats)"); ax.legend()
+		plt.tight_layout()
+		plt.show()
+		
+		print("first-query entropy (must be 0):", round(float(ent[0]), 6))
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح کد پیاده‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{np.where(attn\_np > 0, ...)}}: تضمین می‌کند که تابع لگاریتم فقط روی درایه‌هایی اعمال می‌شود که وزن توجه آن‌ها بزرگتر از صفر است تا از بروز خطا یا مقادیر \lr{NaN} جلوگیری شود.
+	\item \lr{\texttt{max\_ent = np.log(np.arange(1, T + 1))}}: سقف آنتروپی توزیع یکنواخت را برای هر گام زمانی با توجه به طول پنجره متغیر محاسباتی تعریف می‌کند.
+	\item واحد اندازه‌گیری آنتروپی به دلیل استفاده از لگاریتم طبیعی (\lr{base $e$})، \textbf{ناتز (\lr{nats})} است.
+\end{itemize}
+
+\subsubsection*{تحلیل و ارزیابی خروجی بصری آنتروپی}
+
+
+پس از اجرای کد، خروجی متنی زیر در خروجی استاندارد چاپ شد:
+\begin{latin}
+	\begin{lstlisting}[basicstyle=\ttfamily\small, frame=single]
+		first-query entropy (must be 0): -0.0
+	\end{lstlisting}
+\end{latin}
+
+خروجی نمودار حاصل از اجرای کد بالا در شکل زیر نمایش داده شده است:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/perquery.png}
+	\caption{نمودار آنتروپی توجه به ازای هر کاراکتر ورودی. خط‌چین نارنجی مرز تئوریک آنتروپی (توزیع کاملاً یکنواخت) و ستون‌های آبی، آنتروپی واقعی مدل را نشان می‌دهند.}
+	\label{fig:attention_entropy}
+\end{figure}
+
+\paragraph{تحلیل و تفسیر نمودار:}
+\begin{itemize}
+	\item \textbf{موقعیت آغازین (کاراکتر \lr{'T'}):} همان‌طور که پیش‌بینی می‌شد، آنتروپی توکن اول دقیقاً برابر با \lr{\texttt{-0.0}} (یا صفر) است. زیرا تحت ماسک علی، این توکن چاره‌ای جز توجه صددرصدی به خودش ندارد.
+	\item \textbf{روند افزایشی مرز نظری (خط نارنجی):} با حرکت به سمت راست توالی، تعداد کلیدهای مجاز به صورت خطی افزایش یافته و در نتیجه منحنی ظرفیت آنتروپی به صورت لگاریتمی ($\ln(i)$) صعود می‌کند.
+	\item \textbf{تمرکز انتخابی مدل (ستون‌های آبی):} 
+	ستون‌های آبی در بیشتر نقاط فاصله معناداری با خط‌چین نارنجی دارند. این فاصله نشان‌دهنده آن است که لایه خود-توجهی رفتاری کاملاً انتخابی دارد و وزن‌ها را به صورت یکنواخت پخش نمی‌کند؛ بلکه بر روی ویژگی‌های کلیدی متمرکز می‌شود.
+	\item \textbf{رفتار در نقاط خاص توالی:}
+	\begin{itemize}
+		\item در کاراکترهای میانی مثل \lr{\texttt{'r'}} و \lr{\texttt{'n'}}، میزان آنتروپی واقعی افت می‌کند. این کاهش نشان‌دهنده تمرکز شدید مدل روی بخش‌های خاصی از متنِ تحلیل‌شده قبلی است.
+		\item در اواخر توالی (عبارت دوم \lr{"to be"} در کاراکترهای پایانی)، با وجود اینکه ظرفیت آنتروپی به شدت بالا رفته است، اما آنتروپی واقعی افت و خیزهایی را نشان می‌دهد که گویای تخصیص هوشمندانه وزن‌ها به ساختارهای تکراری متناظر قبلی است.
+	\end{itemize}
+\end{itemize}
+
+این تحلیل به خوبی نشان می‌دهد که سیستم توجه تحت ماسک عِلی نه تنها محدودیت‌های توالی را رعایت می‌کند، بلکه از آزادی عمل خود در توکن‌های انتهایی برای تمرکز بر اطلاعات مفید استفاده می‌کند.
+
+\subsection{تحلیل رفتار توجه: متوسط فاصله بازگشت به عقب (\lr{Average Look-Back Distance})}
+
+یک ابزار تشخیصی بسیار کارآمد برای تحلیل عمق زمانی یک لایه توجه، محاسبه \textbf{فاصلۀ متوسط توجه وزن‌دهی‌شده} است. این معیار مشخص می‌کند که هر موقعیت پرس‌وجو ($i$) به طور متوسط چقدر به عقب نگاه می‌کند تا اطلاعات مورد نیاز خود را استخراج کند. 
+
+تحت یک ماسک علی، فاصلۀ فیزیکی بین موقعیت پرس‌وجوی $i$ و موقعیت کلید $j$ برابر است با $i - j \ge 0$. با وزن‌دهی این فاصله توسط مقادیر احتمال توجه ($A_{i,j}$)، می‌توانیم متوسط مسافتی که مدل در حافظه خود به عقب بازمی‌گردد را محاسبه کنیم. 
+
+\subsubsection*{فرمولاسیون ریاضی}
+
+برای هر موقعیت پرس‌وجوی $i$ در توالی، متوسط فاصله بازگشت به عقب وزن‌دهی‌شده ($\bar{D}_i$) به صورت زیر تعریف می‌شود:
+\[ \bar{D}_i = \sum_{j=0}^{i} A_{i,j} \cdot (i - j) \]
+
+به عنوان یک مرجع مقایسه‌ای، اگر مدل توجه خود را به طور کاملاً یکنواخت بین تمام کلیدهای مرئی توزیع کند ($A_{i,j} = \frac{1}{i+1}$ برای $j \le i$)، متوسط فاصله بازگشت به عقب به صورت زیر خواهد بود:
+\[ \bar{D}_{\text{uniform}}(i) = \frac{1}{i+1} \sum_{j=0}^{i} (i - j) = \frac{1}{i+1} \frac{i(i+1)}{2} = \frac{i}{2} \]
+بنابراین، خط مرجع $\frac{i}{2}$ نشان‌دهنده توجه بدون ترجیح (کاملاً یکنواخت) است. انحراف از این خط به سمت بالا یا پایین، ترجیحات ساختاری مدل را آشکار می‌سازد.
+
+\subsubsection*{پیاده‌سازی در \lr{Python} و \lr{JAX}}
+
+جهت دستیابی به روندی نرم‌تر و تحلیل مستقل از یک جمله خاص، آزمایش را روی یک توالی تصادفی طولانی‌تر با طول $T_{\text{long}} = 48$ اجرا می‌کنیم:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+		# CHART 6 - average (weighted) attention distance as a function of query position.
+		Tlong = 48
+		ids_long = data[1000:1000 + Tlong]
+		x_long = emb[jnp.asarray(ids_long)] + positional_encoding(Tlong, C)
+		_, attn_long = self_attention(x_long, Wq, Wk, Wv)
+		
+		A = np.array(attn_long)
+		qpos = np.arange(Tlong)[:, None]
+		kpos = np.arange(Tlong)[None, :]
+		dist = qpos - kpos                     # >= 0 under the causal mask
+		avg_dist = np.sum(A * dist, axis=-1)   # weighted mean distance per query
+		
+		fig, ax = plt.subplots(figsize=(10, 3.6))
+		ax.plot(range(Tlong), avg_dist, "-o", color="#0099cc", label="weighted mean look-back distance")
+		ax.plot(range(Tlong), np.arange(Tlong) / 2.0, "--", color="#999",
+		label="uniform-attention reference (i / 2)")
+		
+		ax.set_title("Average attention distance grows with query position")
+		ax.set_xlabel("query position"); ax.set_ylabel("mean (i - j) over keys"); ax.legend()
+		plt.tight_layout()
+		plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{توضیح کد پیاده‌سازی:}
+\begin{itemize}
+	\item \lr{\texttt{qpos = np.arange(Tlong)[:, None]}} و \lr{\texttt{kpos = np.arange(Tlong)[None, :]}}: استفاده از مکانیزم \lr{broadcasting} در کتابخانه \lr{NumPy} جهت ساخت یک ماتریس فاصله تفاضلی به ابعاد $T \times T$.
+	\item \lr{\texttt{dist = qpos - kpos}}: تولید ماتریس تفاوت نمایه‌ها، به گونه‌ای که درایه $(i,j)$ نشان‌دهنده میزان عقب‌گرد از موقعیت $i$ به $j$ است.
+	\item \lr{\texttt{np.sum(A * dist, axis=-1)}}: ضرب نقطه‌ای درایه‌به‌درایه ماتریس توجه با ماتریس فواصل و سپس کاهش دامنۀ ستون‌ها (محور آخر) جهت محاسبه میانگین وزن‌دار فاصله برای هر سطر.
+\end{itemize}
+
+\subsubsection*{تحلیل و ارزیابی خروجی بصری نمودار فاصله متوسط}
+
+نمودار خروجی حاصل از اجرای کد بالا در شکل زیر نمایش داده شده است:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.95\textwidth]{img/average.png}
+	\caption{متوسط فاصله بازگشت به عقب توجه در مقایسه با مرجع یکنواخت بر روی یک توالی به طول ۴۸ توکن.}
+	\label{fig:attention_distance}
+\end{figure}
+
+\paragraph{تحلیل و تفسیر نتایج نمودار:}
+\begin{itemize}
+	\item \textbf{روند عمومی صعودی:} همان‌طور که انتظار می‌رفت، با پیشروی در طول توالی (افزایش نمایه پرس‌وجو)، فاصله متوسط توجه افزایش می‌یابد. این امر به دلیل افزایش فضا و گزینه‌های در دسترس برای نگاه به عقب در گام‌های انتهایی توالی است.
+	\item \textbf{مقایسه با مرجع یکنواخت (خط‌چین خاکستری $i/2$):}
+	\begin{itemize}
+		\item در بخش‌های آغازین توالی (تا موقعیت ۲۲)، منحنی آبی رنگ بسیار نزدیک به خط‌چین خاکستری نوسان می‌کند و گاهی بالاتر از آن قرار می‌گیرد. این نشان می‌دهد که مدل در ابتدای متن رفتاری نزدیک به توزیع یکنواخت دارد یا به شدت به اولین کاراکترها (فواصل دورتر) وابسته است.
+		\item در محدوده گام‌های ۲۵ تا ۴۰، افت واضحی در منحنی آبی مشاهده می‌شود که آن را به زیر خط مرجع هدایت می‌کند. این پدیده گویای شکل‌گیری \textbf{توجه محلی (\lr{Local Attention})} است؛ یعنی مدل در این بازه ترجیح می‌دهد اطلاعات را بیشتر از کلمات مجاور و نزدیک به خود جمع‌آوری کند تا از نقاط دوردست.
+		\item در انتهای نمودار (گام‌های ۴۳ تا ۴۸)، صعود ناگهانی و شدید منحنی آبی به فراتر از مرز یکنواخت ($i/2$) رخ می‌دهد. این جهش نشان‌دهنده وجود وابستگی‌های دوربرد (\lr{Long-range Dependencies}) است؛ جایی که توکن‌های پایانی نیاز مبرمی به بازخوانی اطلاعات از توکن‌های اولیه و آغازین توالی دارند.
+	\end{itemize}
+\end{itemize}
+
+
+
+\section{تپسی - توجه چندسر و بلوک ترنسفورمر}
+\subsection{Flax \LR{nn.Module} (\lr{init / apply} و \lr{PyTrees} پارامترها)}
+
+کتابخانه \LR{Flax} یک فریم‌ورک یادگیری عمیق است که بر پایه \LR{JAX} ساخته شده و کاملاً بر اساس اصول \textbf{برنامه‌نویسی تابعی (Functional Programming)} طراحی شده است. مهم‌ترین ویژگی \LR{JAX} این است که توابع باید \textbf{خالص (Pure)} باشند؛ یعنی هیچ حالت داخلی (state) در خود نگه ندارند و خروجی فقط به ورودی وابسته باشد.
+
+به همین دلیل، برخلاف فریم‌ورک‌هایی مانند \LR{PyTorch} که پارامترهای مدل داخل خود شیء شبکه ذخیره می‌شوند، در \LR{Flax} هیچ پارامتری داخل object نگه‌داری نمی‌شود. در عوض، تمام وزن‌ها در یک ساختار داده‌ای خارجی به نام \textbf{PyTree} ذخیره می‌شوند.
+
+\subsubsection*{PyTree چیست؟}
+
+یک \LR{PyTree} ساختاری درختی از داده‌هاست که می‌تواند شامل دیکشنری‌ها، لیست‌ها و آرایه‌ها باشد. در زمینه شبکه‌های عصبی، PyTree معمولاً به شکل زیر نمایش داده می‌شود:
+
+\[
+\{\texttt{'params'} : \{\ldots\}\}
+\]
+
+این ساختار شامل تمام وزن‌های شبکه است و به صورت صریح به توابع داده می‌شود، نه اینکه داخل مدل پنهان باشد.
+
+این طراحی باعث می‌شود \LR{JAX} بتواند به راحتی روی مدل‌ها عملیات زیر را انجام دهد:
+
+\begin{itemize}
+	\item مشتق‌گیری خودکار (\LR{autograd})
+	\item کامپایل سریع (\LR{jit compilation})
+	\item اجرای موازی و بهینه‌سازی
+\end{itemize}
+
+\subsubsection*{دو مرحله اصلی در \LR{Flax}}
+
+کار با یک مدل در \LR{Flax} فقط شامل دو مرحله اصلی است:
+
+\paragraph{1. مرحله Initialization (\LR{init})}
+
+در این مرحله تابع زیر اجرا می‌شود:
+
+\begin{latin}
+	\texttt{module.init(rng, sample\_input)}
+\end{latin}
+
+این تابع یک بار مدل را اجرا می‌کند، اما نه برای پیش‌بینی؛ بلکه برای اینکه ساختار کامل شبکه مشخص شود. در این مرحله موارد زیر تعیین می‌شوند:
+
+\begin{itemize}
+	\item شکل (shape) تمام وزن‌ها
+	\item تعداد پارامترها در هر لایه
+	\item ساختار کامل شبکه
+\end{itemize}
+
+خروجی این مرحله یک \LR{PyTree} ثابت است که معمولاً به شکل زیر است:
+
+\[
+\{\texttt{'params'} : \{\ldots\}\}
+\]
+
+این مرحله به یک کلید تصادفی یا \LR{PRNG key} نیاز دارد. این کلید تعیین می‌کند مقداردهی اولیه وزن‌ها چگونه انجام شود.
+
+اگر یک \LR{PRNG key} یکسان دوبار استفاده شود، خروجی دقیقاً یکسان خواهد بود. این ویژگی باعث \textbf{قابل بازتولید بودن (Reproducibility)} می‌شود.
+
+
+
+\paragraph{2. مرحله Apply (\LR{apply})}
+
+پس از ساخته شدن پارامترها، از تابع زیر استفاده می‌شود:
+
+\begin{latin}
+	\texttt{module.apply(params, input)}
+\end{latin}
+
+در این مرحله:
+
+\begin{itemize}
+	\item پارامترها به صورت صریح به مدل داده می‌شوند
+	\item محاسبات forward انجام می‌شود
+	\item خروجی شبکه تولید می‌شود
+\end{itemize}
+
+نکته مهم این است که در این مرحله هیچ پارامتری داخل مدل ذخیره نشده است و همه چیز از بیرون کنترل می‌شود.
+
+\subsubsection*{تعریف لایه‌ها در \LR{Flax}}
+
+در یک ماژول \LR{Flax nn.Module}، هایپرپارامترها به صورت فیلدهای کلاس تعریف می‌شوند. برای مثال:
+
+\begin{latin}
+	\texttt{n\_head : int}
+\end{latin}
+
+سپس تابع forward در داخل متدی با دکوراتور زیر نوشته می‌شود:
+
+\begin{latin}
+	\texttt{@nn.compact}
+\end{latin}
+
+در این حالت لایه‌ها به صورت inline ساخته می‌شوند، مانند:
+
+\begin{latin}
+	\texttt{nn.Dense(features=128)}
+\end{latin}
+
+این طراحی باعث می‌شود ساخت مدل بسیار خوانا، ماژولار و مطابق سبک تابعی باشد.
+
+\subsubsection*{جمع‌بندی}
+
+در \LR{Flax}:
+
+\begin{itemize}
+	\item مدل‌ها state داخلی ندارند
+	\item تمام پارامترها در \LR{PyTree} خارجی ذخیره می‌شوند
+	\item تابع \LR{init} فقط ساختار و وزن‌ها را تولید می‌کند
+	\item تابع \LR{apply} فقط محاسبات forward را انجام می‌دهد
+\end{itemize}
+
+این معماری یکی از مهم‌ترین تفاوت‌های \LR{Flax} با فریم‌ورک‌هایی مانند \LR{PyTorch} است و دلیل اصلی سازگاری کامل آن با اکوسیستم \LR{JAX} محسوب می‌شود.
+
+\subsection{Multi-Head Attention (توجه چندسری)}
+
+مکانیزم \LR{Attention} یکی از مهم‌ترین اجزای معماری \LR{Transformer} است که به مدل اجازه می‌دهد وابستگی بین توکن‌های مختلف یک دنباله را یاد بگیرد. با این حال، یک مشکل اساسی وجود دارد: یک \LR{attention head} تنها می‌تواند یک نوع الگوی ارتباطی را در داده مدل کند.
+
+برای حل این محدودیت، از \textbf{Multi-Head Attention} استفاده می‌شود که چندین head را به صورت موازی اجرا می‌کند. این کار باعث می‌شود مدل بتواند به طور همزمان چندین نوع رابطه متفاوت را در یک دنباله یاد بگیرد.
+
+\subsubsection*{ایده اصلی}
+
+در \LR{Multi-Head Attention} به جای استفاده از یک فضای واحد برای نمایش \LR{Query}، \LR{Key} و \LR{Value}، فضای نمایش به چند زیرفضا تقسیم می‌شود. هر head در یک زیر-فضای مستقل کار می‌کند و الگوهای متفاوتی را یاد می‌گیرد.
+
+به طور شهودی، هر head می‌تواند به نوع خاصی از وابستگی‌ها توجه کند، مانند:
+
+\begin{itemize}
+	\item وابستگی‌های کوتاه‌برد (\lr{local dependencies})
+	\item وابستگی‌های بلندبرد (\lr{long-range dependencies})
+	\item روابط نحوی (\lr{syntactic relations})
+	\item روابط معنایی (\lr{semantic relations})
+\end{itemize}
+
+\subsubsection*{تقسیم فضای \lr{embedding}}
+
+فرض کنید بعد embedding برابر \( C \) باشد. در \LR{Multi-Head Attention} این بعد به \( n_{\text{head}} \) بخش تقسیم می‌شود:
+
+\[
+d_{\text{head}} = \frac{C}{n_{\text{head}}}
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( C \): بعد کل embedding
+	\item \( n_{\text{head}} \): تعداد headها
+	\item \( d_{\text{head}} \): بعد هر head
+\end{itemize}
+
+\subsubsection*{فرمول Attention در هر head}
+
+در هر head عملیات attention به صورت زیر انجام می‌شود:
+
+\[
+\text{Attention}(Q, K, V) =
+\text{softmax}\left(
+\frac{QK^{T}}{\sqrt{d_{\text{head}}}}
+\right)V
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( Q \): ماتریس Query
+	\item \( K \): ماتریس Key
+	\item \( V \): ماتریس Value
+	\item \( d_{\text{head}} \): مقیاس نرمال‌سازی برای جلوگیری از بزرگ شدن مقادیر
+\end{itemize}
+
+\subsubsection*{مراحل محاسبات Multi-Head Attention}
+
+\paragraph{1. تولید Q، K و V}
+
+ابتدا یک لایه خطی مشترک روی ورودی اعمال می‌شود:
+
+\[
+X \in \mathbb{R}^{T \times C}
+\]
+
+\[
+\text{Linear}(X) \rightarrow \mathbb{R}^{T \times 3C}
+\]
+
+سپس خروجی به سه بخش تقسیم می‌شود:
+
+\[
+Q, K, V \in \mathbb{R}^{T \times C}
+\]
+
+\subsubsection*{2. جدا کردن headها}
+
+سپس \lr{tensorها} \lr{reshape} می‌شوند تا بعد head جدا شود:
+
+\[
+(T, C) \rightarrow (T, n_{\text{head}}, d_{\text{head}})
+\]
+
+و سپس معمولاً به شکل زیر تبدیل می‌شود:
+
+\[
+(n_{\text{head}}, T, d_{\text{head}})
+\]
+
+این تغییر شکل باعث می‌شود هر head به صورت مستقل پردازش شود.
+
+\subsubsection*{3. محاسبه attention مستقل برای هر head}
+
+برای هر head به صورت جداگانه داریم:
+
+\[
+\text{head}_i =
+\text{Attention}(Q_i, K_i, V_i)
+\]
+
+این محاسبه برای تمام headها به صورت موازی انجام می‌شود.
+
+\subsubsection*{4. اتصال خروجی headها}
+
+پس از محاسبه attention در تمام headها، خروجی‌ها دوباره به هم متصل می‌شوند:
+
+\[
+\text{Concat}(\text{head}_1, \text{head}_2, \dots, \text{head}_n)
+\in \mathbb{R}^{T \times C}
+\]
+
+\subsubsection*{5. projection نهایی}
+
+در نهایت یک لایه خطی برای ترکیب اطلاعات headها اعمال می‌شود:
+
+\[
+Y = W_{o} \cdot \text{Concat}(\text{head}_1, \dots, \text{head}_n)
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( W_{o} \): ماتریس وزن خروجی
+	\item \( Y \): خروجی نهایی Multi-Head Attention
+\end{itemize}
+
+\subsubsection*{مزایای Multi-Head Attention}
+
+استفاده از چند head مزایای مهمی دارد:
+
+\begin{itemize}
+	\item هر head می‌تواند یک نوع رابطه متفاوت را یاد بگیرد
+	\item مدل چندین نمای متفاوت از داده ایجاد می‌کند
+	\item وابستگی‌های پیچیده بهتر مدل می‌شوند
+	\item قدرت بیان مدل افزایش می‌یابد بدون افزایش شدید هزینه محاسباتی
+\end{itemize}
+
+\subsubsection*{جمع‌بندی}
+
+\LR{Multi-Head Attention} با تقسیم فضای embedding به چند زیرفضا و اجرای attention مستقل در هر کدام، به مدل اجازه می‌دهد چندین نوع رابطه را به صورت همزمان یاد بگیرد. این مکانیزم یکی از کلیدی‌ترین اجزای موفقیت معماری \LR{Transformer} است.
+
+\subsection{\lr{GELU} و \lr{MLP} در هر موقعیت (\lr{Position-wise MLP})}
+
+در معماری \LR{Transformer}، لایه‌های \LR{Attention} وظیفه انتقال اطلاعات بین توکن‌ها را بر عهده دارند. با این حال، برای اینکه هر توکن بتواند به صورت مستقل نیز پردازش غیرخطی انجام دهد، از یک شبکه کاملاً جداگانه به نام \textbf{Position-wise MLP} استفاده می‌شود.
+
+این بخش روی هر توکن به صورت مستقل اعمال می‌شود، یعنی هیچ تبادل اطلاعاتی بین توکن‌ها در این مرحله انجام نمی‌شود.
+
+\subsubsection*{ساختار کلی MLP}
+
+شبکه \LR{MLP} در هر بلوک Transformer معمولاً شامل سه مرحله است:
+
+\begin{itemize}
+	\item یک لایه خطی برای افزایش ابعاد (Expansion)
+	\item یک تابع غیرخطی (\lr{Activation Function})
+	\item یک لایه خطی برای کاهش ابعاد (Projection)
+\end{itemize}
+
+اگر ورودی را \( x \in \mathbb{R}^{C} \) در نظر بگیریم، ساختار به صورت زیر است:
+
+\[
+x \rightarrow W_1 x + b_1
+\]
+
+\[
+\rightarrow \phi(\cdot)
+\]
+
+\[
+\rightarrow W_2 (\cdot) + b_2
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( W_1 \in \mathbb{R}^{4C \times C} \)
+	\item \( W_2 \in \mathbb{R}^{C \times 4C} \)
+	\item \( \phi \): تابع فعال‌سازی
+\end{itemize}
+
+\subsubsection*{چرا ضریب 4 برابر؟}
+
+در طراحی استاندارد \LR{Transformer}، بعد لایه مخفی MLP معمولاً 4 برابر بعد embedding انتخاب می‌شود:
+
+\[
+C \rightarrow 4C \rightarrow C
+\]
+
+این افزایش باعث می‌شود:
+
+\begin{itemize}
+	\item هر توکن فضای بیشتری برای ترکیب ویژگی‌ها داشته باشد
+	\item مدل توانایی نمایش غیرخطی بیشتری پیدا کند
+	\item تعامل بین ویژگی‌ها غنی‌تر شود
+\end{itemize}
+
+\subsubsection*{تابع GELU}
+
+تابع فعال‌سازی مورد استفاده در Transformerها معمولاً \LR{GELU} است. این تابع به صورت زیر تعریف می‌شود:
+
+\[
+\text{GELU}(x) = x \cdot \Phi(x)
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( \Phi(x) \): تابع توزیع تجمعی نرمال استاندارد (\lr{Gaussian CDF})
+\end{itemize}
+
+\subsubsection*{تعبیر شهودی GELU}
+
+برخلاف تابع \LR{ReLU} که مقادیر منفی را کاملاً صفر می‌کند، تابع \LR{GELU} یک رفتار نرم و احتمالاتی دارد:
+
+\begin{itemize}
+	\item ورودی‌های بزرگ مثبت تقریباً بدون تغییر عبور می‌کنند
+	\item ورودی‌های نزدیک صفر به صورت تدریجی فیلتر می‌شوند
+	\item ورودی‌های منفی کوچک به مقدار کمی عبور داده می‌شوند
+\end{itemize}
+
+این ویژگی باعث می‌شود جریان اطلاعات در شبکه نرم‌تر و پایدارتر باشد.
+
+\subsubsection*{فرم تقریبی GELU}
+
+در عمل، GELU معمولاً با یک تقریب محاسباتی استفاده می‌شود:
+
+\[
+\text{GELU}(x) \approx 0.5x \left(1 + \tanh\left(\sqrt{\frac{2}{\pi}} (x + 0.044715 x^3)\right)\right)
+\]
+
+این نسخه برای پیاده‌سازی عددی سریع‌تر استفاده می‌شود.
+
+\subsubsection*{نقش MLP در Transformer}
+
+در حالی که \LR{Attention} وظیفه انتقال اطلاعات بین توکن‌ها را دارد، \LR{MLP} وظیفه پردازش داخلی هر توکن را بر عهده دارد. به عبارت دیگر:
+
+\begin{itemize}
+	\item \lr{Attention}: ارتباط بین موقعیت‌ها (\lr{Inter-token communication})
+	\item \lr{MLP}: پردازش ویژگی‌ها داخل هر توکن (\lr{Intra-token computation})
+\end{itemize}
+
+این دو مکمل یکدیگر هستند و بدون یکی، قدرت مدل به شدت کاهش می‌یابد.
+
+\subsubsection*{جمع‌بندی}
+
+بخش \LR{MLP} در \lr{Transformer} با استفاده از افزایش ابعاد و تابع غیرخطی \LR{GELU}، به هر توکن اجازه می‌دهد ویژگی‌های پیچیده‌تری را یاد بگیرد. این بخش نقش کلیدی در افزایش ظرفیت مدل برای یادگیری روابط غیرخطی دارد.
+
+\subsection{\lr{Layer Normalization} (نرمال‌سازی لایه‌ای)}
+
+\textbf{Layer Normalization} یکی از مهم‌ترین اجزای معماری \LR{Transformer} است که نقش اصلی آن پایدارسازی آموزش شبکه‌های عمیق است. این لایه باعث می‌شود توزیع مقادیر در طول شبکه کنترل شود و از انفجار یا محوشدن گرادیان جلوگیری گردد.
+
+برخلاف روش‌هایی مانند \LR{Batch Normalization}، در \LR{LayerNorm} هیچ وابستگی‌ای به اندازه batch وجود ندارد و نرمال‌سازی برای هر نمونه به صورت مستقل انجام می‌شود.
+
+\subsubsection*{ایده اصلی LayerNorm}
+
+در \LR{LayerNorm}، نرمال‌سازی روی ویژگی‌های هر توکن انجام می‌شود، نه روی batch. فرض کنید بردار ویژگی یک توکن به صورت زیر باشد:
+
+\[
+x \in \mathbb{R}^{C}
+\]
+
+در این حالت، ابتدا میانگین و واریانس روی بعد ویژگی‌ها محاسبه می‌شود.
+
+\subsubsection*{محاسبه میانگین}
+
+\[
+\mu = \frac{1}{C} \sum_{i=1}^{C} x_i
+\]
+
+\subsubsection*{محاسبه واریانس}
+
+\[
+\sigma^2 = \frac{1}{C} \sum_{i=1}^{C} (x_i - \mu)^2
+\]
+
+\subsubsection*{نرمال‌سازی}
+
+سپس مقدار نرمال‌شده به صورت زیر محاسبه می‌شود:
+
+\[
+\hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \epsilon}}
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( \epsilon \): یک مقدار کوچک برای جلوگیری از تقسیم بر صفر
+\end{itemize}
+
+\subsubsection*{پارامترهای قابل یادگیری}
+
+پس از نرمال‌سازی، دو پارامتر قابل یادگیری به داده اعمال می‌شود:
+
+\[
+y_i = \gamma_i \hat{x}_i + \beta_i
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( \gamma \in \mathbb{R}^{C} \): پارامتر scale
+	\item \( \beta \in \mathbb{R}^{C} \): پارامتر shift
+\end{itemize}
+
+این دو پارامتر به مدل اجازه می‌دهند در صورت نیاز، توزیع دلخواه خود را دوباره بازسازی کند.
+
+\subsubsection*{تفاوت LayerNorm و BatchNorm}
+
+یکی از تفاوت‌های مهم این دو روش در نحوه نرمال‌سازی است:
+
+\begin{itemize}
+	\item \textbf{BatchNorm}: نرمال‌سازی روی بعد batch انجام می‌شود
+	\item \textbf{LayerNorm}: نرمال‌سازی روی ویژگی‌های هر نمونه انجام می‌شود
+\end{itemize}
+
+مزایای LayerNorm:
+
+\begin{itemize}
+	\item مستقل از batch size
+	\item مناسب برای مدل‌های دنباله‌ای
+	\item بدون وابستگی به ترتیب نمونه‌ها
+	\item مناسب برای مدل‌های autoregressive
+\end{itemize}
+
+\subsubsection*{چرا LayerNorm برای Transformer مناسب است؟}
+
+در مدل‌های زبانی، هر توکن باید بدون دیدن آینده پردازش شود. بنابراین روش‌هایی که به batch وابسته هستند مناسب نیستند.
+
+\LR{LayerNorm} این مشکل را حل می‌کند زیرا:
+
+\begin{itemize}
+	\item فقط روی ویژگی‌های همان توکن عمل می‌کند
+	\item هیچ اطلاعاتی از توکن‌های دیگر استفاده نمی‌کند
+\end{itemize}
+
+\subsubsection*{نکته پیاده‌سازی}
+
+در پیاده‌سازی‌های \LR{Flax}، معمولاً \LR{LayerNorm} دقیقاً مطابق فرمول زیر پیاده‌سازی می‌شود:
+
+\[
+\text{LayerNorm}(x) =
+\gamma \odot \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta
+\]
+
+که در آن \( \odot \) ضرب عنصر به عنصر است.
+
+\subsubsection*{جمع‌بندی}
+
+\LR{LayerNorm} با نرمال‌سازی ویژگی‌های هر توکن به صورت مستقل، باعث پایداری آموزش و بهبود جریان گرادیان در شبکه‌های عمیق می‌شود. این لایه یکی از اجزای حیاتی در معماری \LR{Transformer} محسوب می‌شود و بدون آن آموزش مدل‌های بزرگ عملاً دشوار خواهد بود.
+
+\subsection{اتصالات باقیمانده (\lr{Residual Connections}) و \lr{Pre-Norm} در \lr{Transformer}}
+
+در شبکه‌های عصبی عمیق، یکی از بزرگ‌ترین مشکلات هنگام آموزش، \textbf{ناپایداری گرادیان} است. با افزایش عمق شبکه، گرادیان ممکن است یا محو شود \lr{(vanishing gradient)} یا بیش از حد بزرگ شود \lr{(exploding gradient}). برای حل این مشکل، از \textbf{Residual Connection} استفاده می‌شود.
+
+\subsubsection*{\lr{Residual Connection} چیست؟}
+
+ایده اصلی در اتصال باقیمانده بسیار ساده اما قدرتمند است. به جای اینکه فقط خروجی یک تابع \( f(x) \) را داشته باشیم، ورودی را نیز به آن اضافه می‌کنیم:
+
+\[
+y = x + f(x)
+\]
+
+در این ساختار:
+
+\begin{itemize}
+	\item \( x \): ورودی لایه
+	\item \( f(x) \): خروجی لایه (مثلاً \lr{Attention} یا \lr{MLP})
+	\item \( y \): خروجی نهایی
+\end{itemize}
+
+این اتصال یک مسیر مستقیم برای عبور گرادیان ایجاد می‌کند و باعث می‌شود آموزش شبکه‌های بسیار عمیق ممکن شود.
+
+\subsubsection*{مزیت اصلی \lr{Residual Connection}}
+
+مزیت کلیدی این ساختار این است که:
+
+\begin{itemize}
+	\item گرادیان می‌تواند بدون تغییر از مسیر \( x \rightarrow y \) عبور کند
+	\item شبکه مجبور نیست کل تابع را از صفر یاد بگیرد
+	\item یادگیری به صورت اصلاحی (\lr{residual learning}) انجام می‌شود
+\end{itemize}
+
+به بیان ساده، مدل فقط یاد می‌گیرد چه چیزی را به ورودی اضافه کند، نه اینکه کل تبدیل را دوباره بسازد.
+
+\subsubsection*{محل قرارگیری \lr{LayerNorm}}
+
+یکی از تصمیم‌های مهم در طراحی \lr{Transformer}، محل قرارگیری \LR{Layer Normalization} است. دو معماری اصلی وجود دارد:
+
+\subsubsection*{1. \lr{Post-Norm} (نسخه اولیه \lr{Transformer})}
+
+در این حالت، ابتدا لایه محاسباتی و سپس \lr{residual} و در نهایت \lr{normalization} اعمال می‌شود:
+
+\[
+x \rightarrow x + f(x)
+\]
+\[
+y = \text{LayerNorm}(x)
+\]
+
+این ساختار در نسخه اولیه \LR{Transformer} استفاده شده بود، اما در مدل‌های بزرگ پایدار نبود.
+
+\subsubsection*{2. \lr{Pre-Norm} (نسخه مدرن)}
+
+در معماری‌های جدید مانند \lr{GPT}، ابتدا نرمال‌سازی انجام می‌شود و سپس وارد لایه می‌شویم:
+
+\[
+y = x + f(\text{LayerNorm}(x))
+\]
+
+در این حالت:
+
+\begin{itemize}
+	\item مسیر residual بدون تغییر باقی می‌ماند
+	\item گرادیان راحت‌تر عبور می‌کند
+	\item آموزش شبکه‌های بسیار عمیق پایدارتر می‌شود
+\end{itemize}
+
+\subsubsection*{ساختار یک بلوک \lr{Pre-Norm Transformer}}
+
+یک بلوک استاندارد Transformer در حالت Pre-Norm به شکل زیر است:
+
+\paragraph{1. بلوک Attention}
+
+\[
+x = x + \text{Attention}(\text{LayerNorm}(x))
+\]
+
+\paragraph{2. بلوک MLP}
+
+\[
+x = x + \text{MLP}(\text{LayerNorm}(x))
+\]
+
+این دو مرحله پشت سر هم یک بلوک کامل Transformer را تشکیل می‌دهند.
+
+\subsubsection*{چرا Pre-Norm بهتر است؟}
+
+مزایای اصلی Pre-Norm عبارت‌اند از:
+
+\begin{itemize}
+	\item پایداری بهتر در شبکه‌های عمیق
+	\item جلوگیری از انفجار یا محوشدن گرادیان
+	\item بهبود سرعت همگرایی
+	\item مناسب برای مدل‌های بزرگ مانند GPT
+\end{itemize}
+
+در عمل، Pre-Norm به استاندارد اصلی در معماری‌های مدرن Transformer تبدیل شده است.
+
+\subsubsection*{جمع‌بندی}
+
+اتصالات Residual با ایجاد مسیر مستقیم برای جریان گرادیان، امکان آموزش شبکه‌های عمیق را فراهم می‌کنند. ترکیب این ساختار با \LR{Pre-Norm} باعث شده Transformerهای مدرن بتوانند بدون مشکل در مقیاس‌های بسیار بزرگ آموزش داده شوند.
+
+\subsection{ توجه علّی}
+
+پیش از آنکه به سراغ ساختار پیچیده‌ترِ «توجه چندسر» (\lr{Multi-Head Attention}) برویم، بسیار مهم است که رفتار یک (\lr{Single Causal Attention Head}) را بار دیگر مرور و تثبیت کنیم. در این بخش، با استفاده از توابع \lr{scaled\_dot\_product\_attention} و \lr{causal\_mask} که در مراحل قبل توسعه دادیم، بردارهای تصادفی پرس‌وجو (\lr{Query})، کلید (\lr{Key}) و مقدار (\lr{Value}) را برای یک دنباله تولید کرده و ماتریس توجهِ حاصل از آن‌ها را رسم می‌کنیم. 
+
+ساختار «توجه چندسر» که در گام‌های بعدی پیاده‌سازی می‌شود، در واقع چیزی نیست جز اجرای همزمان و موازیِ چندین مورد از همین بلوک‌های تک‌سر.
+
+\subsubsection*{تحلیل متغیرهای مدل ($T$ و $D_{\text{head}}$)}
+
+در پیکربندی این بخش، دو متغیر اساسی با مقادیر مشخص تعریف شده‌اند که ابعاد محاسبات ما را تعیین می‌کنند:
+
+\begin{itemize}
+	\item \textbf{متغیر $T = 12$ (طول دنباله یا \lr{Sequence Length}):}
+	این متغیر نشان می‌دهد که جمله یا دنباله ورودی ما در این تست شامل ۱۲ توکن (کلمه یا کاراکتر) است. به همین دلیل، ماتریس پوشش (\lr{Mask}) و ماتریس نهاییِ وزن‌های توجه (\lr{Attention Matrix})، هر دو ابعاد $12 \times 12$ خواهند داشت تا بتوانند روابط تمام این ۱۲ توکن را با یکدیگر نشان دهند.
+	
+	\item \textbf{متغیر $D_{\text{head}} = 8$ (ابعاد سر توجه یا \lr{Head Dimension}):}
+	این عدد مشخص می‌کند که هر توکن، برای انجام عملیات توجه، به یک بردار با ۸ ویژگی (۸ عدد) تبدیل شده است. به بیان دیگر، بردارهای پرس‌وجو ($q$) و کلید ($k$) در فضایی ۸-بعدی با هم مقایسه می‌شوند. این همان عددی است که در فرمول مقیاس‌بندی، امتیازات خام را بر جذر آن (یعنی $\sqrt{8}$) تقسیم می‌کنیم تا واریانس کنترل شود.
+\end{itemize}
+
+\subsubsection*{تحلیل مجموع سطرهای ماتریس توجه (\lr{Attention Row Sums})}
+
+در خروجی اجرای کد این بخش، با پیام زیر مواجه می‌شویم:
+\begin{latin}
+	\begin{lstlisting}
+		attention row sums (should be 1): [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+	\end{lstlisting}
+\end{latin}
+
+\textbf{معنای این خروجی چیست؟}
+این آرایه ۱۲ تایی ثابت می‌کند که تابع \lr{Softmax} به درستی روی هر سطر از ماتریس توجه اعمال شده است. تابع \lr{Softmax} امتیازات خام (\lr{Logits}) را به «توزیع احتمال» تبدیل می‌کند. قانون بنیادین احتمالات این است که مجموع احتمالاتِ تمام حالت‌های ممکن باید دقیقاً برابر با ۱ (یا ۱۰۰٪) باشد. 
+
+\subsubsection*{تحلیل بصری ماتریس توجه تک‌سر}
+
+شکل \ref{fig:single_causal} نمایشی از وزن‌های توجه برای این دنباله ۱۲ تایی با وزن‌های تصادفی است.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.4\textwidth]{img/SINGLE_CAUSAL.PNG}
+	\caption{نقشه حرارتی یک سر توجه علّی (\lr{Single Causal Attention Head}). ساختار پایین‌مثلثی، نشان‌دهنده اعمال صحیح محدودیت‌های علّی است.}
+	\label{fig:single_causal}
+\end{figure}
+
+\paragraph{کالبدشکافی تصویر:}
+\begin{enumerate}
+	\item \textbf{رعایت دقیق محدودیت علّی (\lr{Causal Constraint}):} 
+	بارزترین ویژگی این تصویر، ساختار اکیداً پایین‌مثلثیِ (\lr{Strict Lower-Triangular}) آن است. تمامی خانه‌های بالای قطر اصلی کاملاً سیاه (دارای احتمال صفر) هستند. این نشان می‌دهد که توکن موجود در جایگاه $t$ (در محور عمودی پرس‌وجو)، تنها اجازه دارد به توکن‌های جایگاه $0$ تا $t$ (در محور افقی کلیدها) توجه کند و دسترسی به آینده مسدود است.
+	
+	\item \textbf{توزیع احتمالات در وزن‌های تصادفی:}
+	از آنجایی که در این تست از وزن‌های تصادفی و آموزش‌ندیده (\lr{Random Init}) استفاده شده است، توزیع رنگ‌ها در نیمه پایینی مثلث، الگوهای معناییِ خاصی ندارد. با این حال، به وضوح می‌بینیم که با حرکت از سطرهای بالایی به سطرهای پایینی (افزایش طول زمینه)، توکن‌ها توجه خود را روی گزینه‌های بیشتری پخش می‌کنند (رنگ‌ها از زردِ خالص به سمت سبز و آبی متمایل می‌شوند که نشان‌دهنده تقسیم شدنِ مقدار ۱ بین خانه‌های بیشتر است).
+	
+	\item \textbf{تمرکز اجباری در نقطه شروع:}
+	در سطر اول (مختصات 0,0)، مربع زرد رنگ و درخشانی را می‌بینیم (مقدار ۱.۰). دلیل این امر آن است که اولین توکن هیچ کلمه‌ای را پیش از خود ندارد؛ بنابراین تابع \lr{Softmax} تمامِ وزن توجه را به ناچار روی همان یک توکن متمرکز می‌کند.
+\end{enumerate}
+
+\subsection{آشنایی با جریان کاری \lr{Flax}: الگوی \lr{Init / Apply}}
+
+پیش از آنکه به سراغ ساخت بلوک‌های پیچیده ترنسفورمر و توجه چندسر برویم، ضروری است که با نحوه عملکرد و جریان کاری کتابخانه \lr{Flax} (که بر پایه \lr{JAX} ساخته شده است) آشنا شویم. معماری \lr{Flax} تفاوت بنیادینی با کتابخانه‌هایی مانند \lr{PyTorch} دارد. در \lr{PyTorch}، وزن‌های شبکه (پارامترها) در داخل خود کلاسِ مدل ذخیره می‌شوند (مدل‌های حالت‌دار یا \lr{Stateful}). اما در \lr{Flax}، شبکه‌های عصبی به صورت کاملاً \textbf{بدون حالت (\lr{Stateless})} تعریف می‌شوند. این یعنی کلاسِ مدل صرفاً شامل «قوانین محاسباتی» است و وزن‌ها به عنوان یک متغیر کاملاً مجزا در خارج از مدل (در ساختاری به نام \lr{Pytree}) نگهداری می‌شوند.
+
+این جداسازی از طریق الگوی \textbf{\lr{Init / Apply}} پیاده‌سازی می‌شود که در ادامه آن را روی یک شبکه عصبی بسیار کوچک (\lr{TinyMLP}) بررسی می‌کنیم.
+
+\subsubsection*{پیاده‌سازی یک ماژول کوچک (\lr{TinyMLP})}
+
+در این مثال، یک شبکه عصبی بسیار ساده با یک لایه خطی متراکم (\lr{Dense}) و یک تابع فعال‌ساز \lr{GELU} می‌سازیم تا رفتار \lr{Flax} را مشاهده کنیم:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		# GIVEN: the Flax init/apply pattern on a one-layer module.
+		class TinyMLP(nn.Module):
+		hidden: int
+		
+		@nn.compact
+		def __call__(self, x):
+		x = nn.Dense(self.hidden, name="fc")(x)
+		return nn.gelu(x)
+		
+		tiny = TinyMLP(hidden=8)
+		demo_x = jnp.ones((2, 4))                       # batch of 2, feature width 4
+		tiny_params = tiny.init(jax.random.PRNGKey(0), demo_x)   # deterministic on CPU
+		
+		print("parameter pytree (name -> shape):")
+		shapes = jax.tree_util.tree_map(lambda a: a.shape, tiny_params)
+		print(shapes)
+		
+		y = tiny.apply(tiny_params, demo_x)             # run the forward pass with those params
+		print("apply output shape:", y.shape)
+		print("kernel shape:", tiny_params["params"]["fc"]["kernel"].shape,
+		"| bias shape:", tiny_params["params"]["fc"]["bias"].shape)
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{کالبدشکافی کد و دکوراتور \lr{@nn.compact}}
+
+این قطعه کد مفاهیم بسیار مهمی از معماری \lr{Flax} را در خود جای داده است:
+
+\paragraph{۱. دکوراتور جادویی \lr{@nn.compact}:}
+در حالت استاندارد و کلاسیک (مانند \lr{PyTorch})، شما باید لایه‌های شبکه (مثل \lr{nn.Dense}) را در تابعی به نام \lr{\_\_init\_\_} یا \lr{setup} تعریف کنید و سپس در تابع \lr{\_\_call\_\_} (یا \lr{forward}) آن‌ها را فراخوانی کنید. اما دکوراتور \lr{@nn.compact} در \lr{Flax} این فرآیند را به شدت ساده می‌کند. این دکوراتور به شما اجازه می‌دهد لایه‌های فرعی (\lr{Submodules}) را \textbf{مستقیماً در لحظه استفاده} و درون خود تابع \lr{\_\_call\_\_} تعریف کنید. \lr{Flax} به صورت خودکار در اولین باری که کد اجرا می‌شود، ابعاد ورودی را بررسی کرده و لایه‌ها را ثبت می‌کند. این کار باعث می‌شود کدهای شما بسیار خواناتر، کوتاه‌تر و شبیه به توابع ریاضی نوشته شوند.
+
+\paragraph{۲. تابع \lr{init} (تولید وزن‌ها):}
+دستور \lr{tiny.init(jax.random.PRNGKey(0), demo\_x)} دقیقاً نشان‌دهنده ماهیت بدون حالتِ \lr{Flax} است. ما به تابع \lr{init} دو چیز می‌دهیم:
+\begin{itemize}
+	\item یک کلید تصادفی (\lr{PRNGKey}) برای مقداردهی اولیه وزن‌ها به صورت قطعی و تکرارپذیر.
+	\item یک داده آزمایشی یا ساختگی (\lr{demo\_x}) که در اینجا یک ماتریس $2 \times 4$ است.
+\end{itemize}
+مدل با دریافت \lr{demo\_x}، یک بار به صورت آزمایشی مسیر محاسبات را طی می‌کند تا متوجه شود لایه \lr{Dense} به چه ابعادی برای ماتریس وزن‌های خود نیاز دارد. سپس وزن‌ها را تولید کرده و آن‌ها را در قالب یک دیکشنری درختی (\lr{Pytree}) برمی‌گرداند (\lr{tiny\_params}). خودِ متغیر \lr{tiny} همچنان خالی از هرگونه وزن است.
+
+\paragraph{۳. تابع \lr{apply} (اجرای شبکه):}
+برای اجرای مدل روی داده‌ها (\lr{Forward Pass})، نمی‌توانیم مستقیماً مدل را صدا بزنیم. بلکه باید از دستور \lr{tiny.apply} استفاده کنیم و وزن‌هایی که در مرحله قبل تولید شده بودند (\lr{tiny\_params}) را به همراه داده‌های ورودی (\lr{demo\_x}) به مدل تحویل دهیم تا محاسبات انجام شود.
+
+\subsubsection*{تحلیل خروجی‌ها و ساختار \lr{Pytree}}
+
+با اجرای کد، خروجی‌های زیر در کنسول چاپ می‌شوند:
+
+\begin{latin}
+	\begin{lstlisting}
+		parameter pytree (name -> shape):
+		{'params': {'fc': {'bias': (8,), 'kernel': (4, 8)}}}
+		apply output shape: (2, 8)
+		kernel shape: (4, 8) | bias shape: (8,)
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل ساختار وزن‌ها (\lr{Pytree}):}
+خروجی اول نشان می‌دهد که پارامترها در یک ساختار درختی و تودرتو ذخیره شده‌اند. این درخت دقیقاً منطبق بر نام‌گذاری‌هایی است که ما در کد انجام داده‌ایم:
+\begin{itemize}
+	\item \lr{\textbf{'fc'}:} این کلید، نامی است که ما به لایه \lr{Dense} داده بودیم (\lr{name="fc"}).
+	\item \lr{\textbf{'kernel' (4, 8)}:} این همان ماتریس وزن‌های ($W$) ما در معادله خطی $y = xW + b$ است. چون ورودی ما ۴ ویژگی داشت (\lr{feature width = 4}) و خروجیِ لایه مخفی را ۸ در نظر گرفتیم (\lr{hidden = 8})، ابعاد این ماتریس به صورت خودکار $4 \times 8$ تشخیص داده شده و ساخته شده است.
+	\item \lr{\textbf{'bias' (8,)}:} بردار بایاس ($b$) که به ازای هر نورون خروجی در لایه مخفی، یک عدد دارد.
+\end{itemize}
+
+\paragraph{تحلیل ابعاد خروجی:}
+ابعاد خروجی تابع \lr{apply} برابر با $(2, 8)$ است. عدد ۲ نشان‌دهنده اندازه دسته ورودی (\lr{Batch Size}) است که ما به مدل داده بودیم، و عدد ۸ نیز نمایانگر تعداد نورون‌های فعال‌شده در لایه پنهان پس از عبور از تابع \lr{GELU} است. 
+
+درک این جریان کاری (\lr{Pytree}، \lr{init} و \lr{apply}) برای ادامه کار و ساخت بلوک‌های پیچیده ترنسفورمر بسیار حیاتی است، زیرا تمامی وزن‌های مدل نهاییِ \lr{GPT} ما نیز در نهایت در یک ساختار درختی مشابه اما بسیار بزرگتر ذخیره خواهند شد.
+
+\subsection{طراحی ماژول توجه چندسر علّی (\lr{Causal Multi-Head Self-Attention}) در \lr{Flax}}
+
+در گام نهایی از پیاده‌سازی مکانیزم توجه، آموخته‌های پیشین (الگوی \lr{init/apply} در \lr{Flax}، ماسک علّی و مقیاس‌بندی توجه) را در قالب یک ماژول کامل و مقیاس‌پذیر به نام \lr{CausalSelfAttention} ترکیب می‌کنیم. این ماژول یکی از دو رکن اصلی در معماری \lr{Transformer} (در کنار شبکه‌های عصبی پیش‌خور) محسوب می‌شود.
+
+یکی از نکات مهندسی بسیار مهم در کد این بخش، استفاده از یک لایه متراکم (\lr{Dense}) یکپارچه به جای سه لایه مجزا برای تولید بردارهای $Q$، $K$ و $V$ است.
+
+\subsubsection*{ چرا از یک تصویرسازی یکپارچه برای \lr{QKV} استفاده می‌کنیم؟}
+
+به جای تعریف سه لایه خطی جداگانه:
+\begin{align*}
+	W_q &\in \mathbb{R}^{C \times C} \\
+	W_k &\in \mathbb{R}^{C \times C} \\
+	W_v &\in \mathbb{R}^{C \times C}
+\end{align*}
+در این پیاده‌سازی، از یک لایه متراکم واحد با ابعاد خروجی $3 \times C$ استفاده می‌شود:
+\begin{equation}
+	W_{\text{qkv}} \in \mathbb{R}^{C \times 3C}
+\end{equation}
+
+از نظر ریاضی، ضرب یک ماتریس در سه بلوکِ به هم چسبیده، کاملاً معادل با سه ضرب ماتریسیِ مجزا است. با این حال، کامپایلرهای شتاب‌دهنده‌های سخت‌افزاری (مانند \lr{XLA} در پردازنده‌های گرافیکی و \lr{TPU}) عملکرد بسیار بهینه‌تری روی یک ضرب ماتریسیِ بزرگ نشان می‌دهند تا سه ضرب ماتریسی کوچک. این ادغام (\lr{Fusion}) هزینه‌های راه‌اندازی و انتقال داده در حافظه را به شدت کاهش می‌دهد، به همین دلیل در کدهای سطح تولیدِ (\lr{Production-level}) تمام مدل‌های زبانی بزرگ، از همین تکنیک استفاده می‌شود.
+
+\subsubsection*{پیاده‌سازی و کالبدشکافی کد ماژول}
+
+در ادامه، بلوک کامل توجه چندسر نوشته شده در فریم‌ورک \lr{Flax} را به همراه تحلیل خط به خط آن بررسی می‌کنیم.
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		class CausalSelfAttention(nn.Module):
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, x, deterministic=True):
+		B, T, C = x.shape
+		d_head = C // self.n_head
+		
+		# 1. Shared projection to Q, K, V and split
+		qkv = nn.Dense(3 * C, use_bias=False, name="qkv")(x)
+		q, k, v = jnp.split(qkv, 3, axis=-1) 
+		
+		# 2. Reshape into heads: (B, n_head, T, d_head)
+		def split_heads(t):
+		return t.reshape(B, T, self.n_head, d_head).transpose(0, 2, 1, 3)
+		q, k, v = split_heads(q), split_heads(k), split_heads(v)
+		
+		# 3. Scaled dot-product attention
+		scores = (q @ jnp.swapaxes(k,-1,-2)) / jnp.sqrt(d_head)
+		mask = jnp.tril(jnp.ones((T, T), dtype=bool))
+		scores = jnp.where(mask, scores, -1e9)
+		
+		attn = jax.nn.softmax(scores, axis=-1)
+		attn = nn.Dropout(self.dropout)(attn, deterministic=deterministic)
+		
+		# 4. Weighted sum, recombine heads, output projection
+		out = attn @ v
+		out = out.transpose(0, 2, 1, 3).reshape(B, T, C)
+		out = nn.Dense(C, name="proj")(out)
+		out = nn.Dropout(self.dropout)(out, deterministic=deterministic)
+		
+		return out
+	\end{lstlisting}
+\end{latin}
+\paragraph{تحلیل بخش‌های کلیدی کد:}
+
+\begin{enumerate}
+	
+	\item \textbf{متغیر \lr{deterministic} و لایه‌های \lr{Dropout}:} \\
+	متغیر \lr{deterministic} مشخص می‌کند که مدل در حالت آموزش (\lr{False}) یا ارزیابی/تولید متن (\lr{True}) قرار دارد. 
+	
+	در حالت آموزش، لایه‌های \lr{Dropout} به صورت تصادفی بخشی از فعال‌سازی‌ها را در ماتریس توجه (\lr{attn}) و خروجی نهایی (\lr{out}) صفر می‌کنند تا از بیش‌برازش (\lr{overfitting}) جلوگیری شود. 
+	
+	در حالت ارزیابی، این رفتار تصادفی کاملاً غیرفعال می‌شود و شبکه به صورت deterministic عمل می‌کند.
+	
+	\item \textbf{استخراج و تغییر شکل سرها (\lr{split heads}):} \\
+	پس از تقسیم ماتریس \lr{qkv} با استفاده از \lr{jnp.split}، هر بخش دارای ابعاد:
+	\[
+	(B, T, C)
+	\]
+	است.
+	
+	برای اجرای مستقل attention روی هر head، مراحل زیر انجام می‌شود:
+	
+	\begin{itemize}
+		\item مرحله اول (\lr{reshape}):
+		\[
+		(B, T, C) \rightarrow (B, T, n_{\text{head}}, d_{\text{head}})
+		\]
+		
+		\item مرحله دوم (\lr{transpose}):
+		\[
+		(B, T, n_{\text{head}}, d_{\text{head}})
+		\rightarrow
+		(B, n_{\text{head}}, T, d_{\text{head}})
+		\]
+	\end{itemize}
+	
+	این جابه‌جایی بسیار مهم است؛ زیرا عملیات ضرب ماتریسی (\texttt{@}) در \lr{NumPy} روی دو محور آخر انجام می‌شود.
+	
+	در نتیجه، ضرب:
+	\[
+	QK^{T}
+	\]
+	روی ابعاد:
+	\[
+	(T, d_{\text{head}})
+	\]
+	انجام می‌شود، در حالی که ابعاد:
+	\[
+	(B, n_{\text{head}})
+	\]
+	به صورت batch و کاملاً موازی پردازش می‌شوند.
+	
+	\item \textbf{ترکیب مجدد سرها (\lr{recombine}):} \\
+	پس از محاسبه attention، خروجی دارای شکل زیر است:
+	\[
+	(B, n_{\text{head}}, T, d_{\text{head}})
+	\]
+	
+	برای بازگرداندن به فرم اولیه:
+	
+	\begin{itemize}
+		\item ابتدا transpose انجام می‌شود:
+		\[
+		(B, n_{\text{head}}, T, d_{\text{head}})
+		\rightarrow
+		(B, T, n_{\text{head}}, d_{\text{head}})
+		\]
+		
+		\item سپس reshape انجام می‌شود:
+		\[
+		(B, T, n_{\text{head}} \cdot d_{\text{head}})
+		\rightarrow (B, T, C)
+		\]
+	\end{itemize}
+	
+	در نهایت خروجی به لایه projection نهایی (\lr{nn.Dense}) داده می‌شود.
+	
+\end{enumerate}
+
+\subsubsection*{تأیید صحت عملکرد و تست ابعاد (Self-check)}
+
+برای بررسی صحت پیاده‌سازی، یک تست ساده روی مدل اجرا می‌شود:
+
+\begin{latin}
+	\begin{verbatim}
+		# Self-check: shapes and qkv kernel
+		_x = jax.random.normal(jax.random.PRNGKey(3), (4, 16, 32))
+		
+		mha_check = CausalSelfAttention(n_head=4, n_embd=32)
+		params = mha_check.init(jax.random.PRNGKey(0), _x)
+		_out = mha_check.apply(params, _x)
+		
+		assert _out.shape == (4, 16, 32)
+		assert params["params"]["qkv"]["kernel"].shape == (32, 96)
+		
+		print("OK:", _out.shape, "| qkv kernel:", params["params"]["qkv"]["kernel"].shape)
+		print("heads:", 4, "-> d_head:", 32 // 4)
+	\end{verbatim}
+\end{latin}
+
+\paragraph{تحلیل خروجی تست:}
+
+\begin{itemize}
+	
+	\item \textbf{output shape \lr{(4, 16, 32)}:} \\
+	این نشان می‌دهد که مدل بدون تغییر ابعاد ورودی، خروجی سازگار با ساختار اولیه تولید کرده است. یعنی:
+	\[
+	(B, T, C) \rightarrow (B, T, C)
+	\]
+	
+	\item \textbf{qkv kernel \lr{(32, 96)}:} \\
+	ورودی دارای \( C = 32 \) ویژگی است. لایه \lr{qkv} به طور همزمان Query، Key و Value را تولید می‌کند، بنابراین:
+	\[
+	3C = 96
+	\]
+	و شکل وزن‌ها:
+	\[
+	(32, 96)
+	\]
+	کاملاً صحیح است.
+	
+	\item \textbf{\lr{heads: 4 → d\_head: 8:}} \\
+	تعداد headها برابر 4 است، بنابراین:
+	\[
+	d_{\text{head}} = \frac{32}{4} = 8
+	\]
+	هر head روی یک فضای 8-بعدی مستقل کار می‌کند.
+	
+\end{itemize}
+\subsection{هر سرِ توجه به چه چیزی نگاه می‌کند؟ نقشه‌های توجه مجزا (\lr{Per-head Attention Maps})}
+
+در معماری «توجه چندسر» (\lr{Multi-Head Attention})، مزیت اصلی این است که هر «سر» (\lr{Head}) می‌تواند به طور مستقل الگوهای متفاوتی از روابط بین کلمات را بیاموزد. به عنوان مثال، ممکن است پس از آموزش، یک سر متخصص پیدا کردن فاعلِ جمله باشد، سرِ دیگر کلمات همسایه را بررسی کند و سرِ سوم به علائم نگارشی توجه نماید. 
+
+برای درک بهتر این مکانیزم مستقل، پیش از آنکه مدل را آموزش دهیم، یک قطعه متن ثابت (\lr{"To be, or not to be"}) را وارد ماژولی با وزن‌های تصادفی می‌کنیم و ماتریس توجه علّیِ تولیدشده توسط \textbf{هر سر به صورت مجزا} را رسم می‌کنیم.
+
+\subsubsection*{کالبدشکافی کد: استخراج دستی توجهِ هر سر}
+
+در قطعه کد زیر، به جای اجرای کامل مدل، لایه‌ها را به صورت دستی باز می‌کنیم تا دقیقاً ببینیم در دلِ لایه \lr{qkv} چه می‌گذرد و ماتریس برای هر کدام از ۴ سر چگونه شکل می‌گیرد:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		# Per-head attention heatmaps from the qkv kernel on a fixed snippet.
+		snippet = "To be, or not to be"
+		ids = jnp.asarray(encode(snippet))[None, :]              # (1, T)
+		T = ids.shape[1]
+		n_head, n_embd = 4, 32
+		
+		embed = nn.Embed(vocab_size, n_embd, name="emb")
+		ekey, akey = jax.random.split(jax.random.PRNGKey(0))
+		emb_p = embed.init(ekey, ids)
+		xe = embed.apply(emb_p, ids)                             # (1, T, n_embd)
+		
+		mha_vis = CausalSelfAttention(n_head=n_head, n_embd=n_embd)
+		vis_p = mha_vis.init(akey, xe)
+		W = vis_p["params"]["qkv"]["kernel"]                     # (n_embd, 3*n_embd)
+		
+		d_head = n_embd // n_head
+		qkv = xe @ W
+		q, k, _ = jnp.split(qkv, 3, axis=-1)
+		def _sh(t): return t.reshape(1, T, n_head, d_head).transpose(0, 2, 1, 3)
+		q, k = _sh(q), _sh(k)
+		scores = (q @ jnp.swapaxes(k, -1, -2)) / jnp.sqrt(d_head)
+		mask = jnp.tril(jnp.ones((T, T), dtype=bool))
+		scores = jnp.where(mask, scores, -1e9)
+		attn = jax.nn.softmax(scores, axis=-1)                   # (1, n_head, T, T)
+		
+		labels = list(snippet)
+		fig, axes = plt.subplots(1, n_head, figsize=(16, 4))
+		for h in range(n_head):
+		ax = axes[h]
+		im = ax.imshow(np.array(attn[0, h]), cmap="viridis", vmin=0, vmax=1)
+		ax.set_title(f"head {h}")
+		ax.set_xticks(range(T)); ax.set_xticklabels(labels, fontsize=7, rotation=90)
+		ax.set_yticks(range(T)); ax.set_yticklabels(labels, fontsize=7)
+		fig.suptitle("Per-head causal attention on a fixed snippet (random init)")
+		fig.colorbar(im, ax=axes, fraction=0.02); plt.show()
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{روند استخراج اطلاعات در کد بالا:}
+\begin{enumerate}
+	\item \textbf{تعبیه کلمات (\lr{Embedding}):} ابتدا رشته متنی به شناسه‌های عددی (\lr{ids}) تبدیل شده و با استفاده از لایه \lr{nn.Embed} به بردارهای ۳۲-بعدی (\lr{xe}) نگاشت می‌شود.
+	\item \textbf{استخراج هسته \lr{QKV}:} به جای فراخوانیِ تابع \lr{apply} ماژول، مستقیماً ماتریس وزن‌هایِ \lr{qkv} (یعنی متغیر $W$ با ابعاد $32 \times 96$) را از \lr{Pytree} بیرون می‌کشیم.
+	\item \textbf{جداسازی سرها (\lr{Head Splitting}):} محاسبات ضرب ماتریسی ($xe \times W$) انجام شده و خروجی به سه بخش $Q, K, V$ تقسیم می‌شود. با تابع \lr{\_sh}، محورها را جابه‌جا می‌کنیم تا ابعاد $(1, 4, 19, 8)$ شکل بگیرد (دسته=۱، سر=۴، طول=۱۹، بعد سر=۸).
+	\item \textbf{اعمال توجه علّی:} ضرب نقطه‌ایِ مقیاس‌شده همراه با ماسک پایین‌مثلثی و تابع \lr{Softmax} روی دو محور آخر انجام می‌شود که در نهایت ماتریس \lr{attn} با ابعاد $(1, 4, 19, 19)$ را تولید می‌کند.
+\end{enumerate}
+
+\subsubsection*{تحلیل بصری نقشه‌های توجه مجزا (پیش از آموزش)}
+
+شکل \ref{fig:per_head_causal} خروجی این قطعه کد را نشان می‌دهد. در اینجا ۴ نقشه حرارتی مجزا برای ۴ سر (\lr{head 0} تا \lr{head 3}) رسم شده است.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/per head causal.png}
+	\caption{نقشه حرارتی توجه علّی به ازای هر سر (\lr{Per-head}) روی یک قطعه متن ثابت. به دلیل تصادفی بودن وزن‌های اولیه (\lr{Random Init})، الگوها در تمام سرها تقریباً یکنواخت و فاقد معنای زبانی هستند، اما ساختار علّی (ماسک پایین‌مثلثی) در تمامی آن‌ها به شدت رعایت شده است.}
+	\label{fig:per_head_causal}
+\end{figure}
+
+\paragraph{کالبدشکافی و تحلیل نمودارها:}
+\begin{itemize}
+	\item \textbf{استقلال محاسباتی:} با وجود اینکه هر ۴ سر اطلاعات خود را از یک ورودیِ یکسان تغذیه می‌کنند، اما به دلیل ضرب شدن در بخش‌های متفاوتی از ماتریس وزنِ تصادفیِ $W$، مقادیر و رنگ‌بندی آن‌ها در داخل مثلث پایینی (هرچند نامحسوس) با یکدیگر تفاوت دارد. این نشان می‌دهد که سرها کاملاً در فضاهای نمایشیِ (\lr{Representation Spaces}) متفاوتی عمل می‌کنند.
+	
+	\item \textbf{ساختار ساخت‌یافتهِ علّی (\lr{Causal Structure}):} هر ۴ نقشه حرارتی، بدون استثنا، در نیمه بالایی قطر اصلی کاملاً تاریک (مقدار صفر) هستند. این اثبات می‌کند که مکانیزم جداسازی سرها (\lr{Reshape} و \lr{Transpose}) باعث به هم ریختن ابعاد زمانی نشده است و ماسک علّی دقیقاً در جای درست خود، دسترسی به آینده را مسدود کرده است.
+	
+	\item \textbf{فقدان الگوهای معنادار (اثر وزن تصادفی):} برخلاف مدل‌های آموزش‌دیده که در آن‌ها مربع‌های روشنی روی کلماتِ مرتبط از نظر گرامری (مثلاً توجه یک فعل به فاعل) دیده می‌شود، در اینجا رنگ‌ها در مثلث پایینی تقریباً یکدست (محو و آبی/بنفش تیره) هستند. این یعنی مدل به دلیل نداشتن دانش زبانی، توجه خود را تقریباً به صورت مساوی (\lr{Uniform Distribution}) بین تمام توکن‌های گذشته پخش کرده است.
+	
+	\item \textbf{تجمع توجه در ستون اول (\lr{Attention Sink}):} در تمامی ۴ سر، ستون اول (متعلق به کلمه '\lr{T}') روشن‌تر از بقیه ستون‌ها به نظر می‌رسد. این یک ویژگیِ کلاسیک در شبکه‌های ترنسفورمر آموزش‌ندیده است؛ توکن‌های انتهایی جمله که نمی‌دانند باید به کدام کلمه توجه کنند، وزن‌های مازاد خود را روی امن‌ترین توکن (یعنی اولین توکن جمله که همیشه در دسترس است) می‌ریزند.
+\end{itemize}
+
+\textbf{نتیجه‌گیری:} این تحلیل بصری نشان می‌دهد که معماری ماژول توجه چندسر (\lr{Multi-Head Attention}) از نظر منطقِ ریاضی، ابعاد تانسورها و اعمال قوانینِ علیت (\lr{Causality}) کاملاً بی‌نقص عمل می‌کند. تنها چیزی که اکنون برای تبدیل این مثلث‌های مات و یکدست به متخصصین زبانی نیاز است، اجرای یک حلقه آموزش (\lr{Training Loop}) و تنظیمِ وزن‌های $W$ از طریق الگوریتم پس‌انتشار (\lr{Backpropagation}) است.
+
+
+\subsection{توابع فعال‌ساز در شبکه‌های پیش‌خور: مقایسه \lr{GELU}، \lr{ReLU} و \lr{tanh}}
+
+شبکه عصبی پیش‌خور (\lr{MLP}) در داخل هر بلوک ترنسفورمر، وظیفه پردازش مستقل و استخراج ویژگی‌های پیچیده‌تر از هر توکن را بر عهده دارد. برای ایجاد خاصیت غیرخطی (\lr{Non-linearity}) در این شبکه، انتخاب تابع فعال‌ساز (\lr{Activation Function}) نقشی حیاتی در پایداری و کیفیت آموزش ایفا می‌کند. 
+
+در حالی که در گذشته توابعی مانند \lr{tanh} و \lr{ReLU} استانداردهای اصلی یادگیری عمیق بودند، معماری‌های مدرن ترنسفورمر (از جمله \lr{BERT} و خانواده \lr{GPT}) تقریباً به طور کامل به سمت تابع \lr{GELU (Gaussian Error Linear Unit)} حرکت کرده‌اند. در این بخش، به تحلیل ریاضی و بصری این سه تابع و دلایل این تغییر رویکرد می‌پردازیم.
+
+\subsubsection*{تعاریف ریاضی توابع فعال‌ساز}
+
+فرمول ریاضی این سه تابع کلاسیک و مدرن به شرح زیر است:
+
+\paragraph{۱. تابع \lr{tanh} (تانژانت هیپربولیک):}
+این تابع، ورودی‌ها را به یک بازه متقارن بین $-1$ و $1$ فشرده می‌کند:
+\begin{equation}
+	\mathrm{tanh}(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}
+\end{equation}
+
+\paragraph{۲. تابع \lr{ReLU (Rectified Linear Unit)}:}
+ساده‌ترین و سریع‌ترین تابع فعال‌ساز که مقادیر منفی را دقیقاً صفر کرده و مقادیر مثبت را بدون تغییر عبور می‌دهد:
+\begin{equation}
+	\mathrm{ReLU}(x) = \max(0, x)
+\end{equation}
+
+\paragraph{۳. تابع \lr{GELU (Gaussian Error Linear Unit)}:}
+این تابع بر اساس توزیع تجمعی نرمال استاندارد یا $\Phi(x)$ تعریف می‌شود. در این تابع، ورودی در احتمالِ بزرگتر بودنِ یک متغیر تصادفی نرمال از آن ورودی، ضرب می‌شود:
+\begin{equation}
+	\mathrm{GELU}(x) = x \cdot \Phi(x) = x \cdot \frac{1}{2} \left[ 1 + \mathrm{erf}\left(\frac{x}{\sqrt{2}}\right) \right]
+\end{equation}
+که در آن $\mathrm{erf}$ تابع خطای گاوسی است. (به دلیل پیچیدگی محاسباتی، معمولاً از تقریب‌های سریع‌تری بر پایه \lr{tanh} یا توابع چندجمله‌ای در پیاده‌سازی‌های عملی استفاده می‌شود).
+
+\subsubsection*{تحلیل بصری و مقایسه توابع}
+
+شکل \ref{fig:act_func} نمودار این سه تابع را در یک بازه ورودی یکسان (از $-4$ تا $4$) نشان می‌دهد تا تفاوت رفتار آن‌ها ملموس‌تر شود.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/act func.png}
+	\caption{مقایسه رفتار توابع فعال‌ساز \lr{GELU}، \lr{ReLU} و \lr{tanh}. تابع \lr{GELU} (آبی) برخلاف \lr{ReLU} (نارنجی) یک منحنی نرم است که اجازه عبور مقادیر منفیِ کوچک را می‌دهد.}
+	\label{fig:act_func}
+\end{figure}
+
+\paragraph{تحلیل نمودار:}
+\begin{itemize}
+	\item \textbf{منحنی بنفش (\lr{tanh}):} همان‌طور که مشخص است، این تابع به سرعت در مقادیر بزرگتر از $2$ یا کوچکتر از $-2$ به حالت اشباع (\lr{Saturation}) می‌رسد (افقی می‌شود). این اشباع باعث می‌شود گرادیان (شیب خط) تقریباً صفر شده و شبکه نتواند چیزی یاد بگیرد (مشکل محو شدن گرادیان یا \lr{Vanishing Gradient}).
+	\item \textbf{منحنی نارنجی (\lr{ReLU}):} این تابع برای مقادیر مثبت رفتاری کاملاً خطی دارد و دچار اشباع نمی‌شود. اما برای تمامی مقادیر منفی، خروجی و همچنین شیب (مشتق) آن \textbf{دقیقاً صفر} است. 
+	\item \textbf{منحنی آبی (\lr{GELU}):} این تابع در مقادیر مثبتِ بزرگ، رفتاری بسیار شبیه به \lr{ReLU} دارد. اما تفاوت اصلی در حوالی مبدأ (از $0$ تا $-2$) است؛ جایی که \lr{GELU} به نرمی به زیر صفر نفوذ می‌کند (یک دره کوچک تشکیل می‌دهد) و سپس به آرامی به سمت صفر مجانب می‌شود.
+\end{itemize}
+
+\subsubsection*{چرا ترنسفورمرها \lr{ReLU} را کنار گذاشتند؟}
+
+با وجود سادگی و سرعت بالای \lr{ReLU}، مدل‌های زبانی بزرگ نیازمند ظرفیت بهینه‌سازی بسیار بالاتری هستند. جایگزینی \lr{ReLU} با \lr{GELU} به سه دلیل عمده صورت گرفت:
+
+\begin{enumerate}
+	\item \textbf{حل مشکل مرگ نورون‌ها (\lr{Dying ReLU}):}
+	در تابع \lr{ReLU}، اگر یک به‌روزرسانیِ بزرگ باعث شود وزن‌های یک نورون به گونه‌ای تغییر کند که خروجی آن همیشه منفی شود، مشتق آن نورون برای همیشه صفر خواهد ماند. در نتیجه، آن نورون دیگر هرگز در فرآیند آموزش (پس‌انتشار خطا) به‌روزرسانی نمی‌شود و عملاً «می‌میرد». اما \lr{GELU} به دلیل داشتن آن «دره کوچکِ منفی» (حدوداً تا $x = -1.5$)، برای مقادیر منفیِ کوچک هنوز یک مشتقِ غیرصفر دارد. این ویژگی به نورون‌های ضعیف اجازه می‌دهد تا خود را بازیابی کرده و دوباره به فرآیند یادگیری بازگردند.
+	
+	\item \textbf{مشتق‌پذیری و نرم بودن (\lr{Smoothness}):}
+	تابع \lr{ReLU} در نقطه $x=0$ دارای یک شکستگی تند است و مشتق آن در این نقطه تعریف ‌نشده است. این تغییرِ ناگهانیِ شیب می‌تواند باعث نوسان در بهینه‌سازهایی مانند \lr{Adam} شود. در مقابل، \lr{GELU} یک تابع کاملاً هموار (\lr{Smooth}) است و در تمامی نقاط به صورت پیوسته مشتق‌پذیر است. این نرمی باعث می‌شود فضای خطا (\lr{Loss Landscape}) هموارتر شده و فرآیند رسیدن به نقطه بهینه (\lr{Convergence}) با ثبات بیشتری طی شود.
+	
+	\item \textbf{گیت‌گذاری تصادفی (\lr{Stochastic Gating}):}
+	تابع \lr{ReLU} صرفاً بر اساس «علامت» ورودی (مثبت یا منفی بودن) تصمیم می‌گیرد که سیگنال را عبور دهد یا خیر. اما \lr{GELU} بر اساس «ارزش آماری» ورودی تصمیم‌گیری می‌کند. از آنجایی که \lr{GELU} از تابع توزیع نرمال ($\Phi(x)$) استفاده می‌کند، در واقع به این می‌پردازد که «احتمال اینکه این ورودی از سایر ورودی‌ها مهم‌تر باشد چقدر است؟». این نوع گیت‌گذاریِ نرم، تطابق بسیار خوبی با رفتار آماری داده‌ها در شبکه‌های عمیق دارد و به صورت تجربی ثابت شده است که عملکرد مدل‌های زبانی را بهبود می‌بخشد.
+\end{enumerate}
+\subsection{پیاده‌سازی دستی نرمال‌سازی لایه‌ای (\lr{Layer Normalization})}
+
+در شبکه‌های عصبی عمیق، با عبور داده‌ها از لایه‌های متوالی، توزیع مقادیر فعال‌سازی (\lr{Activations}) مدام تغییر می‌کند و ممکن است اعداد بسیار بزرگ یا بسیار کوچک شوند. این پدیده باعث بی‌ثباتی در فرآیند آموزش و پدیده انفجار یا محو شدن گرادیان‌ها می‌شود. برای حل این مشکل در معماری ترنسفورمر، از \textbf{نرمال‌سازی لایه‌ای} یا \lr{LayerNorm} استفاده می‌شود.
+
+برخلاف \lr{BatchNorm} که داده‌ها را در امتداد یک دسته (\lr{Batch}) نرمال می‌کند، \lr{LayerNorm} عملیات نرمال‌سازی را برای هر توکن به صورت کاملاً مستقل و در امتداد بُعد ویژگی‌ها (\lr{Feature Dimension}) انجام می‌دهد.
+
+\subsubsection*{روابط ریاضی}
+
+اگر بردار ویژگی‌های یک توکن را $x$ بنامیم، نرمال‌سازی لایه‌ای طی مراحل زیر انجام می‌شود:
+\begin{enumerate}
+	\item \textbf{محاسبه میانگین (\lr{Mean}):} میانگین مقادیر بردار محاسبه می‌شود:
+	\begin{equation}
+		\mu = \frac{1}{C} \sum_{i=1}^{C} x_i
+	\end{equation}
+	\item \textbf{محاسبه واریانس (\lr{Variance}):} واریانس داده‌ها نسبت به میانگین به دست می‌آید:
+	\begin{equation}
+		\sigma^2 = \frac{1}{C} \sum_{i=1}^{C} (x_i - \mu)^2
+	\end{equation}
+	\item \textbf{استانداردسازی (\lr{Standardization}):} داده‌ها با کسر میانگین و تقسیم بر انحراف معیار، نرمال می‌شوند. یک مقدار بسیار کوچک $\epsilon$ (اپسیلون) نیز برای جلوگیری از خطای تقسیم بر صفر به مخرج اضافه می‌شود:
+	\begin{equation}
+		\hat{x} = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}}
+	\end{equation}
+	\item \textbf{مقیاس‌دهی و انتقال (\lr{Scale and Shift}):} از آنجایی که نرمال‌سازی مطلق ممکن است ظرفیت بازنمایی شبکه را کاهش دهد، دو پارامترِ قابل آموزشِ $\gamma$ (مقیاس) و $\beta$ (انتقال/بایاس) به رابطه اضافه می‌شوند تا شبکه در صورت نیاز بتواند توزیع را به حالت دلخواه خود برگرداند:
+	\begin{equation}
+		y = \gamma \hat{x} + \beta
+	\end{equation}
+\end{enumerate}
+
+\subsubsection*{کالبدشکافی کد پیاده‌سازی}
+
+کد زیر دقیقاً همین روابط ریاضی را با استفاده از توابع \lr{JAX} پیاده‌سازی می‌کند:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		def manual_layernorm(x, gamma, beta, eps=1e-5):
+		# Normalize x over the last axis, then apply the learned scale/shift.
+		mu = jnp.mean(x, axis=-1, keepdims=True)
+		var = jnp.var(x, axis=-1, keepdims=True)
+		return gamma * (x - mu) / jnp.sqrt(var + eps) + beta
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{نکات کلیدی کد:}
+\begin{itemize}
+	\item \lr{\textbf{axis = -1}:} این آرگومان به تابع می‌گوید که میانگین و واریانس را فقط روی آخرین بُعد (یعنی بُعد ویژگی‌ها یا $C$) محاسبه کند. اطلاعات توکن‌های مختلف یا جملاتِ متفاوت در یک دسته، با هم قاطی نمی‌شوند.
+	\item \lr{\textbf{keepdims = True}:} این یک ترفند حیاتی در برنامه‌نویسی تنسورهاست. اگر این مقدار \lr{False} باشد، بُعد آخر حذف شده و ماتریس ما یک بُعدی می‌شود. اما با \lr{True} بودن آن، بُعد آخر با اندازه ۱ حفظ می‌شود (مثلاً از $(B, T, C)$ به $(B, T, 1)$ تبدیل می‌شود). این کار باعث می‌شود تا در خط آخر، عملیات تفریقِ $(x - \mu)$ به درستی و با استفاده از خاصیت \lr{Broadcasting} روی تمام عناصر انجام شود.
+	\item \lr{\textbf{gamma و beta}:} در ابتدای آموزش، معمولاً $\gamma$ برابر با ۱ و $\beta$ برابر با صفر مقداردهی می‌شوند تا لایه دقیقاً خروجی نرمال‌شده را برگرداند.
+\end{itemize}
+
+\subsubsection*{تحلیل بصری اثر \lr{LayerNorm}}
+
+برای درک بهتر تأثیر این لایه، هیستوگرامِ مقادیر فعال‌سازی (\lr{Activations}) را قبل و بعد از عبور از \lr{LayerNorm} رسم کرده‌ایم که در شکل \ref{fig:layernorm} قابل مشاهده است.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/layernorm.png}
+	\caption{هیستوگرام توزیع مقادیر فعال‌سازی. سمت چپ: پیش از نرمال‌سازی (پراکنده و دارای انحراف). سمت راست: پس از نرمال‌سازی (متمرکز حول صفر با واریانس واحد).}
+	\label{fig:layernorm}
+\end{figure}
+
+\paragraph{تحلیل نمودارها:}
+\begin{itemize}
+	\item \textbf{نمودار سمت چپ (قبل از \lr{LayerNorm}):} 
+	توزیع اعداد به هم ریخته است. میانگین داده‌ها روی عدد \lr{۱.۷۰ }قرار دارد (انتقال به راست) و انحراف معیارِ بسیار بالای \lr{۳.۰۶ }نشان می‌دهد که داده‌ها به شدت پراکنده‌اند (از حدود $-7$ تا $+9$). اگر این اعداد مستقیماً وارد لایه‌های بعدی یا توابعی مثل \lr{Softmax} یا \lr{GELU} شوند، شبکه را دچار ناپایداری یا اشباع می‌کنند.
+	
+	\item \textbf{نمودار سمت راست (بعد از \lr{LayerNorm}):} 
+	لایه \lr{LayerNorm} دقیقاً مانند یک تنظیم‌کننده (\lr{Regulator}) عمل کرده است. نمودار به یک توزیع نرمالِ استانداردِ بی‌نقص تبدیل شده است؛ میانگین دقیقاً به صفر ($0.00$) منتقل شده و انحراف معیار (پراکندگی) دقیقاً روی یک ($1.00$) فشرده شده است (داده‌ها اکنون در بازه امنِ $-3$ تا $+3$ قرار دارند).
+\end{itemize}
+
+\textbf{نتیجه‌گیری:} لایه \lr{LayerNorm} تضمین می‌کند که مهم نیست در لایه‌های قبلی چه اتفاقی افتاده و اعداد چقدر بزرگ شده‌اند؛ هر سیگنالی پیش از ورود به بلوک‌های محاسباتی جدید (مثل توجه چندسر یا شبکه پیش‌خور)، مجدداً «رام» شده و در یک محدوده عددیِ ایده‌آل و قابل پیش‌بینی قرار می‌گیرد.
+
+\subsection{مونتاژ بلوک کامل ترنسفورمر با معماری پیش‌نرمال‌سازی (\lr{Pre-Norm Transformer Block})}
+
+اکنون که تمامی قطعات پازل (شامل توجه چندسر، توابع فعال‌ساز و نرمال‌سازی لایه‌ای) را به طور مجزا طراحی کرده و مفاهیم ریاضی آن‌ها را درک کردیم، زمان آن رسیده است که این قطعات را در کنار یکدیگر قرار داده و یک «بلوک ترنسفورمر» (\lr{Transformer Block}) کامل بسازیم. مدل‌های زبانی بزرگ، در واقع چیزی نیستند جز تکرارِ پشت سر همِ همین بلوک (برای مثال، مدل \lr{GPT-3} دارای ۹۶ عدد از این بلوک‌ها به صورت متوالی است).
+
+\subsubsection*{معماری پیش‌نرمال‌سازی (\lr{Pre-Norm}) و اتصالات میان‌بر (\lr{Residual Connections})}
+
+در مقاله اصلی ترنسفورمر (سال ۲۰۱۷)، لایه نرمال‌سازی \textbf{پس از} اتصال میان‌بر اعمال می‌شد (معماری \lr{Post-Norm}: $\mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))$). اما با گذشت زمان و تلاش برای ساخت شبکه‌های بسیار عمیق، محققان متوجه شدند که این ساختار باعث ناپایداری گرادیان‌ها می‌شود. 
+امروزه در تمام مدل‌های مدرن خانواده \lr{GPT} از معماری \lr{Pre-Norm} استفاده می‌شود. در این معماری:
+\begin{enumerate}
+	\item \textbf{بزرگراه اطلاعات (\lr{Information Highway}):} متغیر $x$ (که حاوی اطلاعات توکن‌هاست) به صورت یک مسیر مستقیم و بدون هیچ مانعی از اول تا آخر شبکه کشیده می‌شود.
+	\item \textbf{پیش‌نرمال‌سازی:} هر زمان که زیرلایه‌های توجه (\lr{Attention}) یا پیش‌خور (\lr{MLP}) بخواهند تغییری روی داده‌ها اعمال کنند، ابتدا یک کپی از داده‌ها گرفته شده، نرمال می‌شود (\lr{LayerNorm}) و سپس پردازش می‌گردد.
+	\item \textbf{اتصال میان‌بر (\lr{Residual}):} در نهایت، خروجیِ پردازش‌شده با داده‌های اصلی جمع می‌شود ($x = x + \Delta x$).
+\end{enumerate}
+این کار باعث می‌شود در جریان پس‌انتشار (\lr{Backpropagation})، مشتقات (گرادیان‌ها) بتوانند به راحتی و بدون ضعیف شدن، از طریق عملگر «جمع»، تا اولین لایه‌های شبکه حرکت کنند.
+
+\subsubsection*{کالبدشکافی کدِ بلوک ترنسفورمر}
+
+در کد زیر، یک بلوک کامل ترنسفورمر در \lr{Flax} پیاده‌سازی شده است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		class TransformerBlock(nn.Module):
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, x, deterministic=True):
+		# 1. pre-norm attention sub-block with a residual connection.
+		x = x + CausalSelfAttention(
+		n_head=self.n_head, 
+		n_embd=self.n_embd, 
+		dropout=self.dropout
+		)(nn.LayerNorm()(x), deterministic=deterministic)
+		
+		# 2. pre-norm position-wise MLP sub-block with a residual connection.
+		h = nn.LayerNorm()(x)
+		h = nn.Dense(4 * self.n_embd)(h)
+		h = nn.gelu(h)
+		h = nn.Dense(self.n_embd)(h)
+		h = nn.Dropout(self.dropout)(h, deterministic=deterministic)
+		
+		return x + h
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل خطوط کد:}
+\begin{itemize}
+	\item \textbf{زیربلوک توجه (\lr{Attention Sub-block}):} در بخش اول، ابتدا \lr{nn.LayerNorm} روی $x$ اعمال می‌شود. سپس خروجی آن به ماژول \lr{CausalSelfAttention} (که در بخش قبل نوشتیم) پاس داده می‌شود. متغیر \lr{deterministic} نیز برای کنترل خاموش/روشن بودن \lr{Dropout} به آن ارسال می‌گردد. در نهایت، خروجی این ماژول با خود $x$ جمع می‌شود (عملگر $+$).
+	\item \textbf{زیربلوک پیش‌خور (\lr{MLP Sub-block}):} در بخش دوم، دوباره یک \lr{LayerNorm} جدید روی $x$ِ جدید اعمال می‌شود (در متغیر $h$).
+	\item \textbf{ضریب انبساط ۴ برابری (\lr{Expansion}):} لایه \lr{Dense} اول، بردار ویژگی‌ها را به فضایی ۴ برابر بزرگتر (\lr{4 * self.n\_embd}) پرتاب می‌کند. این فضای وسیع‌تر به تابع \lr{GELU} اجازه می‌دهد تا ترکیبات غیرخطی و پیچیده‌تری از مفاهیم را بسازد.
+	\item \textbf{تراکم و دراپ‌اوت (\lr{Projection \& Dropout}):} لایه \lr{Dense} دوم، داده‌ها را دوباره به بعد اصلی (\lr{n\_embd}) فشرده می‌کند تا بتوانند با $x$ جمع شوند. در نهایت یک لایه \lr{Dropout} اعمال شده و نتیجه با $x$ جمع می‌گردد (\lr{return x + h}).
+\end{itemize}
+
+\subsubsection*{تحلیل توزیع پارامترها در بلوک ترنسفورمر}
+
+برای درک بهتر معماری، بررسی می‌کنیم که پارامترهای یادگیری‌شونده (\lr{Weights \& Biases}) چگونه در داخل یک بلوک توزیع شده‌اند. شکل \ref{fig:transformer_params} بودجه‌بندی پارامترها را برای یک بلوک با بعد ویژگی $C=32$ نشان می‌دهد.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/params.png}
+	\caption{نمودار توزیع پارامترها در زیرماژول‌های مختلف یک بلوک ترنسفورمر (مجموعاً ۱۲,۶۰۸ پارامتر). بخش عمده‌ای از ظرفیت یادگیری به شبکه پیش‌خور (\lr{MLP}) اختصاص یافته است.}
+	\label{fig:transformer_params}
+\end{figure}
+
+\paragraph{کالبدشکافی دقیق اعداد در نمودار:}
+با فرض \lr{n\_embd = 32}، محاسبات پارامترها به شرح زیر است:
+\begin{enumerate}
+	\item \textbf{لایه توجه (\lr{CausalSelfAttention}): ۴,۱۲۸ پارامتر.}
+	\begin{itemize}
+		\item ماتریس \lr{QKV}: ورودی $32$، خروجی $3 \times 32 = 96$، بدون بایاس $\rightarrow 32 \times 96 = 3,072$.
+		\item لایه پروجکشن خروجی: ورودی $32$، خروجی $32$، به علاوه بایاس $\rightarrow (32 \times 32) + 32 = 1,056$.
+		\item مجموع: $3072 + 1056 = 4,128$. این بخش مسئول کشف \textbf{روابط و الگوها} میان کلمات است.
+	\end{itemize}
+	
+	\item \textbf{لایه انبساط پیش‌خور (\lr{MLP Dense\_0}): ۴,۲۲۴ پارامتر.}
+	\begin{itemize}
+		\item ورودی $32$، خروجی $4 \times 32 = 128$، به علاوه ۱۲۸ بایاس $\rightarrow (32 \times 128) + 128 = 4,224$.
+	\end{itemize}
+	
+	\item \textbf{لایه تراکم پیش‌خور (\lr{MLP Dense\_1}): ۴,۱۲۸ پارامتر.}
+	\begin{itemize}
+		\item ورودی $128$، خروجی $32$، به علاوه ۳۲ بایاس $\rightarrow (128 \times 32) + 32 = 4,128$.
+	\end{itemize}
+	
+	\item \textbf{لایه‌های نرمال‌سازی (\lr{LayerNorm 0 \& 1}): هر کدام ۶۴ پارامتر.}
+	\begin{itemize}
+		\item هر لایه \lr{LayerNorm} شامل بردار مقیاس ($\gamma$) با طول ۳۲ و بردار انتقال ($\beta$) با طول ۳۲ است ($32+32=64$).
+	\end{itemize}
+\end{enumerate}
+
+\textbf{نتیجه‌گیری مهم:} با جمع زدن مقادیر دو لایه \lr{Dense}، مشاهده می‌کنیم که شبکه \lr{MLP} مجموعاً $8,352$ پارامتر دارد که حدوداً \textbf{دو برابر} پارامترهای لایه توجه ($4,128$) است. این یک حقیقت مهندسی در معماری ترنسفورمر است: \textit{«لایه توجه کشف می‌کند که چه کلماتی به هم مرتبط هستند، اما این لایه \lr{MLP} است که با داشتن بیشترین تعداد پارامتر، دانش واقعی و معنای کلمات (بازنمایی‌ها) را در خود ذخیره می‌کند.»}
+
+\subsection{تحلیل تکمیلی: نحوه رشد جریان میان‌بر (\lr{Residual Stream}) با افزایش عمق شبکه}
+
+یکی از ابزارهای تشخیصی بسیار مفید برای درک پویایی (\lr{Dynamics}) شبکه‌های عصبی عمیق، بررسی نحوه تغییر اندازه یا «نُرم» (\lr{Norm}) مقادیر فعال‌سازی با افزایش عمق شبکه (انباشته شدن بلوک‌ها) است. 
+
+در معماری ترنسفورمر، مسیر اصلیِ عبور داده‌ها به عنوان \textbf{جریان میان‌بر} (\lr{Residual Stream}) شناخته می‌شود. از آنجا که هر بلوکِ ترنسفورمر، خروجیِ محاسبات خود (توجه و پیش‌خور) را با داده‌های ورودی \textbf{جمع} می‌کند ($x = x + \Delta x$)، اندازه بردارهای این جریان به طور طبیعی با عبور از هر لایه تمایل به افزایش دارد. این پدیده یکی از دلایل اصلی اهمیت و ضرورت استفاده از معماری پیش‌نرمال‌سازی (\lr{Pre-Norm}) و لایه \lr{LayerNorm} است.
+
+\subsubsection*{آزمایش و نتایج عددی}
+
+برای بررسی این پدیده، یک ورودی ثابت را از درون شبکه‌ای متشکل از بلوک‌های ترنسفورمر که به تازگی و به صورت تصادفی مقداردهی اولیه شده‌اند (\lr{Random Init}) عبور می‌دهیم و میانگین نُرم $L2$ را به ازای هر توکن در اعماق مختلف شبکه (از ۱ تا ۶ بلوک) محاسبه می‌کنیم.
+
+نتایج عددی به‌دست‌آمده به شرح زیر است:
+
+\begin{latin}
+	\begin{lstlisting}
+		norms by depth: [7.095, 8.483, 9.382, 11.291, 12.654, 13.59]
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{تحلیل نمودار و مفاهیم کلیدی}
+
+شکل \ref{fig:mean_residual} روند تغییرات این اعداد را به صورت بصری نشان می‌دهد.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/mean residual.png}
+	\caption{رشد میانگین نُرم \lr{L2} در جریان میان‌بر با افزایش تعداد بلوک‌های ترنسفورمر در حالت مقداردهی اولیه تصادفی.}
+	\label{fig:mean_residual}
+\end{figure}
+
+\paragraph{کالبدشکافی و تحلیل رفتار شبکه:}
+\begin{enumerate}
+	\item \textbf{رشد صعودی و پیوسته:} همان‌طور که در نمودار و اعداد مشخص است، نُرم بردارها از مقدار حدود $7.1$ در خروجی بلوک اول، با یک شیب تقریباً یکنواخت به $13.6$ در خروجی بلوک ششم رسیده است. هرچه بلوک‌های بیشتری روی هم انباشته (\lr{Stacked}) شوند، اعداد بزرگتر و بزرگتر می‌شوند.
+	
+	\item \textbf{خطر ناپایداری محاسباتی:} اگر این اعداد بزرگ مستقیماً وارد محاسبات پیچیده‌ای مانند ضرب ماتریسی در لایه توجه (\lr{Attention}) شوند، واریانس به شدت منفجر شده و خروجیِ لایه \lr{Softmax} کاملاً به حالت اشباع می‌رود. در چنین شرایطی، شبکه توانایی یادگیری خود را از دست می‌دهد.
+	
+	\item \textbf{دلیل اثربخشی \lr{Pre-Norm}:} این نمودار دقیقاً نشان می‌دهد که چرا ما در بلوک ترنسفورمر، پیش از ورود به لایه‌های \lr{Attention} و \lr{MLP}، از \lr{LayerNorm} استفاده کردیم (معماری \lr{Pre-norm}). لایه نرمال‌ساز به عنوان یک «سوپاپ اطمینان» عمل می‌کند؛ مهم نیست که جریان میان‌بر با رسیدن به لایه شصتم چقدر بزرگ و متورم شده باشد، \lr{LayerNorm} پیش از هرگونه پردازش جدید، یک کپی از این داده‌ها می‌گیرد و واریانس آن‌ها را مجدداً به عدد ۱.۰ فشرده می‌کند (همان‌طور که در هیستوگرام بخش قبلی دیدیم).
+\end{enumerate}
+
+\textbf{نتیجه‌گیری:} این تحلیل به روشنی نشان می‌دهد که معماری ترنسفورمر چگونه با ترکیب هوشمندانهِ اتصالات میان‌بر (برای انتقال بی‌نقص گرادیان‌ها و جلوگیری از فراموشی اطلاعات) و لایه‌های نرمال‌ساز (برای مهار رشد تصاعدی اعداد)، توانسته است به شبکه‌هایی با صدها لایه عمق دست یابد بدون آنکه در فرآیند آموزش دچار فروپاشی شود.
+
+
+\newpage
+\section{کوئرا - ساخت و آموزش \lr{MiniGPT}}
+
+\subsection{از بلوک‌ها تا مدل کامل: \lr{Embeddingها} و \lr{Head} خروجی}
+
+در این بخش، تمام بلوک‌های Transformer که تا اینجا بررسی شدند، در قالب یک مدل کامل مانند \LR{GPT} کنار هم قرار می‌گیرند. یک مدل زبانی فقط از چند بلوک توجه تشکیل نشده است، بلکه یک ساختار کامل از ورودی تا خروجی دارد.
+
+\subsubsection*{ورودی مدل: Embedding توکن‌ها}
+
+اولین مرحله در یک مدل زبانی، تبدیل توکن‌ها به بردارهای عددی است. این کار توسط \LR{Token Embedding} انجام می‌شود:
+
+\begin{latin}
+	\texttt{nn.Embed(vocab\_size, n\_embd)}
+\end{latin}
+
+این لایه در واقع یک جدول یادگرفتنی است که هر شناسه توکن را به یک بردار با بعد \( n_{\text{embd}} \) نگاشت می‌کند:
+
+\[
+\text{token id} \rightarrow \mathbb{R}^{n_{\text{embd}}}
+\]
+
+به این ترتیب، هر کلمه یا کاراکتر به یک نمایش برداری قابل پردازش توسط شبکه تبدیل می‌شود.
+
+\subsubsection*{\lr{Embedding} مکانی (\lr{Positional Embedding})}
+
+از آنجایی که Transformer به تنهایی ترتیب توکن‌ها را نمی‌فهمد، نیاز به اطلاعات موقعیت وجود دارد. در GPT از \textbf{Embedding یادگرفتنی مکانی} استفاده می‌شود:
+
+\begin{latin}
+	\texttt{nn.Embed(block\_size, n\_embd)}
+\end{latin}
+
+این لایه برای هر موقعیت در دنباله (مثلاً جایگاه 0 تا \lr{T}) یک بردار یادگرفتنی تولید می‌کند.
+
+\subsubsection*{ترکیب دو Embedding}
+
+در ورودی مدل، دو نوع embedding با هم جمع می‌شوند:
+
+\[
+x = x_{\text{token}} + x_{\text{position}}
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( x_{\text{token}} \): embedding معنایی توکن
+	\item \( x_{\text{position}} \): embedding موقعیت در دنباله
+\end{itemize}
+
+این جمع باعث می‌شود مدل هم معنا و هم ترتیب را همزمان دریافت کند.
+
+\subsubsection*{عبور از بلوک‌های Transformer}
+
+پس از ساخت ورودی اولیه، داده وارد یک سری از بلوک‌های Transformer می‌شود:
+
+\[
+x \rightarrow \text{Block}_1 \rightarrow \text{Block}_2 \rightarrow \dots \rightarrow \text{Block}_N
+\]
+
+تعداد این بلوک‌ها برابر است با:
+
+\begin{latin}
+	\texttt{n\_layer}
+\end{latin}
+
+هر بلوک شامل:
+
+\begin{itemize}
+	\item Multi-Head Attention
+	\item MLP
+	\item Residual Connections
+	\item LayerNorm
+\end{itemize}
+
+است.
+
+\subsubsection*{نرمال‌سازی نهایی}
+
+پس از عبور از تمام بلوک‌ها، یک \LR{LayerNorm} نهایی اعمال می‌شود تا توزیع ویژگی‌ها پایدار شود:
+
+\[
+x = \text{LayerNorm}(x)
+\]
+
+\subsubsection*{لایه خروجی (\lr{Language Model Head})}
+
+در نهایت، مدل باید احتمال کلمه بعدی را پیش‌بینی کند. این کار توسط یک لایه خطی انجام می‌شود:
+
+\begin{latin}
+	\texttt{nn.Dense(vocab\_size)}
+\end{latin}
+
+این لایه بردارهای داخلی را به فضای واژگان نگاشت می‌کند:
+
+\[
+\mathbb{R}^{n_{\text{embd}}} \rightarrow \mathbb{R}^{\text{vocab\_size}}
+\]
+
+\subsubsection*{Logits خروجی}
+
+خروجی مدل به صورت logits است:
+
+\[
+\text{logits} \in \mathbb{R}^{B \times T \times V}
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( B \): اندازه batch
+	\item \( T \): طول دنباله
+	\item \( V \): اندازه vocabulary
+\end{itemize}
+
+در هر موقعیت زمانی \( t \)، مدل یک توزیع روی تمام واژه‌های ممکن تولید می‌کند:
+
+\[
+\text{logits}(b, t, :)
+\]
+
+\subsubsection*{تفسیر خروجی}
+
+برای هر موقعیت در دنباله:
+
+\begin{itemize}
+	\item مدل پیش‌بینی می‌کند "کلمه بعدی چه خواهد بود"
+	\item هر مقدار در vector نشان‌دهنده امتیاز یک token است
+	\item softmax روی logits یک توزیع احتمالاتی می‌سازد
+\end{itemize}
+
+\subsubsection*{جمع‌بندی}
+
+یک مدل GPT کامل از سه بخش اصلی تشکیل شده است:
+
+\begin{itemize}
+	\item Embedding توکن + موقعیت
+	\item مجموعه‌ای از بلوک‌های Transformer
+	\item یک head خروجی برای پیش‌بینی واژگان
+\end{itemize}
+
+این ساختار ساده در ظاهر، اما بسیار قدرتمند است و اساس تمام مدل‌های زبانی مدرن را تشکیل می‌دهد.
+
+\subsection{تابع هزینه Cross-Entropy در پیش‌بینی توکن بعدی}
+
+مسئله یادگیری در مدل‌های زبانی مانند \LR{GPT} در اصل یک مسئله \textbf{طبقه‌بندی چندکلاسه} است. در هر موقعیت زمانی، مدل باید از بین تمام واژگان موجود در واژگان (\LR{vocabulary})، توکن بعدی را پیش‌بینی کند.
+
+بنابراین طبیعی‌ترین تابع هزینه برای این مسئله، \textbf{Cross-Entropy Loss} است.
+
+\subsubsection*{صورت‌بندی مسئله}
+
+در هر گام زمانی \( t \)، مدل یک بردار logits تولید می‌کند:
+
+\[
+\text{logits}_t \in \mathbb{R}^{V}
+\]
+
+که در آن \( V \) اندازه واژگان است.
+
+با اعمال تابع softmax، یک توزیع احتمالاتی به دست می‌آید:
+
+\[
+p_t(i) = \frac{\exp(\text{logits}_t(i))}{\sum_{j=1}^{V} \exp(\text{logits}_t(j))}
+\]
+
+در مقابل، برچسب واقعی یک مقدار صحیح \lr{(integer label) }است که نشان می‌دهد توکن درست کدام است:
+
+\[
+y_t \in \{1, 2, \dots, V\}
+\]
+
+\subsubsection*{تعریف \lr{Cross-Entropy Loss}}
+
+تابع خطا برای یک نمونه به صورت زیر تعریف می‌شود:
+
+\[
+\mathcal{L}_t = - \log p_t(y_t)
+\]
+
+و برای کل دنباله، میانگین گرفته می‌شود:
+
+\[
+\mathcal{L} = \frac{1}{T} \sum_{t=1}^{T} -\log p_t(y_t)
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( T \): طول دنباله
+	\item \( p_t(y_t) \): احتمال توکن صحیح در زمان \( t \)
+\end{itemize}
+
+\subsubsection*{تعبیر شهودی Cross-Entropy}
+
+Cross-Entropy در واقع اندازه‌گیری فاصله بین:
+
+\begin{itemize}
+	\item توزیع پیش‌بینی‌شده توسط مدل
+	\item توزیع واقعی (one-hot)
+\end{itemize}
+
+است.
+
+اگر مدل به توکن درست احتمال بالا بدهد، loss کوچک می‌شود. اگر احتمال کم بدهد، loss بزرگ می‌شود.
+
+\subsubsection*{مقدار اولیه loss در شروع آموزش}
+
+در ابتدای آموزش، مدل هیچ دانشی ندارد و تقریباً یک توزیع یکنواخت روی واژگان تولید می‌کند:
+
+\[
+p(i) \approx \frac{1}{V}
+\]
+
+در این حالت، loss به صورت زیر خواهد بود:
+
+\[
+\mathcal{L}_{\text{init}} \approx -\log\left(\frac{1}{V}\right) = \log(V)
+\]
+
+برای مثال، اگر اندازه واژگان \( V = 65 \) باشد:
+
+\[
+\mathcal{L}_{\text{init}} \approx \log(65) \approx 4.17
+\]
+
+این مقدار یک \textbf{baseline مهم} برای بررسی صحت آموزش است.
+
+\subsubsection*{نقش \lr{numerically stable implementation}}
+
+در پیاده‌سازی‌های واقعی (مانند \LR{optax})، به جای محاسبه مستقیم \lr{softmax} و سپس \lr{log}، از نسخه پایدار عددی استفاده می‌شود:
+
+\begin{latin}
+	\texttt{optax.softmax\_cross\_entropy\_with\_integer\_labels}
+\end{latin}
+
+این روش:
+
+\begin{itemize}
+	\item از overflow عددی جلوگیری می‌کند
+	\item محاسبات log-softmax را بهینه انجام می‌دهد
+	\item مستقیماً logits و label را دریافت می‌کند
+\end{itemize}
+
+\subsubsection*{جمع‌بندی}
+
+تابع Cross-Entropy در مدل‌های زبانی، معیاری برای اندازه‌گیری کیفیت پیش‌بینی توکن بعدی است. این تابع باعث می‌شود مدل یاد بگیرد در هر موقعیت زمانی، احتمال توکن صحیح را نسبت به سایر توکن‌ها افزایش دهد.
+
+کاهش تدریجی این loss در طول آموزش، نشان‌دهنده یادگیری صحیح مدل و بهبود توانایی آن در پیش‌بینی متن است.
+
+
+\subsection{بهینه‌سازی آموزش: \LR{AdamW}، برش گرادیان و زمان‌بندی نرخ یادگیری}
+
+در آموزش مدل‌های بزرگ مانند \LR{Transformer}، انتخاب روش بهینه‌سازی (optimizer) و نحوه تغییر نرخ یادگیری (\LR{learning rate schedule}) نقش بسیار مهمی در پایداری و سرعت همگرایی دارد. در این بخش سه جزء کلیدی آموزش بررسی می‌شود: \LR{AdamW}، برش گرادیان و زمان‌بندی \lr{warmup-cosine}.
+
+\subsubsection*{\LR{AdamW} (بهینه‌ساز استاندارد \lr{Transformer})}
+
+\LR{AdamW} نسخه‌ای اصلاح‌شده از الگوریتم \LR{Adam} است که در آن \textbf{weight decay} به صورت جداگانه از به‌روزرسانی گرادیان اعمال می‌شود.
+
+در \LR{Adam}، به‌روزرسانی پارامترها به صورت زیر است:
+
+\[
+m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t
+\]
+
+\[
+v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2
+\]
+
+\[
+\theta_t = \theta_{t-1} - \eta \frac{m_t}{\sqrt{v_t} + \epsilon}
+\]
+
+در \LR{AdamW}، عبارت \textbf{weight decay} به صورت جداگانه اضافه می‌شود:
+
+\[
+\theta_t = \theta_t - \eta \left( \frac{m_t}{\sqrt{v_t} + \epsilon} + \lambda \theta_t \right)
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( \lambda \): ضریب weight decay
+	\item \( \eta \): نرخ یادگیری
+\end{itemize}
+
+مزیت اصلی \LR{AdamW} این است که regularization به صورت صحیح و مستقل از adaptive update اعمال می‌شود.
+
+\subsubsection*{برش گرادیان (\lr{Gradient Clipping})}
+
+در آموزش شبکه‌های عمیق، ممکن است مقدار گرادیان‌ها بسیار بزرگ شود و باعث ناپایداری آموزش گردد. برای جلوگیری از این مشکل از \textbf{clipping بر اساس norm کل گرادیان} استفاده می‌شود.
+
+اگر گرادیان کل به صورت زیر باشد:
+
+\[
+\|g\|_2 = \sqrt{\sum_i g_i^2}
+\]
+
+در صورتی که این مقدار از یک آستانه \( c \) بزرگ‌تر شود، گرادیان نرمال‌سازی می‌شود:
+
+\[
+g \leftarrow g \cdot \frac{c}{\|g\|_2}
+\]
+
+این کار باعث می‌شود:
+
+\begin{itemize}
+	\item از انفجار گرادیان جلوگیری شود
+	\item آموزش پایدارتر شود
+	\item مدل در مراحل اولیه خراب نشود
+\end{itemize}
+
+\subsubsection*{زمان‌بندی نرخ یادگیری (\LR{Warmup + Cosine Decay})}
+
+نرخ یادگیری ثابت معمولاً برای آموزش مدل‌های بزرگ مناسب نیست. به همین دلیل از یک برنامه زمان‌بندی ترکیبی استفاده می‌شود:
+
+\paragraph{1. Warmup (افزایش اولیه)}
+
+در ابتدای آموزش، نرخ یادگیری از صفر شروع شده و به تدریج افزایش می‌یابد:
+
+\[
+\eta(t) = \eta_{\max} \cdot \frac{t}{T_{\text{warmup}}}
+\]
+
+این مرحله باعث می‌شود مدل در شروع آموزش دچار ناپایداری نشود.
+
+\paragraph{2. Cosine Decay (کاهش تدریجی)}
+
+پس از مرحله warmup، نرخ یادگیری به صورت کسینوسی کاهش می‌یابد:
+
+\[
+\eta(t) = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})
+\left(1 + \cos\left(\pi \frac{t}{T}\right)\right)
+\]
+
+که در آن:
+
+\begin{itemize}
+	\item \( \eta_{\max} \): بیشترین نرخ یادگیری
+	\item \( \eta_{\min} \): کمترین نرخ یادگیری
+	\item \( T \): کل زمان آموزش
+\end{itemize}
+
+\subsubsection*{ترکیب در \LR{Optax}}
+
+در پیاده‌سازی‌های \LR{JAX}، این سه بخش معمولاً با استفاده از \LR{optax.chain} ترکیب می‌شوند:
+
+\begin{latin}
+	\texttt{optax.chain(
+		optax.clip\_by\_global\_norm(1.0),
+		optax.adamw(learning\_rate=schedule)
+		)}
+\end{latin}
+
+در این ساختار:
+
+\begin{itemize}
+	\item ابتدا گرادیان‌ها clip می‌شوند
+	\item سپس optimizer اعمال می‌شود
+	\item نرخ یادگیری توسط یک تابع schedule کنترل می‌شود
+\end{itemize}
+
+\subsubsection*{جمع‌بندی}
+
+در آموزش مدل‌های Transformer:
+
+\begin{itemize}
+	\item \LR{AdamW} برای بهینه‌سازی پایدار استفاده می‌شود
+	\item Gradient Clipping از انفجار گرادیان جلوگیری می‌کند
+	\item Warmup-Cosine باعث بهبود همگرایی در بلندمدت می‌شود
+\end{itemize}
+
+این سه تکنیک در کنار هم، پایه استاندارد آموزش مدل‌های زبانی بزرگ را تشکیل می‌دهند.
+
+\subsection{مونتاژ معماری کلان: ماژول \lr{MiniGPT}}
+
+پس از طراحی و پیاده‌سازی اجزای بنیادین مانند مکانیزم توجه چندسر (\lr{Multi-Head Attention})، شبکه‌های پیش‌خور (\lr{MLP}) و بلوک‌های ترنسفورمر، اکنون زمان آن فرا رسیده است که این قطعات را در یک قاب نهایی و یکپارچه مونتاژ کنیم. ماژول \lr{MiniGPT} پوسته بیرونی مدل ماست که وظیفه دریافت شناسه‌های خامِ متن (\lr{Token IDs})، تزریق اطلاعات مکانی، هدایت آن‌ها از میان لایه‌های عمیق ترنسفورمر و در نهایت تولید پیش‌بینی برای کلمه بعدی را بر عهده دارد.
+
+تفاوت مهم این معماری با کدهای بخش‌های ابتدایی (مانند توابع سینوسی) در این است که \lr{GPT} از \textbf{کدگذاری مکانی یادگیری‌شونده (\lr{Learned Positional Embedding})} استفاده می‌کند؛ به این معنا که مدل خودش بهترین بازنمایی ریاضی برای جایگاه کلمات را در حین آموزش کشف می‌کند.
+
+\subsubsection*{پیاده‌سازی کد \lr{MiniGPT}}
+
+در ادامه، پیاده‌سازی کامل این ماژول در فریم‌ورک \lr{Flax} آورده شده است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		class MiniGPT(nn.Module):
+		vocab_size: int
+		block_size: int
+		n_layer: int
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, idx, deterministic=True):
+		B, T = idx.shape
+		
+		# 1. Build token + positional embeddings, add them, then apply dropout.
+		tok =  nn.Embed(self.vocab_size, self.n_embd, name="tok_emb")(idx)
+		pos =  nn.Embed(self.block_size, self.n_embd, name="pos_emb")(jnp.arange(T))
+		x =  tok + pos[None, :, :]
+		x = nn.Dropout(self.dropout)(x, deterministic=deterministic)
+		
+		# 2. Apply self.n_layer TransformerBlock layers
+		for i in range(self.n_layer):
+		x = TransformerBlock(
+		self.n_head, 
+		self.n_embd, 
+		self.dropout, 
+		name=f"block_{i}"
+		)(x, deterministic=deterministic)
+		
+		# 3. Final normalization and linear head
+		x = nn.LayerNorm()(x)
+		logits = nn.Dense(self.vocab_size, name="head")(x)
+		
+		return logits
+	\end{lstlisting}
+\end{latin}
+
+\subsubsection*{کالبدشکافی و تحلیل دقیق ساختار کد}
+
+\begin{itemize}
+	\item \textbf{دکوراتور \lr{@nn.compact}:} همان‌طور که پیش‌تر اشاره شد، این دکوراتور به ما اجازه می‌دهد لایه‌های فرعی (مثل \lr{Embed} و \lr{TransformerBlock}) را مستقیماً در تابع فراخوانی (\lr{\_\_call\_\_}) و بدون نیاز به تعریف قبلی در \lr{setup} مقداردهی کنیم.
+	
+	\item \textbf{تعبیه توکن‌ها (\lr{tok\_emb}):} ورودی مدل (\lr{idx}) یک ماتریس از اعداد صحیح با ابعاد $(B, T)$ است ($B$ اندازه دسته و $T$ طول جمله). لایه \lr{nn.Embed} اول، یک جدول جستجو (\lr{Lookup Table}) با ابعاد \lr{vocab\_size} ایجاد می‌کند و هر شناسه عدد صحیح را به یک بردار پیوسته به طول \lr{n\_embd} نگاشت می‌کند. خروجی این بخش ماتریسی با ابعاد $(B, T, C)$ است.
+	
+	\item \textbf{تعبیه موقعیتی (\lr{pos\_emb}):} لایه \lr{nn.Embed} دوم، جدولی به اندازه حداکثر ظرفیت حافظه مدل (\lr{block\_size}) می‌سازد. با دستور \lr{jnp.arange(T)}، آرایه‌ای از اعداد $0$ تا $T-1$ تولید می‌شود تا جایگاه هر کلمه در جمله فعلی مشخص شود. خروجی این بخش ماتریسی با ابعاد $(T, C)$ است.
+	
+	\item \textbf{ترفند \lr{Broadcasting} در جمع (\lr{tok + pos[None, :, :]}):} برای جمع کردن بردار موقعیت با بردار توکن‌ها، ابعاد باید هم‌خوانی داشته باشند. با اضافه کردن \lr{None} در ابتدای آرایه \lr{pos}، یک بُعد مجازی ایجاد می‌شود و ابعاد آن به $(1, T, C)$ تغییر می‌کند. پایتون به صورت خودکار این ماتریس موقعیت را به تعداد جملات موجود در دسته ($B$) کپی (\lr{Broadcast}) کرده و با \lr{tok} جمع می‌کند.
+	
+	\item \textbf{پشته‌سازی بلوک‌ها (\lr{Stacking Blocks}):} یک حلقه \lr{for} به تعداد \lr{n\_layer} تکرار می‌شود و در هر مرحله، خروجیِ بلوک قبلی به عنوان ورودی به بلوک بعدی داده می‌شود. نام‌گذاری پویا (\lr{name=f"block\_\{i\}"}) باعث می‌شود ساختار \lr{Pytree} منظم باقی بماند و وزن‌های هر لایه با لایه دیگر تداخل پیدا نکنند.
+	
+	\item \textbf{سرِ خروجی (\lr{Output Head}):} در نهایت، پس از عبور از یک نرمال‌سازِ پایانی (\lr{nn.LayerNorm})، یک لایه خطی ساده (\lr{nn.Dense}) داده‌ها را از فضای ویژگی‌ها (\lr{n\_embd}) به فضای دایره لغات (\lr{vocab\_size}) تصویر می‌کند تا امتیازات خام (\lr{Logits}) برای پیش‌بینی کلمه بعدی تولید شوند.
+\end{itemize}
+
+\subsubsection*{تحلیل ابعاد خروجی و بودجه‌بندی پارامترها (\lr{Parameter Budget})}
+
+پس از مقداردهی اولیه مدل با داده‌های آزمایشی، خروجی‌های زیر در کنسول چاپ می‌شوند:
+
+\begin{latin}
+	\begin{lstlisting}
+		OK: MiniGPT logits shape (8, 64, 65)
+		total parameters: 2,703,425
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل ابعاد \lr{Logits}:} 
+ابعاد خروجی مدل برابر با $(8, 64, 65)$ است. این یعنی مدل به طور همزمان ۸ جمله مختلف ($B=8$) که هرکدام ۶۴ کاراکتر طول دارند ($T=64$) را پردازش کرده است. برای \textbf{تک‌تکِ این موقعیت‌ها}، مدل ۶۵ امتیاز خام (\lr{Logits}) تولید کرده است که نشان‌دهنده احتمال وقوع هر یک از ۶۵ کاراکتر موجود در دایره لغات (\lr{Vocab Size}) به عنوان کاراکتر بعدی است.
+
+\paragraph{تحلیل نمودار بودجه‌بندی پارامترها:}
+شکل \ref{fig:param_minigpt} توزیع \lr{۲.۷} میلیون پارامترِ این مدل را به تفکیک بخش‌های مختلف نشان می‌دهد.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/param minigpt.png}
+	\caption{نمودار بودجه‌بندی پارامترها در معماری \lr{MiniGPT}. بیش از ۹۸٪ از ظرفیت مدل در بلوک‌های ترنسفورمر متمرکز شده است.}
+	\label{fig:param_minigpt}
+\end{figure}
+
+همان‌طور که در نمودار مشخص است، پارامترهای مدل به شدت به صورت نامتقارن توزیع شده‌اند:
+\begin{itemize}
+	\item \textbf{ستون سمت چپ (لایه‌های تعبیه):} تنها $24,768$ پارامتر به جداول جستجوی کلمات و موقعیت‌ها اختصاص یافته است.
+	\item \textbf{ستون سمت راست (نرمال‌ساز نهایی و طبقه‌بند):} فقط $12,929$ پارامتر برای تبدیل اطلاعات پردازش‌شده به احتمالات خروجی مصرف شده است.
+	\item \textbf{ستون میانی (بلوک‌های ترنسفورمر):} غول‌پیکرترین بخش مدل با $2,665,728$ پارامتر (بیش از ۹۸٪ کل ظرفیت). 
+\end{itemize}
+
+این نمودار رازِ مقیاس‌پذیریِ (\lr{Scaling}) معماری \lr{GPT} را فاش می‌کند: در مدل‌های زبانِ بزرگتر (مثل \lr{GPT-4} با میلیاردها پارامتر)، ابعاد دایره لغات (ستون‌های کناری) تغییر چندانی نمی‌کند؛ بلکه تمام قدرت، هوش و استدلالِ مدل با عمیق‌تر شدن و پهن‌تر شدن بلوک‌های ترنسفورمر (ستون میانی) افزایش می‌یابد. مغز متفکر شبکه کاملاً در این ناحیه میانی متمرکز شده است.
+
+\subsection{تابع زیان آنتروپی متقاطع (\lr{Cross-Entropy Loss})}
+
+در مرحله آموزش مدل، هدف ما به حداقل رساندن تفاوت میان خروجیِ پیش‌بینی‌شده توسط مدل و مقدار واقعی (هدف) است. در مدل‌های زبانی، این مسئله به عنوان یک مسئله «دسته‌بندی چندکلاسه» (\lr{Multi-class Classification}) در نظر گرفته می‌شود؛ به این معنا که مدل در هر موقعیت، باید از میان تمامی کلمات موجود در دایره لغات (\lr{Vocabulary})، کلمه صحیح بعدی را انتخاب کند.
+
+تابع \textbf{آنتروپی متقاطع} (\lr{Cross-Entropy}) استانداردترین معیار برای اندازه‌گیری فاصله بین توزیع احتمالِ پیش‌بینی‌شده توسط مدل و توزیع احتمالِ واقعی (که برای پاسخ صحیح برابر با ۱ و برای سایرین صفر است) محسوب می‌شود.
+
+\subsubsection*{پیاده‌سازی و تحلیل تابع \lr{compute\_loss}}
+
+برای محاسبه زیان در حالت آموزش، باید مدل را با شرایط خاصی فراخوانی کنیم. کد پیاده‌سازی این بخش به شرح زیر است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		def compute_loss(params, x, y, dropout_key):
+		# forward with dropout ON, then mean cross-entropy with integer labels.
+		logits = model.apply(params, x, deterministic=False, rngs={"dropout": dropout_key})
+		return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(logits, y))
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل پارامترها و نکات کلیدی:}
+\begin{itemize}
+	\item \textbf{وضعیت \lr{deterministic=False}:} این پارامتر برای کنترل لایه \lr{Dropout} است. در زمان آموزش، ما می‌خواهیم لایه‌های \lr{Dropout} فعال باشند تا با خاموش کردن تصادفی نورون‌ها، از بیش‌برازش (\lr{Overfitting}) جلوگیری کنیم. بنابراین وضعیت قطعی (\lr{deterministic}) را غیرفعال می‌کنیم.
+	\item \textbf{استفاده از \lr{rngs}:} چون \lr{Dropout} یک فرآیند تصادفی است، باید یک کلید تصادفی (\lr{dropout\_key}) از طریق \lr{rngs} به مدل ارسال کنیم تا \lr{Flax} بتواند مشخص کند کدام نورون‌ها باید خاموش شوند.
+	\item \textbf{تابع \lr{softmax\_cross\_entropy\_with\_integer\_labels}:} این تابع یکی از بهینه‌ترین ابزارهای کتابخانه \lr{Optax} است. این تابع، مقادیر خام \lr{logits} را دریافت کرده و به صورت ترکیبی، عملیات \lr{Softmax} و محاسبه خطا را انجام می‌دهد. این رویکرد به دلیل پایداری عددی (\lr{Numerical Stability})، از بروز خطاهای محاسباتی (مانند \lr{NaN}) که ممکن است در محاسبه مستقیمِ $e^x$ رخ دهد، جلوگیری می‌کند.
+\end{itemize}
+
+\subsubsection*{آزمون سلامت اولیه (\lr{Sanity Check})}
+
+یکی از جذاب‌ترین بخش‌های مهندسی مدل‌های زبانی، ارزیابی وضعیت مدل در لحظه صفر (پیش از هرگونه یادگیری) است. در لحظه اولیه، تمام پارامترهای مدل به صورت تصادفی مقداردهی شده‌اند و مدل هیچ دانشی ندارد. بنابراین، مدل باید به تمامی کلمات دایره لغاتِ ۶۵تایی (در پروژه شکسپیر)، شانسِ برابری اختصاص دهد ($1/65$).
+
+مقدار زیان در این حالت طبق فرمول آنتروپی متقاطع برابر است با:
+\begin{equation}
+	\mathrm{Loss} = -\ln\left(\frac{1}{V}\right) = \ln(V)
+\end{equation}
+که در آن $V$ اندازه دایره لغات است. برای ۶۵ کاراکتر داریم:
+\begin{equation}
+	\ln(65) \approx 4.174
+\end{equation}
+
+خروجی تست اجرای مدل به شرح زیر است:
+\begin{latin}
+	\begin{lstlisting}
+		initial loss = 4.828   |   ln(vocab) = 4.174
+		OK: untrained loss is near ln(vocab), as expected
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل نتیجه:}
+\begin{itemize}
+	\item \textbf{مقدار \lr{۴.۸۲۸} در برابر \lr{۴.۱۷۴}:} زیان اولیه مدل ما کمی بیشتر از حد تئوری است. دلیل این تفاوت، تصادفی بودنِ وزن‌های اولیه است. اگر وزن‌های اولیه دقیقاً توزیع یکنواخت تولید می‌کردند، زیان دقیقاً \lr{۴.۱۷۴} می‌شد. اما با توجه به اینکه وزن‌ها به صورت نرمال توزیع شده‌اند، وجود این اختلاف کاملاً طبیعی و مورد انتظار است.
+	\item \textbf{معنای موفقیت:} دستیابی به عددی نزدیک به $\ln(V)$ به این معناست که:
+	\begin{enumerate}
+		\item محاسبات \lr{Logits} و توابع نرمال‌سازی لایه‌ای (\lr{LayerNorm}) به درستی کار می‌کنند.
+		\item ماسک علّی (\lr{Causal Mask}) به درستی اعمال شده است (اگر ماسک وجود نداشت، مدل جواب را از آینده تقلب می‌کرد و زیان بسیار کمتر می‌شد).
+		\item لایه‌های تعبیه (\lr{Embeddings}) به درستی مقادیر را برای محاسبات آماده کرده‌اند.
+	\end{enumerate}
+\end{itemize}
+
+این آزمون (\lr{Sanity Check}) به ما اطمینان می‌دهد که مدل از نظر ساختار ریاضی کاملاً سالم است و آماده ورود به «حلقه آموزش» (\lr{Training Loop}) و کاهش تدریجی زیان است.
+
+\subsection{زمان‌بندی نرخ یادگیری: \lr{Warmup-Cosine Decay}}
+
+در آموزش مدل‌های ترنسفورمر، انتخابِ نرخ یادگیری (\lr{Learning Rate}) ثابت می‌تواند منجر به واگرایی (\lr{Divergence}) یا افت کیفیت آموزش شود. برای مقابله با این مشکل، در معماری \lr{MiniGPT} از یک زمان‌بندی پویا استفاده شده است که نرخ یادگیری را در طول آموزش تغییر می‌دهد. این استراتژی دو مرحله اصلی دارد:
+
+\begin{enumerate}
+	\item \textbf{گرم‌کردن (\lr{Warmup}):} در مراحل اولیه آموزش، وزن‌های شبکه به صورت تصادفی هستند. اگر با نرخ یادگیری بالا شروع کنیم، ممکن است گرادیان‌های بزرگ باعث نابودیِ این پیکربندیِ اولیه شوند. بنابراین، نرخ یادگیری به صورت خطی از صفر تا مقدار قله (\lr{peak\_lr}) افزایش می‌یابد.
+	\item \textbf{کاهش کسینوسی (\lr{Cosine Decay}):} پس از رسیدن به نقطه اوج، برای تثبیتِ یادگیری و همگرایی بهتر، نرخ یادگیری طبق یک منحنی کسینوسی به سمت یک مقدار حداقلی کاهش می‌یابد. این کار به مدل اجازه می‌دهد در مراحل پایانی، قدم‌های کوچک‌تر و دقیق‌تری برای رسیدن به نقطه بهینه (\lr{Global Minimum}) بردارد.
+\end{enumerate}
+
+\subsubsection*{پیاده‌سازی با \lr{Optax}}
+
+کتابخانه \lr{Optax} تابعی به نام \lr{warmup\_cosine\_decay\_schedule} را برای این منظور ارائه می‌دهد. پیاده‌سازی این تابع در مدل \lr{MiniGPT} به صورت زیر است:
+
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		import optax
+		
+		def make_lr_schedule(peak_lr, warmup_steps, total_steps):
+		# return an optax.warmup_cosine_decay_schedule
+		return optax.warmup_cosine_decay_schedule(
+		init_value=0.0, 
+		peak_value=peak_lr, 
+		warmup_steps=warmup_steps, 
+		decay_steps=total_steps, 
+		end_value=peak_lr * 0.1
+		)
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{تحلیل پارامترها:}
+\begin{itemize}
+	\item \lr{\textbf{init\_value=0.0}:} شروع نرخ یادگیری از صفر.
+	\item \lr{\textbf{peak\_value=peak\_lr}:} مقدار حداکثر نرخ یادگیری که پس از پایان مرحله گرم‌کردن به آن می‌رسیم.
+	\item \lr{\textbf{warmup\_steps}:} تعداد گام‌هایی که صرف گرم کردن مدل می‌شود.
+	\item \lr{\textbf{decay\_steps}:} کل گام‌های آموزش که نرخ یادگیری بر اساس آن کاهش می‌یابد.
+	\item \lr{\textbf{end\_value=peak\_lr * 0.1}:} نرخی که در انتهای آموزش به آن می‌رسیم (در اینجا ۱۰٪ مقدار اوج است).
+\end{itemize}
+
+\subsubsection*{تحلیل نمودار نرخ یادگیری}
+
+شکل \ref{fig:warmup_cosine} رفتار نرخ یادگیری را در طول کل مسیر آموزش نشان می‌دهد.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/warmup.png}
+	\caption{نمودار زمان‌بندی نرخ یادگیری. بخش اول (شیب تند مثبت) مرحله \lr{Warmup} و بخش دوم (منحنی نرم) مرحله \lr{Cosine Decay} است.}
+	\label{fig:warmup_cosine}
+\end{figure}
+
+\textbf{تحلیل رفتاری نمودار:}
+\begin{enumerate}
+	\item \textbf{فاز خطی (۰ تا حدود ۱۵۰ گام):} در این بازه، مدل با احتیاط شروع می‌کند. نرخ یادگیری به صورت کاملاً خطی رشد می‌کند. این مرحله «اعتمادسازی» برای مدل است تا وزن‌ها از فضای تصادفی اولیه خود به آرامی به سمت جهت‌های سازنده حرکت کنند.
+	\item \textbf{نقطه عطف:} در گام ۱۵۰، نمودار به اوج (قله) می‌رسد. از اینجا به بعد، مدل با حداکثر سرعت آموزشی خود حرکت می‌کند تا بهینه‌سازی پارامترها با بیشترین قدرت انجام شود.
+	\item \textbf{فاز کاهش نرم (۱۵۰ تا ۲۰۰۰ گام):} منحنی کسینوسیِ معکوس به مدل اجازه می‌دهد تا با سرعتی که به تدریج کم می‌شود، فضای وزن‌ها را کاوش کند. این کاهش نرم باعث می‌شود مدل در انتهای آموزش دچار نوسانات شدید نشده و به جای عبور از نقطه بهینه، دقیقا در دره (\lr{Minima}) مستقر (\lr{Settle}) شود.
+\end{enumerate}
+
+استفاده از این زمان‌بندی، یکی از دلایل اصلی موفقیت مدل‌های ترنسفورمر در همگرایی پایدار است. بدون \lr{Warmup}، مدل در لحظات اولیه می‌سوزد و بدون \lr{Cosine Decay}، دقت نهایی مدل به دلیل قدم‌های بزرگِ انتهای کار، محدود باقی می‌ماند.
+
+\subsection{گام آموزش و کامپایل \lr{JIT} در \lr{JAX}}
+
+در \lr{JAX}، عملیات آموزش در قالب یک تابع به نام \lr{train\_step} تعریف می‌شود. این تابع با استفاده از \lr{JIT} کامپایل می‌شود تا کل گراف محاسباتی یک‌بار به کد سطح پایین (\lr{XLA}) تبدیل شده و در اجراهای بعدی با سرعت بسیار بالا روی GPU/TPU اجرا شود.
+
+\subsubsection*{تابع \lr{train\_step}}
+
+\begin{latin}
+	\begin{verbatim}
+		@jax.jit
+		def train_step(params, opt_state, x, y, dropout_key):
+		loss, grads = jax.value_and_grad(compute_loss)(
+		params, x, y, dropout_key
+		)
+		updates, opt_state = optimizer.update(grads, opt_state, params)
+		params = optax.apply_updates(params, updates)
+		return params, opt_state, loss
+	\end{verbatim}
+\end{latin}
+
+\paragraph{توضیح مراحل:}
+
+\begin{enumerate}
+	\item \textbf{\lr{JIT Compilation}:} دکوراتور \lr{@jax.jit} باعث می‌شود کل تابع فقط یک‌بار کامپایل شود و سپس به صورت بهینه اجرا گردد. این کار overhead پایتون را حذف می‌کند.
+	
+	
+	
+	\item \textbf{به‌روزرسانی بهینه‌ساز:} تابع \lr{optimizer.update} گرادیان‌ها را گرفته و آپدیت‌های مناسب (مثل Adam) را تولید می‌کند. همچنین وضعیت داخلی بهینه‌ساز (\lr{opt\_state}) را به‌روز می‌کند.
+	
+	\item \textbf{اعمال تغییرات:} با استفاده از \lr{optax.apply\_updates} پارامترهای جدید ساخته می‌شوند:
+	\[
+	\theta \leftarrow \theta + \Delta \theta
+	\]
+\end{enumerate}
+
+\subsubsection*{تابع ارزیابی (\lr{eval\_loss})}
+
+در زمان ارزیابی، dropout غیرفعال می‌شود تا خروجی deterministic باشد:
+
+\begin{latin}
+	\begin{verbatim}
+		@jax.jit
+		def eval_loss(params, x, y):
+		logits = model.apply(params, x, deterministic=True)
+		return optax.softmax_cross_entropy_with_integer_labels(
+		logits, y
+		).mean()
+	\end{verbatim}
+\end{latin}
+
+در این حالت:
+
+\begin{itemize}
+	\item \lr{Dropout} خاموش است
+	\item مدل رفتار ثابت دارد
+	\item loss فقط بر اساس forward pass محاسبه می‌شود
+\end{itemize}
+
+\subsubsection*{آزمون یادگیری (\lr{Sanity Check})}
+
+برای بررسی صحت آموزش، یک batch ثابت چندین بار به مدل داده می‌شود:
+
+\begin{latin}
+	\begin{verbatim}
+		loss on a fixed batch: 4.569 -> 2.749
+		OK: train_step learns
+	\end{verbatim}
+\end{latin}
+
+\paragraph{تحلیل نتیجه:}
+
+\begin{itemize}
+	\item کاهش loss از \lr{4.569} به \lr{2.749} نشان می‌دهد مدل واقعاً در حال یادگیری است.
+	\item این کاهش یعنی پارامترها در جهت درست توسط \lr{optimizer} به‌روزرسانی شده‌اند.
+	\item اگر loss کاهش پیدا نکند، معمولاً یکی از بخش‌ها (\lr{gradients}، \lr{optimizer} یا \lr{data pipeline}) مشکل دارد.
+\end{itemize}
+
+\subsubsection*{جمع‌بندی}
+
+تابع \lr{train\_step} در \lr{JAX} هسته اصلی آموزش مدل است که با ترکیب \lr{JIT compilation}، محاسبه گرادیان خودکار و بهینه‌سازهای مدرن مانند \lr{AdamW}، امکان آموزش سریع و پایدار مدل‌های Transformer را فراهم می‌کند.
+
+\subsection{آموزش مدل و تولید متن (\lr{Training and Inference})}
+
+در آخرین مرحله از این گزارش، مدل \lr{MiniGPT} را در یک حلقه آموزش کامل قرار می‌دهیم تا با استفاده از الگوریتم بهینه‌ساز، وزن‌های تصادفی اولیه خود را به وزن‌هایی معنادار تبدیل کند. همچنین قابلیتی برای تولید متن (\lr{Sampling}) ایجاد می‌کنیم تا توانایی مدل در خلق جملات جدید را بسنجیم.
+
+\subsubsection*{پیاده‌سازی حلقه آموزش و نمونه‌برداری}
+
+
+\subsubsection*{تحلیل عملکرد آموزش}
+
+نتایج ثبت‌شده در حین آموزش نشان‌دهنده همگرایی بسیار موفقیت‌آمیز مدل است:
+
+\begin{latin}
+	\begin{lstlisting}
+		step    0 | train 4.737 | val 4.693 | grad-norm 7.22 |   28.9s
+		step  250 | train 2.192 | val 2.183 | grad-norm 0.43 |   34.8s
+		step  500 | train 1.943 | val 1.992 | grad-norm 0.40 |   40.7s
+		step 1000 | train 1.721 | val 1.758 | grad-norm 0.32 |   52.5s
+		step 2000 | train 1.471 | val 1.559 | grad-norm 0.34 |   78.0s
+	\end{lstlisting}
+\end{latin}
+
+\paragraph{بررسی نتایج:}
+\begin{itemize}
+	\item \textbf{کاهش چشمگیر زیان (\lr{Loss Decay}):} زیان آموزش از عددِ بسیار بالای \lr{۴.۷۳۷ }در مرحله صفر، به ۱.۴۷۱ در مرحله \lr{۲۰۰۰} رسیده است. این یعنی مدل توانسته است توزیع آماریِ کاراکترها در متون شکسپیر را با دقت بسیار بیشتری یاد بگیرد.
+	\item \textbf{نُرم گرادیان (\lr{Grad-Norm}):} افت گرادیان از \lr{۷.۲۲} به \lr{۰.۳۴ }نشان می‌دهد که مدل از فضای پرنوسان اولیه خارج شده و به ناحیه‌ای از فضای وزن‌ها رسیده است که تغییرات آن ملایم و هدفمند است.
+	\item \textbf{شکاف آموزشی (\lr{Generalization Gap}):} تفاوت ناچیز بین زیانِ آموزش (\lr{۱.۴۷۱)} و زیانِ اعتبارسنجی (\lr{۱.۵۵۹}) نشان می‌دهد که مدل به خوبی تعمیم یافته و دچار بیش‌برازش (\lr{Overfitting}) نشده است.
+\end{itemize}
+
+\subsubsection*{تحلیل متن تولیدشده}
+
+خروجی نهایی مدل پس از ۲۰۰۰ گام آموزش به شرح زیر است:
+\begin{quote}
+	\textit{ROMEO: 'Tis not; but and she may heaven as he death That have shall be danced loved the mail of so live, And thus I am short for the house that of me soul Have him not done, this is change, so the pair'd selfects and like an another roote under t}
+\end{quote}
+
+\paragraph{نکته کلیدی در تحلیل خروجی:}
+این نکته بسیار مهم است که مدل ما در سطح کاراکتر (\lr{Character-level}) آموزش دیده است. یعنی مدل از ابتدا هیچ درکی از «کلمه» نداشته و صرفاً با دیدنِ تک‌تکِ حروف، یاد گرفته است که پس از یک حرف، احتمالِ کدام حرفِ دیگر بیشتر است.
+
+با این وجود، مشاهده می‌کنیم که مدل توانسته است:
+\begin{enumerate}
+	\item \textbf{ساختار کلمات را بسازد:} ترکیبِ حروف به گونه‌ای است که اکثر آن‌ها کلمات معناداری مانند \textit{"heaven"}, \textit{"house"}, \textit{"loved"} را تشکیل داده‌اند. 
+	\item \textbf{ساختار گرامری (نحو):} اگرچه جملات کاملاً منطقی نیستند، اما مدل یاد گرفته است که چگونه ساختارِ سبکِ شکسپیری (ترکیب کلمات کهن و ساختارِ جملات موزون) را شبیه‌سازی کند.
+	\item \textbf{یادگیری نانوشته:} مدل صرفاً با «تکرارِ آماری»، قوانینِ فاصله (گذاشتنِ فاصله پس از کلمات) و ساختار کلیِ متون را استخراج کرده است.
+\end{enumerate}
+
+این نتایج خیره‌کننده است؛ زیرا نشان می‌دهد که چگونه یک معماری ترنسفورمر ساده، تنها با هدفِ «پیش‌بینی حرف بعدی»، می‌تواند قواعدِ پنهان در داده‌ها را کشف کرده و خروجی‌هایی تولید کند که از نظر فرم و ساختار، شباهت عجیبی به زبانِ طبیعی انسان دارند.
+
+\subsection{تحلیل نهایی و عیب‌یابی مدل (\lr{Diagnostics})}
+
+برای ارزیابی کیفیت فرآیند آموزش، ما از سه نمودار تشخیصی استاندارد استفاده می‌کنیم. این نمودارها به ما می‌گویند که آیا مدل به درستی یاد گرفته است، آیا دچار مشکل شده و وضعیت نهایی پارامترهای مدل چگونه است.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/loss curve.png}
+	\caption{نمودارهای تشخیصی: منحنی زیان (چپ)، نُرم گرادیان (وسط) و توزیع وزن‌های نهایی (راست).}
+	\label{fig:loss_diagnostics}
+\end{figure}
+
+\subsubsection*{۱. منحنی‌های زیان (\lr{Loss Curves})}
+این نمودار نشان‌دهنده خطای مدل در طول ۲۰۰۰ گام آموزش برای مجموعه داده‌های آموزش (\lr{train}) و اعتبارسنجی (\lr{val}) است.
+\begin{itemize}
+	\item \textbf{روند کلی:} هر دو منحنی با شیبی تند کاهش یافته و سپس در گام‌های ۱۰۰۰ تا ۲۰۰۰ به ثبات (\lr{Plateau}) رسیده‌اند. این نشان می‌دهد که مدل با موفقیت الگوهای اصلیِ داده را فرا گرفته است.
+	\item \textbf{شکاف بین دو منحنی:} مشاهده می‌کنیم که دو منحنی بسیار به هم نزدیک هستند. این بهترین سناریوی ممکن است؛ اگر منحنی \lr{val} (نارنجی) شروع به فاصله گرفتن از منحنی \lr{train} (آبی) می‌کرد و بالا می‌رفت، نشان‌دهنده \textbf{بیش‌برازش (\lr{Overfitting})} بود (یعنی مدل داده‌ها را حفظ کرده بود اما نمی‌توانست روی داده‌های جدید به خوبی کار کند). نزدیکی آن‌ها نشان‌دهنده تعمیم‌پذیری (\lr{Generalization}) خوب مدل است.
+	\item \textbf{خط‌چین مرجع:} مدل توانسته است به راحتی از خط \lr{random} (یعنی $\ln(65) \approx 4.17$) عبور کند که نشان‌دهنده این است که مدل هوشمندیِ بالاتری از حدِ انتخابِ تصادفیِ کاراکترها پیدا کرده است.
+\end{itemize}
+
+\subsubsection*{۲. نُرم جهانی گرادیان (\lr{Gradient Global Norm})}
+این نمودار نشان می‌دهد که بزرگی تغییراتی که به وزن‌های مدل اعمال می‌شود، چقدر است.
+\begin{itemize}
+	\item \textbf{پایداری:} در گام اول، گرادیان عدد بزرگی است (حدود ۷.۲)، که طبیعی است چون مدل هیچ دانشی ندارد و وزن‌ها باید سریعاً اصلاح شوند.
+	\item \textbf{کنترل و بریدن (\lr{Clipping}):} در مراحل بعدی، این مقدار به سرعت پایین آمده و روی عدد کوچکی (حدود \lr{۰.۴}) تثبیت شده است. ثابت ماندن این مقدار نشان می‌دهد که مدل دچار \textbf{انفجار گرادیان (\lr{Exploding Gradient})} نشده است. استفاده از تکنیک \lr{Gradient Clipping} باعث شده که نوسانات شدید در مسیر یادگیری کنترل شود و آموزش به صورت آرام و مطمئن ادامه یابد.
+\end{itemize}
+
+\subsubsection*{۳. توزیع وزن‌های آموزش‌دیده (\lr{Trained Weight Distribution})}
+این نمودار یک هیستوگرام از تمام پارامترهای مدل پس از ۲۰۰۰ گام است.
+\begin{itemize}
+	\item \textbf{شکل توزیع:} برخلاف توزیع کاملاً تصادفیِ اولیه (که به شکل یک زنگوله متقارن بود)، در اینجا مشاهده می‌کنیم که وزن‌ها به شکل یک توزیع ترکیبی درآمده‌اند.
+	\item \textbf{تفسیر:} بخش بزرگی از وزن‌ها حولِ نقطه صفر متمرکز شده‌اند (نشان‌دهنده این است که مدل فقط به بخش‌های مهمِ ورودی وزن داده و بقیه نورون‌ها را کم‌اثر کرده است). قله دوم در سمت راست نمودار (مقادیر مثبت)، نشان‌دهنده آن است که مدل ویژگی‌های خاصی را شناسایی کرده و آن‌ها را با وزن‌های مثبتِ قوی فعال می‌کند.
+	\item \textbf{مقیاس لگاریتمی:} توجه کنید که محور عمودی لگاریتمی است؛ این یعنی مدل ما برخلافِ مدل‌های آموزش‌ندیده که وزن‌هایشان در محدوده خاصی پخش می‌شد، توانسته وزن‌های خود را سازمان‌دهی کند تا بخش بزرگی از آن‌ها در مقادیرِ تأثیرگذار قرار بگیرند. 
+\end{itemize}
+
+\textbf{نتیجه نهایی:} تمام این نمودارها در کنار هم تأیید می‌کنند که \lr{MiniGPT} یک مدل سالم، متعادل و آموزش‌دیده است که با موفقیت یاد گرفته است چگونه ساختار متن را به دانشِ ریاضی در قالبِ وزن‌هایِ خود تبدیل کند. 
+
+\subsection{تحلیل نهایی: مدل چه چیزی آموخته است؟ (\lr{What did the trained model learn?})}
+
+پس از اتمام فرآیند آموزش، اکنون می‌توانیم با نگاه به درون «جعبه سیاه» مدل، ببینیم چه الگوهایی در وزن‌های آن شکل گرفته است. دو ابزار تشخیصی قدرتمند برای این کار وجود دارد: تحلیل نقشه‌های توجه مجزا (\lr{Attention Maps}) و تحلیل فضای ویژگی‌های تعبیه (\lr{Embeddings}) از طریق روش \lr{PCA}.
+
+\subsubsection*{تخصص‌یابی سرهای توجه (\lr{Per-Head Specialization})}
+
+در بخش‌های قبل دیدیم که مدلِ آموزش‌ندیده، توجهی یکنواخت و تصادفی داشت. اما پس از آموزش، هر کدام از ۶ سرِ توجه (\lr{Head 1} تا \lr{Head 6}) در بلوک اول، الگوی رفتار منحصربه‌فردی پیدا کرده‌اند (شکل \ref{fig:multi_heads}).
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=1\textwidth]{img/multi heads.png}
+	\caption{نقشه حرارتی توجهِ ۶ سر مختلف در بلوک اول. هر سر یک الگوی جستجوی خاص را در متن شکسپیر یاد گرفته است.}
+	\label{fig:multi_heads}
+\end{figure}
+
+\paragraph{تحلیل رفتاری سرها:}
+\begin{itemize}
+	\item \textbf{سر ۱ و ۲ (تمرکز بر همسایگی مستقیم):} این سرها عمدتاً بر روی قطر اصلی ماتریس متمرکز هستند (خانه‌های زرد رنگ که کنار قطر هستند). این یعنی آن‌ها «متخصصِ همسایگی» شده‌اند و یاد گرفته‌اند که برای پیش‌بینی حرف بعدی، فقط به حرف قبلی نگاه کنند (ساختارِ محلی).
+	\item \textbf{سر ۳، ۴ و ۵ (توجه به الگوهای دورتر):} این سرها پراکندگی بیشتری در ماتریس دارند (رنگ‌های نارنجی و بنفش در خارج از قطر اصلی). آن‌ها به مدل کمک می‌کنند تا روابط بین کلمات را در فواصل طولانی‌تر کشف کند. مثلاً در سر ۴، توجه به حروفِ ابتداییِ کلمه (مانند 'R' در ROMEO) برای درکِ ترکیبِ حرفِ بعدی، بسیار قوی است.
+	\item \textbf{سر ۶ (تخصص در ساختارِ جملات):} این سر به صورت پله‌ای رفتار می‌کند؛ یعنی برای هر بخش از کلمه، توجه خود را به ابتدای همان کلمه یا کلمه قبلی جفت کرده است. این نشان می‌دهد که مدل به صورتِ ضمنی مفهومِ «مرزِ کلمات» را از طریق توزیع آماریِ حروف یاد گرفته است.
+\end{itemize}
+
+این تخصصی شدنِ سرها، در واقع همان فلسفه \textbf{توجه چندسر} است؛ مدل به جای داشتن یک نگاهِ کلی، چندین «نگاهِ تخصصی» به متن دارد تا جنبه‌های مختلفِ زبان (نحو، فاصله، و همبستگی حروف) را همزمان پوشش دهد.
+
+\subsubsection*{تحلیل خوشه‌بندی ویژگی‌ها با \lr{PCA}}
+
+در تصویر \ref{fig:pca}, ما بردارهای تعبیه ۳۲-بعدی مدل را با استفاده از روش تحلیل مؤلفه‌های اصلی (\lr{PCA}) به یک فضای ۲-بعدی تصویر کرده‌ایم. نتیجه خیره‌کننده است!
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.8\textwidth]{img/pca.png}
+	\caption{تصویرسازی بردارهای تعبیه کلمات در فضای ۲-بعدی با \lr{PCA}. گروه‌بندیِ خودکارِ حروف صدادار (قرمز)، بی‌صدا (سبز) و علائم نگارشی (آبی) بدون هیچ آموزشِ زبان‌شناختی.}
+	\label{fig:pca}
+\end{figure}
+
+\paragraph{تحلیلِ قدرتِ یادگیری مدل:}
+مدل ما \textbf{هیچ دانشِ پیش‌فرضی} از الفبای زبان نداشته است؛ تنها هدفِ آن «پیش‌بینی حرف بعدی» بوده است. اما با نگاه به نمودار \lr{PCA} می‌بینیم که مدل به صورت کاملاً خودکار، ویژگی‌هایِ آواشناسی و دستوریِ زبان را کشف کرده است:
+\begin{enumerate}
+	\item \textbf{خوشه علائم نگارشی (آبی):} تمامیِ کاراکترهایی که جزءِ حروف نیستند (مانند \lr{':'}, \lr{'?'}, \lr{','} و اعداد)، در سمت چپِ نمودار و در یک خوشه کاملاً مجزا جمع شده‌اند. این یعنی مدل فهمیده است که نقشِ علائم نگارشی در ساختارِ جمله، متفاوت از حروفِ الفباست.
+	\item \textbf{خوشه حروف صدادار (قرمز):} حروف صدادار مثل \lr{'e'}, \lr{'a'}, \lr{'o'} در یک ناحیه متمرکز شده‌اند. این نشان می‌دهد که مدل در فضایِ برداریِ خود، شباهتِ عملکردیِ این حروف را (که در ساختارِ کلمات نقش مشابهی دارند) درک کرده است.
+	\item \textbf{خوشه حروف بی‌صدا (سبز):} اکثرِ حروف بی‌صدا (مثل \lr{'p'}, \lr{'x'}, \lr{'v'}, \lr{'B'}) در سمتِ راست و مرکزِ نمودار پخش شده‌اند، که نشان‌دهنده گستردگیِ استفاده از این حروف در ترکیب‌های مختلف است.
+\end{enumerate}
+
+\textbf{نتیجه نهایی:} این نمودارها «جادویِ ترنسفورمر» را نشان می‌دهند. تنها با تکرارِ یک هدفِ آماریِ ساده، مدل از میان میلیاردها ترکیبِ احتمالی، ساختارهایِ بنیادینِ زبانِ انسان (دسته‌بندی حروف و الگوهایِ کلامی) را در درونِ وزن‌های خود کدگذاری کرده است. این اثباتی است بر اینکه مدل‌هایِ زبانی، نه فقط حفظ‌کننده متن، بلکه «درک‌کننده ساختار» هستند.
+
+\newpage
+\section{دیوار - تولید متن و مقیاس }
+
+در این بخش از سوال، با استفاده از مدل آموزش دیده در بخش 4، و با کنترل مقادیر Temperature، Top-k و Top-p، مدل را وادار به تولید متن های مختلفی می‌کنیم که با \lr{ROMEO:} آغاز میشوند.
+\subsection{Temperature}
+این مولفه میزان ریسک پذیری مدل در تولید متون را تعیین میکند. این مولفه توزیع احتمالاتی کلمات مختلف را دستخوش تغییر میکند. از رابطه زیر داریم:
+\begin{center}
+	$Adjusted Logits = \frac{Logits}{T}$
+\end{center}
+که T میزان Temperature را نشان میدهد. در مدل های زبانی، هر کلمه یا کاراکتر امتیازی دارد. قبل از ورود به تابع Softmax این اعداد بر مقدار Temperature تقسیم میشوند. 
+\begin{itemize}
+	\item اگر مقدار T کوچکتر از 1 باشد(مثلا \lr{0.5}): فاصله Logits هایی که مدل در طول آموزش متون یاد گرفته است، بیشتر میشود. مثلا اگر دو کلمه امتیاز های 2 و 4 داشته باشند، با تقسیم بر \lr{0.5}، مقدار امتیازشان به 8 و 4 تغییر میکند. در این صورت اختلاف امتیاز های دو کلمه از 2 به 4 افزایش می‌یابد. وقتی اعداد جدید وارد تابع Softmax میشود، کلمه برتر به شدت تقویت میشود و شانس کلمات دیگر برای انتخاب شدن کاهش می‌یابد. در نتیجه خلاقیت مدل کم شده و فقط گزینه های امن را انتخاب میکند. این رفتار در متن های طولانی منجر به لوپ و تکرار کلمات میشود
+	\item اگر مقدار T برابر 1 باشد، هیچ تغییری در امتیاز ها ایجاد نمیشود. مدل براساس احتمالات طبیعی که در طول دوره های آموزش یاد گرفته است، تصمیم گیری می‌کند
+	\item اگر مقدار T بزرگتر از 1 باشد، مقدار امتیاز کلمات و فاصله آن ها از یکدگیر کاهش می‌یابد. با ورود اعداد جدید به تابع Softmax چون اختلاف امتیازشان کم است، کلمه هایی که شانس پایینی برای انتخاب شدن داشتند نیز شانسشان افزایش یافته و میتوانند انتخاب شوند. در این وضعیت، تنوع کاراکتر ها به شدت بالا میرود و مدل شروع به ریسک کردن میکند. در نتیجه ممکن است مدل کلمات نامربوط اما متناسب با متن تولید بکند
+\end{itemize}
+\subsection{Top-k}
+این فیلتر یک مرز ثابت و عددی روی گزینه های روز میز میگذارد.
+
+برای مثال، اگر $Top-k=20$ باشد، مدل تمام کلمات را براساس امتیازشان به صورت نزولی مرتب میکند، فقط \lr{20} کلمه اول را انتخاب میکند و سایر کلمات را حذف می‌کند. این روش پویایی ندارد، زیرا این فیلتر اهمیت نمی‌دهد که که در چه جمله ای هستیم و چند کلمه برای این جمله مناسب است
+\subsection{Top-p}
+این فیلتر پویا، انتخاب کلمات را براساس درصد احتمالاتی‌شان انتخاب میکند.
+
+برای مثال، اگر $Top-p = 0.9$ باشد، مدل کلمات را براساس شانس‌شان از به صورت نزولی مرتب کرده و به ترتیب میزان احتمال آن ها را با یکدگیر جمع میکند. زمانی که جمع احتمالی چندین کلمه به 90\% برسد، سایر کلمات را حذف کرده و فقط کلماتی با بیشترین شانس را که مجموع احتمالاتی‌شان 90\% است انتخاب می‌کند.
+
+\subsection{کد بخش 5}
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		import os, time, math, pickle, urllib.request
+		import numpy as np
+		import matplotlib.pyplot as plt
+		
+		import jax
+		import jax.numpy as jnp
+		import flax.linen as nn
+		import optax
+		
+		plt.rcParams["figure.figsize"] = (9, 4)
+		plt.rcParams["axes.grid"] = True
+		plt.rcParams["grid.alpha"] = 0.3
+		np.set_printoptions(precision=4, suppress=True)
+		
+		print("JAX", jax.__version__, "| Flax", nn.__version__ if hasattr(nn,"__version__") else "", "| devices:", jax.devices())
+		# Setup (given): bring forward the MiniGPT model code and the tokenizer from Parts 1-4.
+		
+		def load_tiny_shakespeare():
+		for path in ("data/tiny_shakespeare.txt", "tiny_shakespeare.txt", "../data/tiny_shakespeare.txt"):
+		if os.path.exists(path):
+		return open(path, encoding="utf-8").read()
+		url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+		os.makedirs("data", exist_ok=True)
+		urllib.request.urlretrieve(url, "data/tiny_shakespeare.txt")
+		return open("data/tiny_shakespeare.txt", encoding="utf-8").read()
+		
+		text = load_tiny_shakespeare()
+		print(f"Corpus length: {len(text):,} characters")
+		
+		chars = sorted(set(text))
+		vocab_size = len(chars)
+		stoi = {ch: i for i, ch in enumerate(chars)}
+		itos = {i: ch for ch, i in stoi.items()}
+		
+		def encode(s):
+		return [stoi[c] for c in s]
+		
+		def decode(ids):
+		return "".join(itos[int(i)] for i in ids)
+		
+		data = np.array(encode(text), dtype=np.int32)
+		
+		n = int(0.9 * len(data))
+		train_data, val_data = data[:n], data[n:]
+		print(f"train: {len(train_data):,} tokens | val: {len(val_data):,} tokens")
+		
+		def get_batch(key, split, batch_size, block_size):
+		source = train_data if split == "train" else val_data
+		ix = jax.random.randint(key, (batch_size,), 0, len(source) - block_size - 1)
+		ix = np.asarray(ix)
+		x = np.stack([source[i:i + block_size] for i in ix])
+		y = np.stack([source[i + 1:i + 1 + block_size] for i in ix])
+		return jnp.asarray(x), jnp.asarray(y)
+		
+		class CausalSelfAttention(nn.Module):
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, x, deterministic=True):
+		B, T, C = x.shape
+		d_head = C // self.n_head
+		qkv = nn.Dense(3 * C, use_bias=False, name="qkv")(x)
+		q, k, v = jnp.split(qkv, 3, axis=-1)
+		
+		def split_heads(t):
+		return t.reshape(B, T, self.n_head, d_head).transpose(0, 2, 1, 3)
+		q, k, v = split_heads(q), split_heads(k), split_heads(v)
+		
+		scores = (q @ jnp.swapaxes(k, -1, -2)) / jnp.sqrt(d_head)
+		mask = jnp.tril(jnp.ones((T, T), dtype=bool))
+		scores = jnp.where(mask, scores, -1e9)
+		attn = jax.nn.softmax(scores, axis=-1)
+		attn = nn.Dropout(self.dropout)(attn, deterministic=deterministic)
+		
+		out = attn @ v
+		out = out.transpose(0, 2, 1, 3).reshape(B, T, C)
+		out = nn.Dense(C, name="proj")(out)
+		out = nn.Dropout(self.dropout)(out, deterministic=deterministic)
+		return out
+		
+		class TransformerBlock(nn.Module):
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, x, deterministic=True):
+		x = x + CausalSelfAttention(self.n_head, self.n_embd, self.dropout)(
+		nn.LayerNorm()(x), deterministic)
+		h = nn.LayerNorm()(x)
+		h = nn.Dense(4 * self.n_embd)(h)
+		h = nn.gelu(h)
+		h = nn.Dense(self.n_embd)(h)
+		h = nn.Dropout(self.dropout)(h, deterministic=deterministic)
+		return x + h
+		
+		class MiniGPT(nn.Module):
+		vocab_size: int
+		block_size: int
+		n_layer: int
+		n_head: int
+		n_embd: int
+		dropout: float = 0.0
+		
+		@nn.compact
+		def __call__(self, idx, deterministic=True):
+		B, T = idx.shape
+		tok = nn.Embed(self.vocab_size, self.n_embd, name="tok_emb")(idx)
+		pos = nn.Embed(self.block_size, self.n_embd, name="pos_emb")(jnp.arange(T))
+		x = tok + pos[None, :, :]
+		x = nn.Dropout(self.dropout)(x, deterministic=deterministic)
+		for i in range(self.n_layer):
+		x = TransformerBlock(self.n_head, self.n_embd, self.dropout,
+		name=f"block_{i}")(x, deterministic)
+		x = nn.LayerNorm()(x)
+		logits = nn.Dense(self.vocab_size, name="head")(x)
+		return logits
+		
+		print('model code ready; vocab_size =', vocab_size)
+		
+		ckpt_path = None
+		for _p in ("../04_training_minigpt_quera/minigpt_ckpt.pkl", "minigpt_ckpt.pkl"):
+		if os.path.exists(_p):
+		ckpt_path = _p
+		break
+		
+		if ckpt_path is not None:
+		ck = pickle.load(open(ckpt_path, "rb"))
+		cfg = ck["config"]
+		params = jax.tree_util.tree_map(jnp.asarray, ck["params"])
+		model = MiniGPT(**{**cfg, "dropout": 0.0})
+		train_curve = (ck["history"]["steps"], ck["history"]["train"])
+		n_params = sum(x.size for x in jax.tree_util.tree_leaves(params))
+		print(f"Loaded the trained MiniGPT from Part 4: {ckpt_path}  ({n_params:,} params)")
+		else:
+		print("Part 4 checkpoint not found - training a small fallback model so this notebook is self-contained ...")
+		cfg = dict(vocab_size=vocab_size, block_size=32, n_layer=3, n_head=4, n_embd=96, dropout=0.0)
+		model = MiniGPT(**cfg)
+		key = jax.random.PRNGKey(0)
+		params = model.init(key, jnp.zeros((1, cfg["block_size"]), jnp.int32))
+		tx = optax.chain(optax.clip_by_global_norm(1.0), optax.adamw(3e-3, weight_decay=0.1))
+		opt_state = tx.init(params)
+		def _loss(p, x, y):
+		return optax.softmax_cross_entropy_with_integer_labels(model.apply(p, x), y).mean()
+		@jax.jit
+		def _step(p, os, x, y):
+		l, g = jax.value_and_grad(_loss)(p, x, y); u, os = tx.update(g, os, p)
+		return optax.apply_updates(p, u), os, l
+		steps_log, loss_log = [], []
+		for step in range(1200):
+		key, sk = jax.random.split(key)
+		xb, yb = get_batch(sk, "train", 32, cfg["block_size"])
+		params, opt_state, l = _step(params, opt_state, xb, yb)
+		if step % 100 == 0:
+		steps_log.append(step); loss_log.append(float(l))
+		train_curve = (steps_log, loss_log)
+		print("fallback model trained; final loss:", float(l))
+		
+		# Chart: the training loss curve carried over from Part 4 (or the fallback run).
+		fig, ax = plt.subplots(figsize=(9, 3.4))
+		ax.plot(train_curve[0], train_curve[1], "-o", color="#0099cc")
+		ax.set_title("MiniGPT training loss (carried over from Part 4)")
+		ax.set_xlabel("training step"); ax.set_ylabel("cross-entropy loss")
+		plt.tight_layout(); plt.show()
+		
+		# Chart: the model's next-token distribution after "ROMEO:" at three temperatures.
+		_prompt = jnp.array([encode("ROMEO:")], dtype=jnp.int32)
+		_logits = model.apply(params, _prompt, deterministic=True)[0, -1, :]   # (vocab_size,)
+		
+		fig, ax = plt.subplots(1, 3, figsize=(13, 3.6), sharey=True)
+		for col, T in enumerate([0.5, 1.0, 1.5]):
+		probs = np.array(jax.nn.softmax(_logits / T))
+		top = np.argsort(-probs)[:10]
+		ax[col].bar([repr(itos[int(t)])[1:-1] for t in top], probs[top], color="#0099cc")
+		ax[col].set_title(f"temperature = {T}")
+		ax[col].tick_params(axis="x", rotation=0)
+		ax[0].set_ylabel("probability")
+		fig.suptitle('Next-token distribution after "ROMEO:" (top 10 characters)')
+		plt.tight_layout(); plt.show()
+		
+		def top_k_filter(logits, k):
+		
+		kth = jnp.sort(logits, axis=-1)[:, -k][:, None]
+		
+		return jnp.where(logits < kth, -jnp.inf, logits)
+		
+		def top_p_filter(logits, p):
+		order = jnp.argsort(logits, axis=-1)[:, ::-1]
+		s = jnp.take_along_axis(logits, order, axis=-1)
+		probs = jax.nn.softmax(s, axis=-1)
+		cum = jnp.cumsum(probs, axis=-1)
+		keep = (cum - probs) < p
+		keep = keep.at[:, 0].set(True)
+		rows = jnp.arange(logits.shape[0])[:, None]
+		inv_order = jnp.argsort(order, axis=-1)
+		mask = jnp.take_along_axis(keep, inv_order, axis=-1)
+		return jnp.where(mask, logits, -jnp.inf)
+		
+		# Self-check on a KNOWN distribution, then a chart of the three filters side by side.
+		test = jnp.log(jnp.array([[0.5, 0.3, 0.15, 0.04, 0.01]]))   # probs are known by construction
+		assert int(jnp.isfinite(top_k_filter(test, 2)).sum()) == 2, "top-k=2 must keep exactly 2 tokens"
+		assert bool(jnp.all(jnp.isfinite(top_k_filter(test, 2))[0, :2])), "top-k=2 must keep the first 2"
+		assert int(jnp.isfinite(top_p_filter(test, 0.6)).sum()) == 2, "0.5+0.3 already passes 0.6 -> 2 tokens"
+		assert int(jnp.isfinite(top_p_filter(test, 0.9)).sum()) == 3, "0.5+0.3+0.15 passes 0.9 -> 3 tokens"
+		print("OK: top_k_filter and top_p_filter behave as expected on the known distribution")
+		
+		base = np.array(jax.nn.softmax(test[0]))
+		pk = np.array(jax.nn.softmax(top_k_filter(test, 5)[0]))      # k=5 == full vocab here
+		pp = np.array(jax.nn.softmax(top_p_filter(test, 0.9)[0]))
+		x = np.arange(5); w = 0.27
+		fig, ax = plt.subplots(figsize=(9, 3.6))
+		ax.bar(x - w, base, w, label="raw softmax", color="#bbbbbb")
+		ax.bar(x,     pk,   w, label="top-k = 5", color="#0099cc")
+		ax.bar(x + w, pp,   w, label="top-p = 0.9", color="#ffb347")
+		ax.set_title("Raw vs top-k vs top-p re-normalised distributions")
+		ax.set_xlabel("token index"); ax.set_ylabel("probability"); ax.legend()
+		plt.tight_layout(); plt.show()
+		
+		def generate(params, key, idx, max_new_tokens, block_size,
+		temperature=1.0, top_k=None, top_p=None):
+		for _ in range(max_new_tokens):
+		idx_cond = idx[:, -block_size:]
+		logits = model.apply(params, idx_cond, deterministic=True)[:, -1, :] / temperature
+		if top_k is not None:
+		logits = top_k_filter(logits, top_k)
+		if top_p is not None:
+		logits = top_p_filter(logits, top_p)
+		key, sk = jax.random.split(key)
+		next_id = jax.random.categorical(sk, logits, axis=-1)[:, None]
+		idx = jnp.concatenate([idx, next_id], axis=1)
+		return idx
+		
+		# Self-check: shape of the generated sequence.
+		_start = jnp.array([encode("ROMEO:")], dtype=jnp.int32)
+		_out = generate(params, jax.random.PRNGKey(0), _start, 30, cfg["block_size"], temperature=1.0)
+		assert _out.shape == (1, _start.shape[1] + 30), "generate must append exactly max_new_tokens tokens"
+		print("OK: generate output shape =", tuple(_out.shape))
+		
+		# Given: read 3-4 samples from the trained model at different decoding settings.
+		start = jnp.array([encode("ROMEO:")])
+		settings = [
+		("greedy-ish  T=0.5",              dict(temperature=0.5)),
+		("top-k=20    T=0.8",             dict(temperature=0.8, top_k=20)),
+		("top-p=0.9   T=1.0",            dict(temperature=1.0, top_p=0.9)),
+		("hot         T=1.4",              dict(temperature=1.4)),
+		]
+		for i, (name, kw) in enumerate(settings):
+		out = generate(params, jax.random.PRNGKey(i), start, 200, cfg["block_size"], **kw)
+		print("=" * 70); print(name)
+		print("-" * 70); print(decode(out[0]))
+		print("=" * 70)
+		
+		# Chart: sampling diversity (unique tokens) vs temperature.
+		temps = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5]
+		uniques = []
+		for j, T in enumerate(temps):
+		out = generate(params, jax.random.PRNGKey(100 + j), start, 300, cfg["block_size"], temperature=T)
+		uniques.append(len(set(np.array(out[0, -300:]).tolist())))
+		fig, ax = plt.subplots(figsize=(9, 3.4))
+		ax.plot(temps, uniques, "-o", color="#0099cc")
+		ax.set_title("Sampling diversity grows with temperature")
+		ax.set_xlabel("temperature"); ax.set_ylabel("number of unique characters (in 300 sampled)")
+		plt.tight_layout(); plt.show()
+		
+		# Chart: a conceptual KV-cache diagram drawn with matplotlib boxes.
+		from matplotlib.patches import FancyBboxPatch
+		fig, ax = plt.subplots(figsize=(11, 3.8))
+		def box(x, y, label, fc, ec="#333"):
+		ax.add_patch(FancyBboxPatch((x, y), 0.92, 0.7, boxstyle="round,pad=0.02", fc=fc, ec=ec))
+		ax.text(x + 0.46, y + 0.35, label, ha="center", va="center", fontsize=9)
+		ax.text(-0.2, 2.55, "Naive: recompute K,V for the whole prefix every step", weight="bold")
+		for t in range(5):
+		box(t, 2.0, f"K,V t{t}", "#ffd0d0")
+		box(5, 2.0, "K,V t5", "#0099cc")
+		ax.text(-0.2, 1.05, "With KV cache: reuse stored K,V, compute only the new token", weight="bold")
+		for t in range(5):
+		box(t, 0.5, f"cached t{t}", "#d7f0d7")
+		box(5, 0.5, "new t5", "#0099cc")
+		ax.text(6.15, 2.35, "<- wasted recompute", color="#cc0000", va="center")
+		ax.text(6.15, 0.85, "<- skipped by cache", color="#2a7d2a", va="center")
+		ax.set_xlim(-0.3, 9); ax.set_ylim(0.2, 3.0); ax.axis("off")
+		ax.set_title("Why the KV cache makes autoregressive generation fast")
+		plt.tight_layout(); plt.show()
+		
+		# Chart: parameter counts from MiniGPT to GPT-3 on a log scale.
+		# Count our model's parameters from the trained pytree.
+		mini_params = int(sum(x.size for x in jax.tree_util.tree_leaves(params)))
+		names  = ["MiniGPT\n(this lab)", "GPT-2\n124M", "GPT-2 XL\n1.5B", "GPT-3\n175B"]
+		counts = [mini_params, 124_000_000, 1_500_000_000, 175_000_000_000]
+		fig, ax = plt.subplots(figsize=(9, 3.8))
+		bars = ax.bar(names, counts, color=["#0099cc", "#66b3d6", "#ffb347", "#e60b5c"])
+		ax.set_yscale("log")
+		ax.set_title("Parameter count: our MiniGPT vs the famous GPTs (log scale)")
+		ax.set_ylabel("number of parameters (log)")
+		for b, c in zip(bars, counts):
+		ax.text(b.get_x() + b.get_width() / 2, c, f"{c:,}", ha="center", va="bottom", fontsize=8)
+		plt.tight_layout(); plt.show()
+		print("MiniGPT parameter count:", f"{mini_params:,}")
+	\end{lstlisting}
+\end{latin}
+کد بالا، همان کد قرار داده شده init بخش 5 بوده که سه بخش top-k، top-p و generate آن تغییر کرده است
+\subsubsection*{کد بخش Top-k}
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		def top_k_filter(logits, k):
+		kth = jnp.sort(logits, axis=-1)[:, -k][:, None]
+		return jnp.where(logits < kth, -jnp.inf, logits)
+	\end{lstlisting}
+\end{latin}
+
+این کد کلمات را براساس امتیازشان مرتب میکند، مقدار امتیاز k امین کلمه را پیدا و آن را در متغیر kth ذخیره می‌کند. امتیاز کلماتی راکه امتیازشان از kth کمتر باشد را منفی بی‌نهایت قرار میدهد تا با وارد شدن در تابع Softmax شانس انتخاب شدنشان برابر 0 شود
+\subsubsection*{کد بخش Top-p}
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		def top_p_filter(logits, p):
+		order = jnp.argsort(logits, axis=-1)[:, ::-1]
+		s = jnp.take_along_axis(logits, order, axis=-1)
+		probs = jax.nn.softmax(s, axis=-1)
+		cum = jnp.cumsum(probs, axis=-1)
+		keep = (cum - probs) < p
+		keep = keep.at[:, 0].set(True)
+		inv_order = jnp.argsort(order, axis=-1)
+		mask = jnp.take_along_axis(keep, inv_order, axis=-1)
+		return jnp.where(mask, logits, -jnp.inf)
+	\end{lstlisting}
+\end{latin}
+این کد به صورت پویا کلمات رو براساس امتیازشان مرتب کرده، مقدار Logit کلمات را به احتمال تبدیل و به ترتیب و متوالیا آن ها را جمع می‌کند. با رسیدن به مقدار احتمال p تعیین شده، امتیاز کلماتی را که در بازه احتمالاتی قرار نگرفته‌اند به منفی بی‌نهایت تغییر داده تا شانس انتخاب‌شان به 0 برسد
+\subsubsection*{کد بخش generate}
+\begin{latin}
+	\begin{lstlisting}[language=Python]
+		def generate(params, key, idx, max_new_tokens, block_size,
+		temperature=1.0, top_k=None, top_p=None):
+		for _ in range(max_new_tokens):
+		idx_cond = idx[:, -block_size:]
+		logits = model.apply(params, idx_cond, deterministic=True)[:, -1, :] / temperature
+		if top_k is not None:
+		logits = top_k_filter(logits, top_k)
+		if top_p is not None:
+		logits = top_p_filter(logits, top_p)
+		key, sk = jax.random.split(key)
+		next_id = jax.random.categorical(sk, logits, axis=-1)[:, None]
+		idx = jnp.concatenate([idx, next_id], axis=1)
+		return idx
+	\end{lstlisting}
+\end{latin}
+وظیفه این کد، تولید کاراکتر های جدید براساس متن های تولید شده قبلی است. میزان Logit کلمات با در نظر گرفتن مقدار Temperature محاسبه و فیلتر های Top-k و Top-p بر آنها اعمال میشود. در نهایت براساس توزیع های احتمالاتی باقی مانده، قرعه کشی و توکن بعدی را انتخاب و به ماتریس های توکن قبلی می‌چسباند.
+\subsection{خروجی های نهایی}
+\subsubsection*{خروجی متنی}
+\begin{latin}
+	\begin{lstlisting}[
+		basicstyle=\ttfamily\small,
+		breaklines=true,
+		frame=single,
+		numbers=none,
+		backgroundcolor=\color{backcolour}
+		]
+		======================================================================
+		greedy-ish  T=0.5
+		----------------------------------------------------------------------
+		ROMEO:
+		What this is this done, is the king of the duke
+		And about and the state of Clarence, and be with my life,
+		I have men in the ground the tongue dead to the country,
+		And with the traitors of the man of 
+		======================================================================
+		top-k=20    T=0.8
+		----------------------------------------------------------------------
+		ROMEO:
+		Some second to the weep to say me as mine,
+		I bear med, good, subject in their counsel
+		That out is not it be to hear a little and by fieward?
+		
+		LUCIO:
+		How cause a wife safter to elept a enough.
+		
+		DUKE V
+		======================================================================
+		top-p=0.9    T=1.0
+		----------------------------------------------------------------------
+		ROMEO:
+		How made fearful of my castle: for I will shall be at
+		this sund short of Chrishioland a law--
+		
+		POLIXENES:
+		God, and my lord.
+		
+		MENENIUS:
+		What they not? are you, be or me sirs,
+		And in forbid their news?
+		======================================================================
+		hot          T=1.4
+		----------------------------------------------------------------------
+		ROMEO:
+		So thou sleep Lord'spergarace!
+		Thou would none cursua?
+		That Seizing Juliet's good glonestares:
+		Eshallojous;, for brook the noble scoul sweet?
+		
+		HASTINGS:
+		so,
+		Why, welcome yet o, mour glorys,
+		withmost 
+		======================================================================
+	\end{lstlisting}
+\end{latin}
+\begin{itemize}
+	\item حالت اول: زمانی که $T=0.5$ باشد، مدل ریسک کمتری در انتخاب گلمات خود می‌کند. همانطور که مشخص است، مدل از نظر ساختار املایی کلمات صحیح و گرامر تا حد زیادی معقول است. اما دچار تکرار کلمات شده است (مانند \lr{And about، And with})
+	\item حالت دوم: در $T=0.8$ و $Top-k=20$، تعادل خوبی بین منطق و خلاقیت ایجاد شده است. مدل فرمت نمایشنامه شکسپیر را به خوبی یاد گرفته و پس از اتمام دیالوگ رومئو، دیالوگ جدیدی برای شخص LUCIO خلق کرده است.
+	\item حالت سوم: در حالت $T=1$ و $top-p=0.9$ دما روی حالت استاندارد است و مدل به کلماتی نگاه می‌کند که 90\% احتمال را پوشش می‌دهند. این حالت بهترین و طبیعی ترین خروجی را از نظر ساختار ادبی شکسپیر داده است. نه تنها نام کاراکتر های جدید اضافه شده (\lr{POLIXENES، MENENIUS}) بلکه لحن دیالوگ ها شبیه به نمایشنامه های واقعی است(God, and my lord) یا استفاده از علامت سوال در what then not?
+	\item حالت چهارم: دمای بسیار بالا باعث آشفتگی مدل شده است. کلمات من‌درآوردی و غلط های املایی شدید ایجاد شده است(\lr{Lord'spergarace, cursua, glonestares, Eshallojous}) اما به دلیل یادگیری قوی ترنسفورمر، مدل همچنان تلاش کرده تا قالب ظاهری نمایشنامه را مااند نوشتن نام کاراکتر با حروف بزرگ و گذاشتن دو نقطه را حفظ کند، هر چند محتوای دیالوگ ها بی معنی شده است
+\end{itemize}
+\subsubsection*{میزان Loss آموزش}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/training_loss}
+	\caption{خطای آموزش minigpt}
+	\label{fig:1}
+\end{figure}
+همانطور که در صورت سوال گفته شده بود، خطای آموزش از حدود \lr{4.5} تا حدود \lr{1.5} کاهش یافته است
+\subsubsection*{توزیع احتمالاتی توکن های بعد از ROMEO:}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/next_token_distribution}
+	\caption{نمودار احتمالاتی توکن های بعد از کاراکتر ROMEO:}
+	\label{fig:2}
+\end{figure}
+
+همانطور که دیده میشود، احتمال اینکه بعد از کاراکتر ROMEO: متن به خط بعدی برود با اختلاف فاحشی بیشتر از سایر کاراکتر هاست. این نشان میدهد که مدل به خوبی ساختار نمایشنامه های شکسپیر را یاد گرفته است. در عین حال، مشاهده میشود که با افزایش دما (T)،احتمال رفتن به سطر بعدی کمی کمتر میشود و عباراتی مانند خط فاصله یا quote کمی شانس برای قرار گرفتن بعد از ROMEO: پیدا می‌کنند. این نمودار تاثیر پارامتر Temperature را در احتمال انتخاب کاراکتر های بعدی نشان می‌دهد
+
+\subsubsection*{بررسی پارامتر Temperature در میزان تنوع کاراکتر ها}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/sampeling_diversity}
+	\caption{نمودار تعداد کاراکتر های متمایز استفاده شده در متن براساس پارامتر Temperature}
+	\label{fig:6}
+\end{figure}
+
+این نمودار، میزان تعداد کاراکتر های متمایز استفاده شده در 300 کاراکتر نمونه برداری شده نشان می‌دهد. همانطور که انتظار می‌رود، نمودار صعودی است. با افزایش پارامتر Temperature، ریسک پذیری مدل و تنوع در کلمه های استفاده شده بیشتر می‌شود. به طوری که در $T=0.3$ کل نمونه ما با تقریبا 32 کاراکتر متمایز ساخته شده در حالی که در $T=1.5$ نمونه با 50 کاراکتر متمایز ساخته شده است. اعدادی که نشان دهنده افزایش تنوع در کلمات متن با افزایش پارامتر Temperature می‌باشد.
+
+
+
+\subsubsection*{میزان پارامتر های minigpt}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/parameter_count}
+	\caption{مقایسه تعداد پارامتر های miniGPT با سایر مدل های مشهور}
+	\label{fig:3}
+\end{figure}
+این نمودار صرفا به مقایسه تعداد پارامتر هایminiGPT ساخته شده با مدل های مشهور مانند \lr{GPT-3} می‌پردازد. تعداد پارامتر های miniGPT، برابر 2703425 بوده و بیشترین تعداد پارامتر در مدل های مشهور برای \lr{GPT-3} برابر 175 میلیارد است.
+\subsubsection*{بررسی مکانیزم حافظه پنهان کلید-مقدار (KV-Cache)}
+یکی از چالش‌های اصلی در تولید متن خودبازگشتی (Autoregressive)، افزایش زمان محاسبات با طولانی شدن طول کانتکست است. این نمودار به مقایسه دو رویکرد ساده و رویکرد بهینه با استفاده از مکانیزم \lr{KV-Cache} می‌پردازد.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/KV_Cache}
+	\caption{مقایسه دو رویکرد ساده و بهینه برای کاهش محاسبات تکراری}
+	\label{fig:4}
+\end{figure}
+
+همان‌طور که در نمودار فوق مشاهده می‌شود، در روش ساده (\lr{Naive})، مدل در هر گام برای تولید توکن جدید مجبور است ماتریس‌های \lr{Key} و \lr{Value} تمام توکن‌های گذشته را از ابتدا بازمحاسبه کند که این امر منجر به اتلاف شدید منابع محاسباتی (\lr{wasted recompute}) می‌گردد. در مقابل، با فعال‌سازی مکانیزم \lr{KV Cache}، ماتریس‌های مربوط به توکن‌های قبلی در حافظه ذخیره شده (\lr{cached}) و در گام‌های بعدی بازاستفاده می‌شوند. در این حالت، محاسبات تنها برای توکن جدید انجام شده و پیچیدگی زمان استنتاج هر توکن از حالت وابستگی به طول متن، به یک هزینه ثابت $O(1)$ بهبود می‌یابد که این امر سرعت تولید متن در مدل \lr{MiniGPT} را به شدت افزایش می‌دهد.
+\subsubsection*{مقایسه فیلتر های Top-k، Top-p و Softmax معمولی}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/raw_top-k_top-p}
+	\caption{نمودار بررسی عملکرد فیلتر های Top-k، Top-p و حالت بدون فیلتر}
+	\label{fig:5}
+\end{figure}
+
+نمودار بالا توزیع احتمالاتی 5 توکن را روی دایره لغات فرضی نشان میدهد. نمودار به ما نشان می‌دهد که توزیع احتمالاتی 5 توکن فرضی به ترتیب در حال کاهش است. نمودار میله ای طوسی رنگ، توزیع احتمالاتی توکن ها را با تابع Softmax معمولی و بدون فیلتر نشان میدهد. همانطور که مشخص است، توکن های 4 و 5 با اینکه احتمال کمی دارند، اما احتمال‌شان صفر نیست. در متن های طولانی این احتمال کم می‌تواند باعث شود مدل کلمه های بی‌ربطی را در بخش هایی از متن استفاده کند و در نتیجه رشته کلام از دست برود.
+
+نمودار آبی، وضعیت احتمالاتی توکن ها را با اعمال فیلتر $Top-k=5$ نشان میدهد. چون کل لغات ما 5 توکن است و این فیلتر 5 تا از بهترین ها را نگه می‌دارد، عملا هیج توکنی حذف نشده و نمودار آن هیچ تفاوتی با نمودار طوسی ندارد.
+
+فیلتر $Top-p=0.9$ (نمودار زرد) پس از اعمال بر مدل، باعث حذف توکن های 3 و 4 از دایره انتخاب ها شده است. این فیلتر رفتار پویایی از خود نشان می‌دهد و وابسته به تعداد کلمات نیست. وظیفه این فیلتر انتخاب توکن هایی با بیشترین احتمال است به طوری که مجموع احتمال آنها به سقف 90\% برسد. به همین دلیل، توکن های 3 و 4 را حذف و شانس 3 توکن اول را برای انتخاب بیشتر کرده است
+
+
+
+\end{document}
+

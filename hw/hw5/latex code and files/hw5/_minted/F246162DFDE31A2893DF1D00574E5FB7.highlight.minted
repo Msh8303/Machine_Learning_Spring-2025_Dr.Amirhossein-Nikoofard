@@ -1,0 +1,474 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+ch}{\PYGZsh{}!/usr/bin/env python}
+\PYG{c+c1}{\PYGZsh{} coding: utf\PYGZhy{}8}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h1 align=\PYGZdq{}center\PYGZdq{} style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}font color=\PYGZdq{}\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Transformers in JAX \PYGZam{}mdash; Part 2: Self\PYGZhy{}Attention at Digikala}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/font\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/h1\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 align=\PYGZdq{}left\PYGZdq{} style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}font color=\PYGZdq{}\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Part 1 \PYGZam{}mdash; The Backstory}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/font\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/h3\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p dir=\PYGZdq{}ltr\PYGZdq{} style=\PYGZdq{}direction: ltr;text\PYGZhy{}align: justify;line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;font\PYGZhy{}size:medium\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}font size=3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} The bus across town drops Nika in front of the \PYGZlt{}b\PYGZgt{}Digikala\PYGZlt{}/b\PYGZgt{} tower on a bright Sunday morning, a borrowed badge clipped to her bag and a laptop full of half\PYGZhy{}finished Snapp experiments. Her platform team has lent her out for a two\PYGZhy{}week cross\PYGZhy{}team sprint, because the search group at Digikala wants the same in\PYGZhy{}house language\PYGZhy{}model expertise that Nika has been building since she wrote her first character tokenizer. The problem on the table is deceptively ordinary, namely the little box at the top of the marketplace where millions of people type the first few letters of what they want to buy. Today that box completes a query by matching prefixes, which means it has no idea that the word \PYGZlt{}i\PYGZgt{}case\PYGZlt{}/i\PYGZgt{} after \PYGZlt{}i\PYGZgt{}phone\PYGZlt{}/i\PYGZgt{} means something very different from \PYGZlt{}i\PYGZgt{}case\PYGZlt{}/i\PYGZgt{} after \PYGZlt{}i\PYGZgt{}court\PYGZlt{}/i\PYGZgt{}. The search lead, Sahar, wants completions that read the whole context and not just the last word, and she is convinced the answer is the attention mechanism that powers every modern GPT. Nika has already turned text into clean integer tensors in her previous notebook, so tonight she finally gets to build the part that made Transformers famous. She opens a fresh notebook, pours a glass of tea, and this is exactly where you join her.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/font\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/Digikala\PYGZhy{}logo.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 align=\PYGZdq{}left\PYGZdq{} style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}font color=\PYGZdq{}\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Part 2 \PYGZam{}mdash; The Mission Brief}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/font\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/h3\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p dir=\PYGZdq{}ltr\PYGZdq{} style=\PYGZdq{}direction: ltr;text\PYGZhy{}align: justify;line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;font\PYGZhy{}size:medium\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}font size=3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Sahar pulls a chair next to Nika and explains the goal in a single sentence, namely a context\PYGZhy{}aware autocomplete that weighs every earlier character when it guesses the next one. To make the idea concrete she reaches for an analogy that Nika will never forget, describing attention as a soft dictionary lookup. In an ordinary dictionary you hold a key, you find the one matching entry, and you read its value, but in attention every position emits a \PYGZlt{}b\PYGZgt{}query\PYGZlt{}/b\PYGZgt{} that is compared against the \PYGZlt{}b\PYGZgt{}key\PYGZlt{}/b\PYGZgt{} of every position, and instead of picking a single match you blend all the \PYGZlt{}b\PYGZgt{}values\PYGZlt{}/b\PYGZgt{} in proportion to how well the keys matched. That blending is what lets the word \PYGZlt{}i\PYGZgt{}case\PYGZlt{}/i\PYGZgt{} quietly pull meaning from \PYGZlt{}i\PYGZgt{}phone\PYGZlt{}/i\PYGZgt{} three tokens earlier, and it is the entire reason Transformers can model long\PYGZhy{}range context. Over the next hour Nika will implement scaled dot\PYGZhy{}product attention with her own hands, add the causal mask that forbids any position from peeking at the future, and finally give the model a sense of order through sinusoidal positional encodings. Sahar reminds her that the search team\PYGZsq{}s evaluation harness checks numbers, not prose, so every tensor must come out exactly right. By the end of the notebook Nika will hold a working single\PYGZhy{}head attention layer, the precise building block that the next notebook stacks into multi\PYGZhy{}head attention and a full Transformer block. Each part of this five\PYGZhy{}part lab builds directly on the one before it, marching step by step from the tokenizer of Part 1 toward the small trained MiniGPT that closes the series.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/font\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala1.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}0. The architecture at a glance\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Before writing any code, it helps to see where tonight\PYGZsq{}s work sits inside a full Transformer. The diagram below shows the original encoder\PYGZam{}ndash;decoder architecture; a GPT keeps only the right\PYGZhy{}hand \PYGZlt{}b\PYGZgt{}masked self\PYGZhy{}attention\PYGZlt{}/b\PYGZgt{} column, and the single block you are about to build by hand is the very first thing inside it. Everything else in the lab \PYGZam{}mdash; multi\PYGZhy{}head attention, the feed\PYGZhy{}forward network, the residual stream \PYGZam{}mdash; wraps around this one operation.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/transformer\PYGZus{}full\PYGZus{}architecture.png\PYGZdq{} width=\PYGZdq{}600\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}p style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;font\PYGZhy{}size:small;color:\PYGZsh{}666;margin\PYGZhy{}top:6px;\PYGZdq{}\PYGZgt{}\PYGZlt{}i\PYGZgt{}GPT uses the masked self\PYGZhy{}attention (decoder) column. Everything you build tonight lives inside that one block.\PYGZlt{}/i\PYGZgt{}\PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Why attention? Mixing information between tokens\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} After tokenization and embedding, each token in a sequence is just an isolated vector that knows nothing about its neighbours. Yet the meaning of a word depends almost entirely on its context, so a useful language model must let tokens \PYGZlt{}b\PYGZgt{}exchange information\PYGZlt{}/b\PYGZgt{} with one another before predicting anything. \PYGZlt{}b\PYGZgt{}Self\PYGZhy{}attention\PYGZlt{}/b\PYGZgt{} is the mechanism that does exactly this: for every position it produces a new vector that is a weighted blend of the vectors at other positions, where the weights are computed from the content itself. Unlike a convolution, which can only mix neighbours inside a small fixed window, attention can connect position one to position one thousand in a single step, which is why it captures long\PYGZhy{}range dependencies so well. Unlike a recurrent network, which must process tokens one after another, attention compares all pairs of positions at once and is therefore highly parallel, a perfect match for the accelerators that \PYGZlt{}code\PYGZgt{}jax.jit\PYGZlt{}/code\PYGZgt{} targets. The price is a cost that grows with the square of the sequence length, because every position looks at every other position. Understanding this mixing operation is the single most important idea in the whole lab.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/gpt\PYGZus{}logo.svg\PYGZdq{} style=\PYGZdq{}width:30\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Query, Key, and Value: a soft dictionary lookup\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} The cleanest way to understand attention is the soft\PYGZhy{}dictionary analogy that Sahar gave Nika. From each token\PYGZsq{}s embedding we compute three different vectors with three learned projections: a \PYGZlt{}b\PYGZgt{}query\PYGZlt{}/b\PYGZgt{} \PYGZlt{}code\PYGZgt{}q\PYGZlt{}/code\PYGZgt{} that represents what this position is looking for, a \PYGZlt{}b\PYGZgt{}key\PYGZlt{}/b\PYGZgt{} \PYGZlt{}code\PYGZgt{}k\PYGZlt{}/code\PYGZgt{} that advertises what each position offers, and a \PYGZlt{}b\PYGZgt{}value\PYGZlt{}/b\PYGZgt{} \PYGZlt{}code\PYGZgt{}v\PYGZlt{}/code\PYGZgt{} that carries the information each position will contribute. To decide how much position \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} should attend to position \PYGZlt{}i\PYGZgt{}j\PYGZlt{}/i\PYGZgt{}, we take the dot product of \PYGZlt{}code\PYGZgt{}q\PYGZlt{}sub\PYGZgt{}i\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{} with \PYGZlt{}code\PYGZgt{}k\PYGZlt{}sub\PYGZgt{}j\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{}: a large dot product means the query and key point in similar directions and are therefore a good match. These match scores are turned into non\PYGZhy{}negative weights that sum to one with a \PYGZlt{}b\PYGZgt{}softmax\PYGZlt{}/b\PYGZgt{}, and the output for position \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} is the weighted sum of all the \PYGZlt{}b\PYGZgt{}values\PYGZlt{}/b\PYGZgt{} using those weights. A hard dictionary would put all of its weight on a single key; attention is soft because the softmax spreads the weight smoothly across every key in proportion to how well it matched. The same three projections, applied to the same input, are what make this \PYGZlt{}i\PYGZgt{}self\PYGZlt{}/i\PYGZgt{}\PYGZhy{}attention.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala2.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Scaled dot\PYGZhy{}product attention, and why we divide by \PYGZam{}radic;d\PYGZus{}head\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Putting the pieces together gives the famous formula Attention(Q, K, V) = softmax(Q K\PYGZlt{}sup\PYGZgt{}T\PYGZlt{}/sup\PYGZgt{} / \PYGZam{}radic;d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}) V. The matrix \PYGZlt{}code\PYGZgt{}Q K\PYGZlt{}sup\PYGZgt{}T\PYGZlt{}/sup\PYGZgt{}\PYGZlt{}/code\PYGZgt{} holds the dot product of every query with every key, so its entry (i, j) is the raw match score between positions i and j; the softmax along each row turns one row of scores into a probability distribution over the keys, and multiplying by \PYGZlt{}code\PYGZgt{}V\PYGZlt{}/code\PYGZgt{} produces the blended output. The only subtle part is the division by the square root of \PYGZlt{}code\PYGZgt{}d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{}, the dimension of each query and key vector. When \PYGZlt{}code\PYGZgt{}q\PYGZlt{}/code\PYGZgt{} and \PYGZlt{}code\PYGZgt{}k\PYGZlt{}/code\PYGZgt{} have independent unit\PYGZhy{}variance entries, their dot product is a sum of \PYGZlt{}code\PYGZgt{}d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{} such products and therefore has variance proportional to \PYGZlt{}code\PYGZgt{}d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{}, so for large dimensions the raw scores grow large in magnitude. Feeding large scores into a softmax pushes it into a near one\PYGZhy{}hot regime where almost all the weight lands on a single key and the gradients with respect to the other scores vanish, which cripples learning. Dividing by \PYGZlt{}code\PYGZgt{}\PYGZam{}radic;d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}\PYGZlt{}/code\PYGZgt{} rescales the scores back to roughly unit variance, keeping the softmax in a healthy, trainable range. We will verify this variance argument empirically with a chart.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/softmax.png\PYGZdq{} width=\PYGZdq{}300\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}p style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;font\PYGZhy{}size:small;color:\PYGZsh{}666;margin\PYGZhy{}top:6px;\PYGZdq{}\PYGZgt{}\PYGZlt{}i\PYGZgt{}The softmax along each row of the score matrix turns raw match scores into attention weights that sum to one.\PYGZlt{}/i\PYGZgt{}\PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; The causal mask: no peeking at the future\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} A GPT is trained to predict the next token from the tokens that came before it, so when the model is processing position \PYGZlt{}i\PYGZgt{}t\PYGZlt{}/i\PYGZgt{} it must be forbidden from looking at positions \PYGZlt{}i\PYGZgt{}t+1, t+2, \PYGZam{}hellip;\PYGZlt{}/i\PYGZgt{} that lie in the future. Without this rule the task would be trivial and useless, because the model could simply read the answer it is supposed to predict. We enforce it with a \PYGZlt{}b\PYGZgt{}causal mask\PYGZlt{}/b\PYGZgt{}, a lower\PYGZhy{}triangular pattern of allowed positions: position \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} may attend to position \PYGZlt{}i\PYGZgt{}j\PYGZlt{}/i\PYGZgt{} only when \PYGZlt{}code\PYGZgt{}j \PYGZam{}le; i\PYGZlt{}/code\PYGZgt{}. In code the mask is a boolean matrix, and we apply it by setting the score of every forbidden pair to a very large negative number \PYGZlt{}i\PYGZgt{}before\PYGZlt{}/i\PYGZgt{} the softmax. After the softmax those entries become effectively zero, so no probability mass ever flows from the future into the present. This single trick is what makes the attention \PYGZlt{}b\PYGZgt{}causal\PYGZlt{}/b\PYGZgt{}, also called masked self\PYGZhy{}attention, and it is the only structural difference between a GPT decoder block and the encoder block of the original Transformer. When you visualize the attention weights as a heatmap, the causal mask shows up as a clean dark upper triangle.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala3.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Positional encodings: giving the model a sense of order\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Attention as described so far has a surprising blind spot: it is \PYGZlt{}b\PYGZgt{}permutation\PYGZhy{}equivariant\PYGZlt{}/b\PYGZgt{}, meaning that if you shuffle the input tokens the outputs are shuffled the same way, because nothing in the dot\PYGZhy{}product computation depends on \PYGZlt{}i\PYGZgt{}where\PYGZlt{}/i\PYGZgt{} a token sits. Yet word order obviously carries meaning, since \PYGZlt{}i\PYGZgt{}dog bites man\PYGZlt{}/i\PYGZgt{} is not \PYGZlt{}i\PYGZgt{}man bites dog\PYGZlt{}/i\PYGZgt{}, so we must inject position information explicitly. The original Transformer does this with \PYGZlt{}b\PYGZgt{}sinusoidal positional encodings\PYGZlt{}/b\PYGZgt{}: for each position we build a vector of sines and cosines whose frequencies vary smoothly across the embedding dimensions, using even dimensions for sines and odd dimensions for cosines. Concretely the angle for position \PYGZlt{}i\PYGZgt{}pos\PYGZlt{}/i\PYGZgt{} and dimension \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} is \PYGZlt{}code\PYGZgt{}pos / 10000\PYGZlt{}sup\PYGZgt{}(2\PYGZam{}lfloor;i/2\PYGZam{}rfloor;/d)\PYGZlt{}/sup\PYGZgt{}\PYGZlt{}/code\PYGZgt{}, which gives high\PYGZhy{}frequency oscillations in the early dimensions and very slow ones later. This scheme is elegant because the encoding for any position is a fixed deterministic vector that needs no training, its values stay bounded in the range from \PYGZam{}minus;1 to 1, and because of trigonometric identities a fixed offset between two positions corresponds to a linear transform of their encodings, which makes relative distances easy for the model to recover. We add this positional vector to the token embedding so that each input carries both \PYGZlt{}i\PYGZgt{}what\PYGZlt{}/i\PYGZgt{} the token is and \PYGZlt{}i\PYGZgt{}where\PYGZlt{}/i\PYGZgt{} it sits.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala4.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[1]:}
+
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{os}\PYG{o}{,}\PYG{+w}{ }\PYG{n+nn}{time}\PYG{o}{,}\PYG{+w}{ }\PYG{n+nn}{math}\PYG{o}{,}\PYG{+w}{ }\PYG{n+nn}{pickle}\PYG{o}{,}\PYG{+w}{ }\PYG{n+nn}{urllib.request}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{matplotlib.pyplot}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{plt}
+
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{jax}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{jax.numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{jnp}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{flax.linen}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{nn}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{optax}
+
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{rcParams}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}figure.figsize\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{p}{(}\PYG{l+m+mi}{9}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{rcParams}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}axes.grid\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{k+kc}{True}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{rcParams}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}grid.alpha\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mf}{0.3}
+\PYG{n}{np}\PYG{o}{.}\PYG{n}{set\PYGZus{}printoptions}\PYG{p}{(}\PYG{n}{precision}\PYG{o}{=}\PYG{l+m+mi}{4}\PYG{p}{,} \PYG{n}{suppress}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}JAX\PYGZdq{}}\PYG{p}{,} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{\PYGZus{}\PYGZus{}version\PYGZus{}\PYGZus{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}| Flax\PYGZdq{}}\PYG{p}{,} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{\PYGZus{}\PYGZus{}version\PYGZus{}\PYGZus{}} \PYG{k}{if} \PYG{n+nb}{hasattr}\PYG{p}{(}\PYG{n}{nn}\PYG{p}{,}\PYG{l+s+s2}{\PYGZdq{}\PYGZus{}\PYGZus{}version\PYGZus{}\PYGZus{}\PYGZdq{}}\PYG{p}{)} \PYG{k}{else} \PYG{l+s+s2}{\PYGZdq{}\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}| devices:\PYGZdq{}}\PYG{p}{,} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{devices}\PYG{p}{())}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Continuing from Part 1\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} The setup cell below is not new work. The character \PYGZlt{}b\PYGZgt{}tokenizer\PYGZlt{}/b\PYGZgt{}, the train/validation \PYGZlt{}b\PYGZgt{}batching\PYGZlt{}/b\PYGZgt{}, and the numerically \PYGZlt{}b\PYGZgt{}stable softmax\PYGZlt{}/b\PYGZgt{} shown there are exactly the pieces Nika built by hand in Part 1 at Snapp, brought forward here unchanged so that this part can focus entirely on attention. In the same spirit, the single\PYGZhy{}head self\PYGZhy{}attention you assemble in this notebook is not a throwaway exercise: it is reused directly in Part 3, where it is replicated into multi\PYGZhy{}head attention and wrapped in a Transformer block, and it keeps running underneath everything in the parts that follow, all the way up to the small trained MiniGPT that ends the lab.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[2]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Setup (given) — solved code from Part 1.}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{load\PYGZus{}tiny\PYGZus{}shakespeare}\PYG{p}{():}
+    \PYG{k}{for} \PYG{n}{path} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}data/tiny\PYGZus{}shakespeare.txt\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}tiny\PYGZus{}shakespeare.txt\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}../data/tiny\PYGZus{}shakespeare.txt\PYGZdq{}}\PYG{p}{):}
+        \PYG{k}{if} \PYG{n}{os}\PYG{o}{.}\PYG{n}{path}\PYG{o}{.}\PYG{n}{exists}\PYG{p}{(}\PYG{n}{path}\PYG{p}{):}
+            \PYG{k}{return} \PYG{n+nb}{open}\PYG{p}{(}\PYG{n}{path}\PYG{p}{,} \PYG{n}{encoding}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}utf\PYGZhy{}8\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{read}\PYG{p}{()}
+    \PYG{n}{url} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}https://raw.githubusercontent.com/karpathy/char\PYGZhy{}rnn/master/data/tinyshakespeare/input.txt\PYGZdq{}}
+    \PYG{n}{os}\PYG{o}{.}\PYG{n}{makedirs}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}data\PYGZdq{}}\PYG{p}{,} \PYG{n}{exist\PYGZus{}ok}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+    \PYG{n}{urllib}\PYG{o}{.}\PYG{n}{request}\PYG{o}{.}\PYG{n}{urlretrieve}\PYG{p}{(}\PYG{n}{url}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}data/tiny\PYGZus{}shakespeare.txt\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n+nb}{open}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}data/tiny\PYGZus{}shakespeare.txt\PYGZdq{}}\PYG{p}{,} \PYG{n}{encoding}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}utf\PYGZhy{}8\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{read}\PYG{p}{()}
+
+\PYG{n}{text} \PYG{o}{=} \PYG{n}{load\PYGZus{}tiny\PYGZus{}shakespeare}\PYG{p}{()}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Corpus length: }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{text}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{,}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ characters\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{chars} \PYG{o}{=} \PYG{n+nb}{sorted}\PYG{p}{(}\PYG{n+nb}{set}\PYG{p}{(}\PYG{n}{text}\PYG{p}{))}
+\PYG{n}{vocab\PYGZus{}size} \PYG{o}{=} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{chars}\PYG{p}{)}
+\PYG{n}{stoi} \PYG{o}{=} \PYG{p}{\PYGZob{}}\PYG{n}{ch}\PYG{p}{:} \PYG{n}{i} \PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{n}{ch} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{chars}\PYG{p}{)\PYGZcb{}}
+\PYG{n}{itos} \PYG{o}{=} \PYG{p}{\PYGZob{}}\PYG{n}{i}\PYG{p}{:} \PYG{n}{ch} \PYG{k}{for} \PYG{n}{ch}\PYG{p}{,} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n}{stoi}\PYG{o}{.}\PYG{n}{items}\PYG{p}{()\PYGZcb{}}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{encode}\PYG{p}{(}\PYG{n}{s}\PYG{p}{):}
+    \PYG{k}{return} \PYG{p}{[}\PYG{n}{stoi}\PYG{p}{[}\PYG{n}{c}\PYG{p}{]} \PYG{k}{for} \PYG{n}{c} \PYG{o+ow}{in} \PYG{n}{s}\PYG{p}{]}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{decode}\PYG{p}{(}\PYG{n}{ids}\PYG{p}{):}
+    \PYG{k}{return} \PYG{l+s+s2}{\PYGZdq{}\PYGZdq{}}\PYG{o}{.}\PYG{n}{join}\PYG{p}{(}\PYG{n}{itos}\PYG{p}{[}\PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{i}\PYG{p}{)]} \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n}{ids}\PYG{p}{)}
+
+\PYG{n}{data} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{encode}\PYG{p}{(}\PYG{n}{text}\PYG{p}{),} \PYG{n}{dtype}\PYG{o}{=}\PYG{n}{np}\PYG{o}{.}\PYG{n}{int32}\PYG{p}{)}
+
+\PYG{n}{n} \PYG{o}{=} \PYG{n+nb}{int}\PYG{p}{(}\PYG{l+m+mf}{0.9} \PYG{o}{*} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{data}\PYG{p}{))}
+\PYG{n}{train\PYGZus{}data}\PYG{p}{,} \PYG{n}{val\PYGZus{}data} \PYG{o}{=} \PYG{n}{data}\PYG{p}{[:}\PYG{n}{n}\PYG{p}{],} \PYG{n}{data}\PYG{p}{[}\PYG{n}{n}\PYG{p}{:]}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}train: }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{train\PYGZus{}data}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{,}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ tokens | val: }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{val\PYGZus{}data}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{,}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ tokens\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{get\PYGZus{}batch}\PYG{p}{(}\PYG{n}{key}\PYG{p}{,} \PYG{n}{split}\PYG{p}{,} \PYG{n}{batch\PYGZus{}size}\PYG{p}{,} \PYG{n}{block\PYGZus{}size}\PYG{p}{):}
+    \PYG{n}{source} \PYG{o}{=} \PYG{n}{train\PYGZus{}data} \PYG{k}{if} \PYG{n}{split} \PYG{o}{==} \PYG{l+s+s2}{\PYGZdq{}train\PYGZdq{}} \PYG{k}{else} \PYG{n}{val\PYGZus{}data}
+    \PYG{n}{ix} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{randint}\PYG{p}{(}\PYG{n}{key}\PYG{p}{,} \PYG{p}{(}\PYG{n}{batch\PYGZus{}size}\PYG{p}{,),} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{source}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{block\PYGZus{}size} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)}
+    \PYG{n}{ix} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{ix}\PYG{p}{)}
+    \PYG{n}{x} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{stack}\PYG{p}{([}\PYG{n}{source}\PYG{p}{[}\PYG{n}{i}\PYG{p}{:}\PYG{n}{i} \PYG{o}{+} \PYG{n}{block\PYGZus{}size}\PYG{p}{]} \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n}{ix}\PYG{p}{])}
+    \PYG{n}{y} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{stack}\PYG{p}{([}\PYG{n}{source}\PYG{p}{[}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{:}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1} \PYG{o}{+} \PYG{n}{block\PYGZus{}size}\PYG{p}{]} \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n}{ix}\PYG{p}{])}
+    \PYG{k}{return} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{x}\PYG{p}{),} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{y}\PYG{p}{)}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{stable\PYGZus{}softmax}\PYG{p}{(}\PYG{n}{z}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{):}
+    \PYG{n}{z} \PYG{o}{=} \PYG{n}{z} \PYG{o}{\PYGZhy{}} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{z}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{n}{axis}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+    \PYG{n}{ez} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{exp}\PYG{p}{(}\PYG{n}{z}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n}{ez} \PYG{o}{/} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{ez}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=}\PYG{n}{axis}\PYG{p}{,} \PYG{n}{keepdims}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}recap ready, vocab\PYGZus{}size =\PYGZsq{}}\PYG{p}{,} \PYG{n}{vocab\PYGZus{}size}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}1. Scaled dot\PYGZhy{}product attention and the causal mask\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} This is the heart of the notebook. Implement \PYGZlt{}code\PYGZgt{}scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention(q, k, v, mask=None)\PYGZlt{}/code\PYGZgt{} following the formula softmax(q k\PYGZlt{}sup\PYGZgt{}T\PYGZlt{}/sup\PYGZgt{} / \PYGZam{}radic;d\PYGZlt{}sub\PYGZgt{}head\PYGZlt{}/sub\PYGZgt{}) v, and implement \PYGZlt{}code\PYGZgt{}causal\PYGZus{}mask(T)\PYGZlt{}/code\PYGZgt{} that returns a lower\PYGZhy{}triangular boolean matrix of shape \PYGZlt{}code\PYGZgt{}(T, T)\PYGZlt{}/code\PYGZgt{}. Read \PYGZlt{}code\PYGZgt{}d\PYGZus{}head\PYGZlt{}/code\PYGZgt{} from the last axis of \PYGZlt{}code\PYGZgt{}q\PYGZlt{}/code\PYGZgt{}, build the scores with a batched matrix multiply against the transpose of \PYGZlt{}code\PYGZgt{}k\PYGZlt{}/code\PYGZgt{}, divide by \PYGZlt{}code\PYGZgt{}jnp.sqrt(d\PYGZus{}head)\PYGZlt{}/code\PYGZgt{}, and when a mask is supplied replace every forbidden score with a large negative number using \PYGZlt{}code\PYGZgt{}jnp.where\PYGZlt{}/code\PYGZgt{} \PYGZlt{}i\PYGZgt{}before\PYGZlt{}/i\PYGZgt{} the softmax. Return both the output and the attention weights so we can plot them. You may use \PYGZlt{}code\PYGZgt{}jax.nn.softmax\PYGZlt{}/code\PYGZgt{} here for the final normalization.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[3]:}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{causal\PYGZus{}mask}\PYG{p}{(}\PYG{n}{T}\PYG{p}{):}
+    \PYG{c+c1}{\PYGZsh{} lower triangular matrix}
+    \PYG{n}{mask} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{tril}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{ones}\PYG{p}{((}\PYG{n}{T}\PYG{p}{,} \PYG{n}{T}\PYG{p}{),} \PYG{n}{dtype}\PYG{o}{=}\PYG{n+nb}{bool}\PYG{p}{))}
+    \PYG{k}{return} \PYG{n}{mask}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention}\PYG{p}{(}\PYG{n}{q}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{v}\PYG{p}{,} \PYG{n}{mask}\PYG{o}{=}\PYG{k+kc}{None}\PYG{p}{):}
+
+    \PYG{c+c1}{\PYGZsh{} dimension of head}
+    \PYG{n}{d\PYGZus{}head} \PYG{o}{=} \PYG{n}{q}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} compute attention scores}
+    \PYG{n}{scores} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{matmul}\PYG{p}{(}\PYG{n}{q}\PYG{p}{,} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{swapaxes}\PYG{p}{(}\PYG{n}{k}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{))}
+
+    \PYG{c+c1}{\PYGZsh{} scale}
+    \PYG{n}{scores} \PYG{o}{=} \PYG{n}{scores} \PYG{o}{/} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{d\PYGZus{}head}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} apply mask if provided}
+    \PYG{k}{if} \PYG{n}{mask} \PYG{o+ow}{is} \PYG{o+ow}{not} \PYG{k+kc}{None}\PYG{p}{:}
+        \PYG{n}{scores} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{where}\PYG{p}{(}\PYG{n}{mask}\PYG{p}{,} \PYG{n}{scores}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mf}{1e9}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} softmax to get attention weights}
+    \PYG{n}{attn} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{softmax}\PYG{p}{(}\PYG{n}{scores}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} weighted sum of values}
+    \PYG{n}{out} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{matmul}\PYG{p}{(}\PYG{n}{attn}\PYG{p}{,} \PYG{n}{v}\PYG{p}{)}
+
+    \PYG{k}{return} \PYG{n}{out}\PYG{p}{,} \PYG{n}{attn}
+
+
+\PYG{c+c1}{\PYGZsh{} In[4]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Self\PYGZhy{}check: rows of the attention matrix are probabilities, and the mask zeros the future.}
+\PYG{n}{\PYGZus{}k} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{PRNGKey}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{)}
+\PYG{n}{q} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}k}\PYG{p}{,} \PYG{l+m+mi}{11}\PYG{p}{),} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{))}
+\PYG{n}{k} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}k}\PYG{p}{,} \PYG{l+m+mi}{12}\PYG{p}{),} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{))}
+\PYG{n}{v} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}k}\PYG{p}{,} \PYG{l+m+mi}{13}\PYG{p}{),} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{))}
+
+\PYG{n}{m} \PYG{o}{=} \PYG{n}{causal\PYGZus{}mask}\PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{m}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{)} \PYG{o+ow}{and} \PYG{n}{m}\PYG{o}{.}\PYG{n}{dtype} \PYG{o}{==} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{bool\PYGZus{}}
+\PYG{k}{assert} \PYG{n+nb}{bool}\PYG{p}{(}\PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{])} \PYG{o+ow}{and} \PYG{o+ow}{not} \PYG{n+nb}{bool}\PYG{p}{(}\PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{])} \PYG{o+ow}{and} \PYG{n+nb}{bool}\PYG{p}{(}\PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{4}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{])}
+
+\PYG{n}{out\PYGZus{}nomask}\PYG{p}{,} \PYG{n}{attn\PYGZus{}nomask} \PYG{o}{=} \PYG{n}{scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention}\PYG{p}{(}\PYG{n}{q}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{v}\PYG{p}{)}
+\PYG{n}{out\PYGZus{}mask}\PYG{p}{,} \PYG{n}{attn\PYGZus{}mask} \PYG{o}{=} \PYG{n}{scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention}\PYG{p}{(}\PYG{n}{q}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{v}\PYG{p}{,} \PYG{n}{m}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{out\PYGZus{}mask}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{)} \PYG{o+ow}{and} \PYG{n}{attn\PYGZus{}mask}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{allclose}\PYG{p}{(}\PYG{n}{attn\PYGZus{}nomask}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{),} \PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{n}{atol}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{allclose}\PYG{p}{(}\PYG{n}{attn\PYGZus{}mask}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{),} \PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{n}{atol}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}6}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{triu}\PYG{p}{(}\PYG{n}{attn\PYGZus{}mask}\PYG{p}{,} \PYG{n}{k}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)))} \PYG{o}{\PYGZlt{}} \PYG{l+m+mf}{1e\PYGZhy{}6}   \PYG{c+c1}{\PYGZsh{} nothing above the diagonal}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}OK: attention rows sum to 1; the causal mask zeros every future position\PYGZdq{}}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[5]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 1 — attention heatmaps, with and without the causal mask, side by side.}
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{l+m+mf}{4.2}\PYG{p}{))}
+\PYG{n}{im0} \PYG{o}{=} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{imshow}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{attn\PYGZus{}nomask}\PYG{p}{),} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}viridis\PYGZdq{}}\PYG{p}{,} \PYG{n}{vmin}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{vmax}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Full attention (no mask)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}key position (attended to)\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}query position\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{fig}\PYG{o}{.}\PYG{n}{colorbar}\PYG{p}{(}\PYG{n}{im0}\PYG{p}{,} \PYG{n}{ax}\PYG{o}{=}\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{fraction}\PYG{o}{=}\PYG{l+m+mf}{0.046}\PYG{p}{)}
+\PYG{n}{im1} \PYG{o}{=} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{imshow}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{attn\PYGZus{}mask}\PYG{p}{),} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}viridis\PYGZdq{}}\PYG{p}{,} \PYG{n}{vmin}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{vmax}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Causal attention (lower triangular)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}key position (attended to)\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}query position\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{fig}\PYG{o}{.}\PYG{n}{colorbar}\PYG{p}{(}\PYG{n}{im1}\PYG{p}{,} \PYG{n}{ax}\PYG{o}{=}\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{fraction}\PYG{o}{=}\PYG{l+m+mf}{0.046}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}2. Why we divide by \PYGZam{}radic;d\PYGZus{}head\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Let us prove the scaling argument from the learning note with a quick experiment. For several head dimensions we draw many random query/key pairs, then measure the variance of the raw dot product \PYGZlt{}code\PYGZgt{}q\PYGZam{}middot;k\PYGZlt{}/code\PYGZgt{} and of the scaled dot product \PYGZlt{}code\PYGZgt{}q\PYGZam{}middot;k / \PYGZam{}radic;d\PYGZlt{}/code\PYGZgt{}. The raw variance should grow roughly linearly with \PYGZlt{}code\PYGZgt{}d\PYGZlt{}/code\PYGZgt{}, while the scaled variance should stay close to one regardless of \PYGZlt{}code\PYGZgt{}d\PYGZlt{}/code\PYGZgt{}, which is exactly why the softmax stays well\PYGZhy{}behaved.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[6]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 2 — variance of q.k grows \PYGZti{}d, but q.k / sqrt(d) stays \PYGZti{}1.}
+\PYG{n}{dims} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mi}{4}\PYG{p}{,} \PYG{l+m+mi}{16}\PYG{p}{,} \PYG{l+m+mi}{64}\PYG{p}{,} \PYG{l+m+mi}{256}\PYG{p}{]}
+\PYG{n}{raw\PYGZus{}var}\PYG{p}{,} \PYG{n}{scaled\PYGZus{}var} \PYG{o}{=} \PYG{p}{[],} \PYG{p}{[]}
+\PYG{n}{key} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{PRNGKey}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{)}
+\PYG{k}{for} \PYG{n}{d} \PYG{o+ow}{in} \PYG{n}{dims}\PYG{p}{:}
+    \PYG{n}{key}\PYG{p}{,} \PYG{n}{k1}\PYG{p}{,} \PYG{n}{k2} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{split}\PYG{p}{(}\PYG{n}{key}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{)}
+    \PYG{n}{qd} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{k1}\PYG{p}{,} \PYG{p}{(}\PYG{l+m+mi}{20000}\PYG{p}{,} \PYG{n}{d}\PYG{p}{))}
+    \PYG{n}{kd} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{k2}\PYG{p}{,} \PYG{p}{(}\PYG{l+m+mi}{20000}\PYG{p}{,} \PYG{n}{d}\PYG{p}{))}
+    \PYG{n}{dots} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{qd} \PYG{o}{*} \PYG{n}{kd}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}           \PYG{c+c1}{\PYGZsh{} one dot product per row}
+    \PYG{n}{raw\PYGZus{}var}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{var}\PYG{p}{(}\PYG{n}{dots}\PYG{p}{)))}
+    \PYG{n}{scaled\PYGZus{}var}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{var}\PYG{p}{(}\PYG{n}{dots} \PYG{o}{/} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{d}\PYG{p}{))))}
+
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{l+m+mf}{3.6}\PYG{p}{))}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{dims}\PYG{p}{,} \PYG{n}{raw\PYGZus{}var}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}o\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}0099cc\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Var(q.k)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{dims}\PYG{p}{,} \PYG{n}{dims}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}999\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}y = d (reference)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Raw dot\PYGZhy{}product variance grows with d\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}d\PYGZus{}head\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}variance\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{dims}\PYG{p}{,} \PYG{n}{scaled\PYGZus{}var}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}o\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}ff8a00\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Var(q.k / sqrt(d))\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{n}{ls}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}999\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}y = 1 (reference)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Scaled dot\PYGZhy{}product variance stays \PYGZti{}1\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}d\PYGZus{}head\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}variance\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylim}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}raw variances :\PYGZdq{}}\PYG{p}{,} \PYG{p}{[}\PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{k}{for} \PYG{n}{x} \PYG{o+ow}{in} \PYG{n}{raw\PYGZus{}var}\PYG{p}{])}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}scaled vars   :\PYGZdq{}}\PYG{p}{,} \PYG{p}{[}\PYG{n+nb}{round}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{)} \PYG{k}{for} \PYG{n}{x} \PYG{o+ow}{in} \PYG{n}{scaled\PYGZus{}var}\PYG{p}{])}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Implementation note \PYGZam{}mdash; building the positional encoding\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} You will now build the sinusoidal positional\PYGZhy{}encoding table from the formula in the learning note. For a sequence of length \PYGZlt{}code\PYGZgt{}T\PYGZlt{}/code\PYGZgt{} and model dimension \PYGZlt{}code\PYGZgt{}d\PYGZlt{}/code\PYGZgt{}, the result is a \PYGZlt{}code\PYGZgt{}(T, d)\PYGZlt{}/code\PYGZgt{} matrix whose row \PYGZlt{}i\PYGZgt{}pos\PYGZlt{}/i\PYGZgt{} is the encoding for that position. The angle for position \PYGZlt{}i\PYGZgt{}pos\PYGZlt{}/i\PYGZgt{} and dimension \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} is \PYGZlt{}code\PYGZgt{}pos / 10000\PYGZlt{}sup\PYGZgt{}(2\PYGZam{}lfloor;i/2\PYGZam{}rfloor;/d)\PYGZlt{}/sup\PYGZgt{}\PYGZlt{}/code\PYGZgt{}; even dimensions take the sine of the angle and odd dimensions take the cosine. Because the pairing of \PYGZlt{}code\PYGZgt{}2\PYGZam{}lfloor;i/2\PYGZam{}rfloor;\PYGZlt{}/code\PYGZgt{} ties dimensions together two at a time, neighbouring sine/cosine pairs share a frequency, which is the property that makes relative positions linearly recoverable.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}3. Positional encoding\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Implement \PYGZlt{}code\PYGZgt{}positional\PYGZus{}encoding(T, d)\PYGZlt{}/code\PYGZgt{} returning a \PYGZlt{}code\PYGZgt{}(T, d)\PYGZlt{}/code\PYGZgt{} array. Build a column vector of positions \PYGZlt{}code\PYGZgt{}pos\PYGZlt{}/code\PYGZgt{} and a row vector of dimension indices \PYGZlt{}code\PYGZgt{}i\PYGZlt{}/code\PYGZgt{}, form \PYGZlt{}code\PYGZgt{}angle\PYGZus{}rates = 1 / 10000\PYGZlt{}sup\PYGZgt{}(2(i // 2) / d)\PYGZlt{}/sup\PYGZgt{}\PYGZlt{}/code\PYGZgt{}, multiply to get the per\PYGZhy{}position angles, and finally select \PYGZlt{}code\PYGZgt{}sin\PYGZlt{}/code\PYGZgt{} for even \PYGZlt{}code\PYGZgt{}i\PYGZlt{}/code\PYGZgt{} and \PYGZlt{}code\PYGZgt{}cos\PYGZlt{}/code\PYGZgt{} for odd \PYGZlt{}code\PYGZgt{}i\PYGZlt{}/code\PYGZgt{} with \PYGZlt{}code\PYGZgt{}jnp.where\PYGZlt{}/code\PYGZgt{}. Do not loop over positions; use broadcasting so the same code runs on any length.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala5.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[7]:}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{positional\PYGZus{}encoding}\PYG{p}{(}\PYG{n}{T}\PYG{p}{,} \PYG{n}{d}\PYG{p}{):}
+    \PYG{c+c1}{\PYGZsh{} column vector of positions (T, 1)}
+    \PYG{n}{pos} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{T}\PYG{p}{)[:,} \PYG{k+kc}{None}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} row vector of dimension indices (1, d)}
+    \PYG{n}{i} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{d}\PYG{p}{)[}\PYG{k+kc}{None}\PYG{p}{,} \PYG{p}{:]}
+
+    \PYG{c+c1}{\PYGZsh{} compute angle rates}
+    \PYG{n}{angle\PYGZus{}rates} \PYG{o}{=} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mi}{10000} \PYG{o}{**} \PYG{p}{((}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{p}{(}\PYG{n}{i} \PYG{o}{//} \PYG{l+m+mi}{2}\PYG{p}{))} \PYG{o}{/} \PYG{n}{d}\PYG{p}{))}
+
+    \PYG{c+c1}{\PYGZsh{} compute angles via broadcasting → shape (T, d)}
+    \PYG{n}{angles} \PYG{o}{=} \PYG{n}{pos} \PYG{o}{*} \PYG{n}{angle\PYGZus{}rates}
+
+    \PYG{c+c1}{\PYGZsh{} apply sin to even indices, cos to odd indices}
+    \PYG{n}{pe} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{where}\PYG{p}{(}\PYG{n}{i} \PYG{o}{\PYGZpc{}} \PYG{l+m+mi}{2} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{,}
+                   \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{sin}\PYG{p}{(}\PYG{n}{angles}\PYG{p}{),}
+                   \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{cos}\PYG{p}{(}\PYG{n}{angles}\PYG{p}{))}
+
+    \PYG{k}{return} \PYG{n}{pe}
+
+
+\PYG{c+c1}{\PYGZsh{} In[8]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Self\PYGZhy{}check: shape is (T, d) and every value lies in [\PYGZhy{}1, 1].}
+\PYG{n}{pe} \PYG{o}{=} \PYG{n}{positional\PYGZus{}encoding}\PYG{p}{(}\PYG{l+m+mi}{32}\PYG{p}{,} \PYG{l+m+mi}{16}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{pe}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{l+m+mi}{32}\PYG{p}{,} \PYG{l+m+mi}{16}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{(}\PYG{n}{pe}\PYG{p}{)))} \PYG{o}{\PYGZlt{}=} \PYG{l+m+mf}{1.0} \PYG{o}{+} \PYG{l+m+mf}{1e\PYGZhy{}6}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}OK: positional\PYGZus{}encoding has shape\PYGZdq{}}\PYG{p}{,} \PYG{n}{pe}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}and |values| \PYGZlt{}= 1\PYGZdq{}}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[9]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 3 — the positional\PYGZhy{}encoding table as a heatmap, plus a few sinusoid columns.}
+\PYG{n}{pe\PYGZus{}big} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{positional\PYGZus{}encoding}\PYG{p}{(}\PYG{l+m+mi}{100}\PYG{p}{,} \PYG{l+m+mi}{64}\PYG{p}{))}
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mf}{4.0}\PYG{p}{))}
+\PYG{n}{im} \PYG{o}{=} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{imshow}\PYG{p}{(}\PYG{n}{pe\PYGZus{}big}\PYG{p}{,} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}RdBu\PYGZdq{}}\PYG{p}{,} \PYG{n}{aspect}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}auto\PYGZdq{}}\PYG{p}{,} \PYG{n}{vmin}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{vmax}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Sinusoidal positional encoding (100 x 64)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}embedding dimension\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}position\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{fig}\PYG{o}{.}\PYG{n}{colorbar}\PYG{p}{(}\PYG{n}{im}\PYG{p}{,} \PYG{n}{ax}\PYG{o}{=}\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{fraction}\PYG{o}{=}\PYG{l+m+mf}{0.046}\PYG{p}{)}
+\PYG{k}{for} \PYG{n}{dim} \PYG{o+ow}{in} \PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{,} \PYG{l+m+mi}{20}\PYG{p}{,} \PYG{l+m+mi}{40}\PYG{p}{]:}
+    \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{pe\PYGZus{}big}\PYG{p}{[:,} \PYG{n}{dim}\PYG{p}{],} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}dim }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{dim}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Individual dimensions oscillate at different frequencies\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}position\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}value\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{(}\PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{8}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h4 style=\PYGZdq{}font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}Learning note \PYGZam{}mdash; Putting it together \PYGZam{}mdash; single\PYGZhy{}head self\PYGZhy{}attention\PYGZlt{}/h4\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} You now have every ingredient for a real attention layer. In \PYGZlt{}i\PYGZgt{}self\PYGZlt{}/i\PYGZgt{}\PYGZhy{}attention the queries, keys, and values all come from the \PYGZlt{}b\PYGZgt{}same\PYGZlt{}/b\PYGZgt{} input \PYGZlt{}code\PYGZgt{}x\PYGZlt{}/code\PYGZgt{}: we project \PYGZlt{}code\PYGZgt{}x\PYGZlt{}/code\PYGZgt{} through three weight matrices \PYGZlt{}code\PYGZgt{}Wq\PYGZlt{}/code\PYGZgt{}, \PYGZlt{}code\PYGZgt{}Wk\PYGZlt{}/code\PYGZgt{}, \PYGZlt{}code\PYGZgt{}Wv\PYGZlt{}/code\PYGZgt{} to obtain \PYGZlt{}code\PYGZgt{}q\PYGZlt{}/code\PYGZgt{}, \PYGZlt{}code\PYGZgt{}k\PYGZlt{}/code\PYGZgt{}, \PYGZlt{}code\PYGZgt{}v\PYGZlt{}/code\PYGZgt{}, build a causal mask sized to the sequence, and run the scaled dot\PYGZhy{}product attention you already wrote. This single\PYGZhy{}head layer is the exact unit that the next notebook will replicate into multiple heads and wrap inside a Transformer block, so getting it right here is what unlocks the rest of the lab.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}4. Single\PYGZhy{}head self\PYGZhy{}attention\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} Implement \PYGZlt{}code\PYGZgt{}self\PYGZus{}attention(x, Wq, Wk, Wv)\PYGZlt{}/code\PYGZgt{} for one sequence \PYGZlt{}code\PYGZgt{}x\PYGZlt{}/code\PYGZgt{} of shape \PYGZlt{}code\PYGZgt{}(T, C)\PYGZlt{}/code\PYGZgt{}. Project \PYGZlt{}code\PYGZgt{}x\PYGZlt{}/code\PYGZgt{} into \PYGZlt{}code\PYGZgt{}q = x @ Wq\PYGZlt{}/code\PYGZgt{}, \PYGZlt{}code\PYGZgt{}k = x @ Wk\PYGZlt{}/code\PYGZgt{}, and \PYGZlt{}code\PYGZgt{}v = x @ Wv\PYGZlt{}/code\PYGZgt{}, build a causal mask of size \PYGZlt{}code\PYGZgt{}T\PYGZlt{}/code\PYGZgt{} with your \PYGZlt{}code\PYGZgt{}causal\PYGZus{}mask\PYGZlt{}/code\PYGZgt{}, call \PYGZlt{}code\PYGZgt{}scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention\PYGZlt{}/code\PYGZgt{}, and return both the output and the attention matrix. Reuse the two functions you wrote above instead of re\PYGZhy{}deriving anything.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} }
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}div style=\PYGZdq{}text\PYGZhy{}align:center;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{}     \PYGZlt{}img src=\PYGZdq{}images/digikala6.png\PYGZdq{} style=\PYGZdq{}width:100\PYGZpc{};\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/div\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[10]:}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{self\PYGZus{}attention}\PYG{p}{(}\PYG{n}{x}\PYG{p}{,} \PYG{n}{Wq}\PYG{p}{,} \PYG{n}{Wk}\PYG{p}{,} \PYG{n}{Wv}\PYG{p}{):}
+    \PYG{c+c1}{\PYGZsh{} TODO: project x into q, k, v; build a causal mask of size T = x.shape[0];}
+    \PYG{c+c1}{\PYGZsh{}       run scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention and return (out, attn).}
+    \PYG{n}{q}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{v} \PYG{o}{=} \PYG{n}{x} \PYG{o}{@} \PYG{n}{Wq}\PYG{p}{,} \PYG{n}{x} \PYG{o}{@} \PYG{n}{Wk}\PYG{p}{,} \PYG{n}{x} \PYG{o}{@} \PYG{n}{Wv}
+    \PYG{n}{mask} \PYG{o}{=} \PYG{n}{causal\PYGZus{}mask}\PYG{p}{(}\PYG{n}{x}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{])}
+    \PYG{n}{out}\PYG{p}{,} \PYG{n}{attn} \PYG{o}{=} \PYG{n}{scaled\PYGZus{}dot\PYGZus{}product\PYGZus{}attention}\PYG{p}{(}\PYG{n}{q}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{v}\PYG{p}{,} \PYG{n}{mask}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n}{out}\PYG{p}{,} \PYG{n}{attn}
+
+
+\PYG{c+c1}{\PYGZsh{} In[11]:}
+
+
+\PYG{c+c1}{\PYGZsh{} Self\PYGZhy{}check on a real Shakespeare snippet with fixed random embeddings + weights.}
+\PYG{n}{snippet} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}To be, or not to be\PYGZdq{}}
+\PYG{n}{ids} \PYG{o}{=} \PYG{n}{jnp}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{encode}\PYG{p}{(}\PYG{n}{snippet}\PYG{p}{))}
+\PYG{n}{T} \PYG{o}{=} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{snippet}\PYG{p}{)}
+\PYG{n}{C} \PYG{o}{=} \PYG{l+m+mi}{32}
+\PYG{n}{\PYGZus{}sk} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{PRNGKey}\PYG{p}{(}\PYG{l+m+mi}{3}\PYG{p}{)}
+\PYG{n}{emb} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}sk}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{),} \PYG{p}{(}\PYG{n}{vocab\PYGZus{}size}\PYG{p}{,} \PYG{n}{C}\PYG{p}{))} \PYG{o}{*} \PYG{l+m+mf}{0.2}
+\PYG{n}{x\PYGZus{}demo} \PYG{o}{=} \PYG{n}{emb}\PYG{p}{[}\PYG{n}{ids}\PYG{p}{]} \PYG{o}{+} \PYG{n}{positional\PYGZus{}encoding}\PYG{p}{(}\PYG{n}{T}\PYG{p}{,} \PYG{n}{C}\PYG{p}{)}
+\PYG{n}{Wq} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}sk}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{),} \PYG{p}{(}\PYG{n}{C}\PYG{p}{,} \PYG{n}{C}\PYG{p}{))} \PYG{o}{*} \PYG{l+m+mf}{0.3}
+\PYG{n}{Wk} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}sk}\PYG{p}{,} \PYG{l+m+mi}{3}\PYG{p}{),} \PYG{p}{(}\PYG{n}{C}\PYG{p}{,} \PYG{n}{C}\PYG{p}{))} \PYG{o}{*} \PYG{l+m+mf}{0.3}
+\PYG{n}{Wv} \PYG{o}{=} \PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{normal}\PYG{p}{(}\PYG{n}{jax}\PYG{o}{.}\PYG{n}{random}\PYG{o}{.}\PYG{n}{fold\PYGZus{}in}\PYG{p}{(}\PYG{n}{\PYGZus{}sk}\PYG{p}{,} \PYG{l+m+mi}{4}\PYG{p}{),} \PYG{p}{(}\PYG{n}{C}\PYG{p}{,} \PYG{n}{C}\PYG{p}{))} \PYG{o}{*} \PYG{l+m+mf}{0.3}
+
+\PYG{n}{sa\PYGZus{}demo\PYGZus{}out}\PYG{p}{,} \PYG{n}{sa\PYGZus{}demo\PYGZus{}attn} \PYG{o}{=} \PYG{n}{self\PYGZus{}attention}\PYG{p}{(}\PYG{n}{x\PYGZus{}demo}\PYG{p}{,} \PYG{n}{Wq}\PYG{p}{,} \PYG{n}{Wk}\PYG{p}{,} \PYG{n}{Wv}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n}{sa\PYGZus{}demo\PYGZus{}out}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{n}{T}\PYG{p}{,} \PYG{n}{C}\PYG{p}{)} \PYG{o+ow}{and} \PYG{n}{sa\PYGZus{}demo\PYGZus{}attn}\PYG{o}{.}\PYG{n}{shape} \PYG{o}{==} \PYG{p}{(}\PYG{n}{T}\PYG{p}{,} \PYG{n}{T}\PYG{p}{)}
+\PYG{k}{assert} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{triu}\PYG{p}{(}\PYG{n}{sa\PYGZus{}demo\PYGZus{}attn}\PYG{p}{,} \PYG{n}{k}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{)))} \PYG{o}{\PYGZlt{}} \PYG{l+m+mf}{1e\PYGZhy{}6}   \PYG{c+c1}{\PYGZsh{} still causal}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}OK: self\PYGZus{}attention output\PYGZdq{}}\PYG{p}{,} \PYG{n}{sa\PYGZus{}demo\PYGZus{}out}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}| attention\PYGZdq{}}\PYG{p}{,} \PYG{n}{sa\PYGZus{}demo\PYGZus{}attn}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{)}
+
+
+\PYG{c+c1}{\PYGZsh{} In[12]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 4 — attention heatmap on \PYGZdq{}To be, or not to be\PYGZdq{} with character tick labels.}
+\PYG{n}{labels} \PYG{o}{=} \PYG{p}{[}\PYG{n+nb}{repr}\PYG{p}{(}\PYG{n}{c}\PYG{p}{)[}\PYG{l+m+mi}{1}\PYG{p}{:}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{k}{for} \PYG{n}{c} \PYG{o+ow}{in} \PYG{n}{snippet}\PYG{p}{]}
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mf}{7.5}\PYG{p}{,} \PYG{l+m+mf}{6.5}\PYG{p}{))}
+\PYG{n}{im} \PYG{o}{=} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{imshow}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{sa\PYGZus{}demo\PYGZus{}attn}\PYG{p}{),} \PYG{n}{cmap}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}magma\PYGZdq{}}\PYG{p}{,} \PYG{n}{vmin}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xticks}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{T}\PYG{p}{));} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xticklabels}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}yticks}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{T}\PYG{p}{));} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}yticklabels}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Causal self\PYGZhy{}attention on \PYGZdq{}To be, or not to be\PYGZdq{}\PYGZsq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}key character (attended to)\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}query character\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{fig}\PYG{o}{.}\PYG{n}{colorbar}\PYG{p}{(}\PYG{n}{im}\PYG{p}{,} \PYG{n}{ax}\PYG{o}{=}\PYG{n}{ax}\PYG{p}{,} \PYG{n}{fraction}\PYG{o}{=}\PYG{l+m+mf}{0.046}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}attention weight\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}5. Transformer analysis: attention entropy per query position\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} A useful diagnostic is the \PYGZlt{}b\PYGZgt{}entropy\PYGZlt{}/b\PYGZgt{} of each query\PYGZsq{}s attention distribution. A high entropy means the query spreads its attention over many keys, while a low entropy means it concentrates on a few. Under a causal mask the very first query can only attend to one key, so its entropy must be zero, and later queries have more keys available and therefore the room for higher entropy. We plot the entropy of each row of the attention matrix from the snippet above.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[13]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 5 — entropy of each query\PYGZsq{}s attention distribution (causal).}
+\PYG{n}{attn\PYGZus{}np} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{sa\PYGZus{}demo\PYGZus{}attn}\PYG{p}{)}
+\PYG{n}{ent} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{where}\PYG{p}{(}\PYG{n}{attn\PYGZus{}np} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{attn\PYGZus{}np} \PYG{o}{*} \PYG{n}{np}\PYG{o}{.}\PYG{n}{log}\PYG{p}{(}\PYG{n}{attn\PYGZus{}np} \PYG{o}{+} \PYG{l+m+mf}{1e\PYGZhy{}12}\PYG{p}{),} \PYG{l+m+mf}{0.0}\PYG{p}{),} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{max\PYGZus{}ent} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{log}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{T} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{))}          \PYG{c+c1}{\PYGZsh{} max possible entropy given \PYGZsh{}visible keys}
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mf}{3.6}\PYG{p}{))}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{bar}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{T}\PYG{p}{),} \PYG{n}{ent}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}0099cc\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}attention entropy\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{T}\PYG{p}{),} \PYG{n}{max\PYGZus{}ent}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}o\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}ff8a00\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}max entropy = log(\PYGZsh{}visible keys)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xticks}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{T}\PYG{p}{));} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xticklabels}\PYG{p}{(}\PYG{n}{labels}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Per\PYGZhy{}query attention entropy under the causal mask\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}query character\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}entropy (nats)\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}first\PYGZhy{}query entropy (must be 0):\PYGZdq{}}\PYG{p}{,} \PYG{n+nb}{round}\PYG{p}{(}\PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{ent}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]),} \PYG{l+m+mi}{6}\PYG{p}{))}
+
+
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}h3 style=\PYGZdq{}line\PYGZhy{}height:200\PYGZpc{};font\PYGZhy{}family:\PYGZsq{}Vazirmatn\PYGZsq{},Tahoma,\PYGZsq{}Segoe UI\PYGZsq{},system\PYGZhy{}ui,Arial,sans\PYGZhy{}serif;color:\PYGZsh{}EF4056\PYGZdq{}\PYGZgt{}6. Transformer analysis: average attention distance vs position\PYGZlt{}/h3\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}p style=\PYGZdq{}line\PYGZhy{}height:180\PYGZpc{}; font\PYGZhy{}size:medium;\PYGZdq{}\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} How far back does each position tend to look? For every query we compute the \PYGZlt{}b\PYGZgt{}average attention distance\PYGZlt{}/b\PYGZgt{}, the mean gap \PYGZlt{}code\PYGZgt{}i \PYGZhy{} j\PYGZlt{}/code\PYGZgt{} between the query position \PYGZlt{}i\PYGZgt{}i\PYGZlt{}/i\PYGZgt{} and the key positions \PYGZlt{}i\PYGZgt{}j\PYGZlt{}/i\PYGZgt{}, weighted by the attention it places on each key. With random untrained weights this curve is mostly a function of how many keys are available, but the same plot on a trained model reveals whether heads specialize into looking nearby or far away. To make the trend smoother we average over a longer random sequence.}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+\PYG{c+c1}{\PYGZsh{} \PYGZlt{}/p\PYGZgt{}}
+
+\PYG{c+c1}{\PYGZsh{} In[14]:}
+
+
+\PYG{c+c1}{\PYGZsh{} CHART 6 — average (weighted) attention distance as a function of query position.}
+\PYG{n}{Tlong} \PYG{o}{=} \PYG{l+m+mi}{48}
+\PYG{n}{ids\PYGZus{}long} \PYG{o}{=} \PYG{n}{data}\PYG{p}{[}\PYG{l+m+mi}{1000}\PYG{p}{:}\PYG{l+m+mi}{1000} \PYG{o}{+} \PYG{n}{Tlong}\PYG{p}{]}
+\PYG{n}{x\PYGZus{}long} \PYG{o}{=} \PYG{n}{emb}\PYG{p}{[}\PYG{n}{jnp}\PYG{o}{.}\PYG{n}{asarray}\PYG{p}{(}\PYG{n}{ids\PYGZus{}long}\PYG{p}{)]} \PYG{o}{+} \PYG{n}{positional\PYGZus{}encoding}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{,} \PYG{n}{C}\PYG{p}{)}
+\PYG{n}{\PYGZus{}}\PYG{p}{,} \PYG{n}{attn\PYGZus{}long} \PYG{o}{=} \PYG{n}{self\PYGZus{}attention}\PYG{p}{(}\PYG{n}{x\PYGZus{}long}\PYG{p}{,} \PYG{n}{Wq}\PYG{p}{,} \PYG{n}{Wk}\PYG{p}{,} \PYG{n}{Wv}\PYG{p}{)}
+\PYG{n}{A} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{array}\PYG{p}{(}\PYG{n}{attn\PYGZus{}long}\PYG{p}{)}
+\PYG{n}{qpos} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{)[:,} \PYG{k+kc}{None}\PYG{p}{]}
+\PYG{n}{kpos} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{)[}\PYG{k+kc}{None}\PYG{p}{,} \PYG{p}{:]}
+\PYG{n}{dist} \PYG{o}{=} \PYG{n}{qpos} \PYG{o}{\PYGZhy{}} \PYG{n}{kpos}                              \PYG{c+c1}{\PYGZsh{} \PYGZgt{}= 0 under the causal mask}
+\PYG{n}{avg\PYGZus{}dist} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{A} \PYG{o}{*} \PYG{n}{dist}\PYG{p}{,} \PYG{n}{axis}\PYG{o}{=\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}            \PYG{c+c1}{\PYGZsh{} weighted mean distance per query}
+
+\PYG{n}{fig}\PYG{p}{,} \PYG{n}{ax} \PYG{o}{=} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{subplots}\PYG{p}{(}\PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{l+m+mf}{3.6}\PYG{p}{))}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{),} \PYG{n}{avg\PYGZus{}dist}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}o\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}0099cc\PYGZdq{}}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}weighted mean look\PYGZhy{}back distance\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{),} \PYG{n}{np}\PYG{o}{.}\PYG{n}{arange}\PYG{p}{(}\PYG{n}{Tlong}\PYG{p}{)} \PYG{o}{/} \PYG{l+m+mf}{2.0}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZsh{}999\PYGZdq{}}\PYG{p}{,}
+        \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}uniform\PYGZhy{}attention reference (i / 2)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Average attention distance grows with query position\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}query position\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}mean (i \PYGZhy{} j) over keys\PYGZdq{}}\PYG{p}{);} \PYG{n}{ax}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{()}
+\PYG{n}{plt}\PYG{o}{.}\PYG{n}{tight\PYGZus{}layout}\PYG{p}{();} \PYG{n}{plt}\PYG{o}{.}\PYG{n}{show}\PYG{p}{()}
+
+\end{MintedVerbatim}
